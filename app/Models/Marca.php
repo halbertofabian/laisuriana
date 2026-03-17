@@ -1,0 +1,39 @@
+<?php
+
+namespace App\Models;
+
+use App\Models\Concerns\HasLogicalDeletion;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Marca extends Model
+{
+    use HasFactory;
+    use HasLogicalDeletion;
+
+    public const CREATED_AT = 'mrc_created_at';
+    public const UPDATED_AT = 'mrc_updated_at';
+    public const LOGICAL_DELETED_COLUMN = 'mrc_deleted';
+    public const LOGICAL_DELETED_AT_COLUMN = 'mrc_deleted_at';
+
+    protected $table = 'tbl_marcas_mrc';
+    protected $primaryKey = 'mrc_id';
+
+    protected $fillable = [
+        'mrc_nombre',
+        'mrc_clave',
+        'mrc_estatus',
+        'mrc_created_by_usr_id',
+        'mrc_updated_by_usr_id',
+    ];
+
+    public function modelos()
+    {
+        return $this->belongsToMany(
+            ModeloProducto::class,
+            'tbl_modelo_marcas_mdm',
+            'mdm_mrc_id',
+            'mdm_mdl_id'
+        )->withTimestamps('mdm_created_at', 'mdm_created_at');
+    }
+}
