@@ -36,4 +36,14 @@ class Sucursal extends Model
     {
         return $this->hasMany(ExistenciaSucursal::class, 'exs_scl_id', 'scl_id');
     }
+
+    public function existenciasAlmacen()
+    {
+        return $this->hasMany(ExistenciaAlmacen::class, 'exa_scl_id', 'scl_id');
+    }
+
+    public function movimientosInventario()
+    {
+        return $this->hasMany(MovimientoInventario::class, 'min_scl_id', 'scl_id');
+    }
 }

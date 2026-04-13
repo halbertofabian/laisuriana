@@ -299,7 +299,9 @@
             <div class="row g-3">
                 <div class="col-md-3">
                     <label class="form-label">Usuario</label>
-                    <input type="text" id="flt-bitacora-usuario" class="form-control" placeholder="Usuario o nombre">
+                    <select id="flt-bitacora-usuario" class="form-select">
+                        <option value="">Todos</option>
+                    </select>
                 </div>
                 <div class="col-md-2">
                     <label class="form-label">Desde</label>
@@ -318,8 +320,10 @@
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">Evento (contiene)</label>
-                    <input type="text" id="flt-bitacora-accion" class="form-control" placeholder="Ej. edición de usuario">
+                    <label class="form-label">Evento</label>
+                    <select id="flt-bitacora-accion" class="form-select">
+                        <option value="">Todos</option>
+                    </select>
                 </div>
             </div>
             <div class="d-flex gap-2 py-3">
@@ -327,37 +331,52 @@
                 <button type="button" class="btn btn-label-secondary btn-sm" id="btn-limpiar-filtros-bitacora">Limpiar</button>
             </div>
 
-            <h6 class="py-2">Bitácora de accesos</h6>
-            <div class="table-responsive">
-                <table id="bitacora-accesos-table" class="table table-bordered security-table">
-                    <thead>
-                    <tr>
-                        <th>Fecha</th>
-                        <th>Usuario capturado</th>
-                        <th>Usuario identificado</th>
-                        <th>Estado</th>
-                        <th>Detalle</th>
-                        <th>IP</th>
-                    </tr>
-                    </thead>
-                </table>
-            </div>
-
-            <h6 class="py-2">Bitácora de acciones</h6>
-            <div class="table-responsive">
-                <table id="bitacora-acciones-table" class="table table-bordered security-table">
-                    <thead>
-                    <tr>
-                        <th>Fecha</th>
-                        <th>Evento</th>
-                        <th>¿Qué ocurrió?</th>
-                        <th>Usuario</th>
-                        <th>Sucursal</th>
-                        <th>IP</th>
-                        <th>Detalle</th>
-                    </tr>
-                    </thead>
-                </table>
+            <ul class="nav nav-tabs mt-2" id="bitacoraTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="tab-bitacora-accesos" data-bs-toggle="tab" data-bs-target="#panel-bitacora-accesos" type="button" role="tab" aria-controls="panel-bitacora-accesos" aria-selected="true">
+                        Bitácora de accesos
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="tab-bitacora-acciones" data-bs-toggle="tab" data-bs-target="#panel-bitacora-acciones" type="button" role="tab" aria-controls="panel-bitacora-acciones" aria-selected="false">
+                        Bitácora de acciones
+                    </button>
+                </li>
+            </ul>
+            <div class="tab-content pt-2">
+                <div class="tab-pane fade show active" id="panel-bitacora-accesos" role="tabpanel" aria-labelledby="tab-bitacora-accesos" tabindex="0">
+                    <div class="table-responsive">
+                        <table id="bitacora-accesos-table" class="table table-bordered security-table">
+                            <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Usuario capturado</th>
+                                <th>Usuario identificado</th>
+                                <th>Estado</th>
+                                <th>Detalle</th>
+                                <th>IP</th>
+                            </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="panel-bitacora-acciones" role="tabpanel" aria-labelledby="tab-bitacora-acciones" tabindex="0">
+                    <div class="table-responsive">
+                        <table id="bitacora-acciones-table" class="table table-bordered security-table">
+                            <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Evento</th>
+                                <th>¿Qué ocurrió?</th>
+                                <th>Usuario</th>
+                                <th>Sucursal</th>
+                                <th>IP</th>
+                                <th>Detalle</th>
+                            </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     @endif
@@ -465,6 +484,10 @@
     let bitacoraAccesosCargada = false;
     let bitacoraAccionesCargada = false;
     const tagPickers = {};
+    const bitacoraOpciones = {
+        usuarios: new Map(),
+        eventos: new Map()
+    };
 
     function escapeHtml(value) {
         return String(value || '')
@@ -523,6 +546,61 @@
             '<i class="icon-base ti tabler-dots-vertical me-1"></i>Acciones</button>' +
             '<ul class="dropdown-menu dropdown-menu-end">' + options + '</ul>' +
             '</div>';
+    }
+
+    function normalizarOpcionTexto(value) {
+        return String(value || '').trim();
+    }
+
+    function registrarOpcionMapa(mapa, valor, etiqueta) {
+        const key = normalizarOpcionTexto(valor);
+        if (!key) {
+            return;
+        }
+        const label = normalizarOpcionTexto(etiqueta) || key;
+        if (!mapa.has(key)) {
+            mapa.set(key, label);
+        }
+    }
+
+    function poblarSelectBitacora(selector, mapaOpciones) {
+        const $select = $(selector);
+        const valorActual = String($select.val() || '');
+        const unicos = Array.from((mapaOpciones || new Map()).entries())
+            .map(function (entry) {
+                return { value: normalizarOpcionTexto(entry[0]), label: normalizarOpcionTexto(entry[1]) };
+            })
+            .filter(function (item) { return item.value !== ''; })
+            .sort(function (a, b) { return a.label.localeCompare(b.label, 'es', { sensitivity: 'base' }); });
+
+        const opciones = ['<option value="">Todos</option>'].concat(
+            unicos.map(function (item) {
+                return '<option value="' + escapeHtml(item.value) + '">' + escapeHtml(item.label) + '</option>';
+            })
+        );
+
+        $select.html(opciones.join(''));
+        if (valorActual && unicos.some(function (item) { return item.value === valorActual; })) {
+            $select.val(valorActual);
+        } else {
+            $select.val('');
+        }
+    }
+
+    function establecerFechasBitacoraUltimaSemana() {
+        const hoy = new Date();
+        const desde = new Date(hoy);
+        desde.setDate(hoy.getDate() - 6);
+
+        function formatoFecha(fecha) {
+            const y = fecha.getFullYear();
+            const m = String(fecha.getMonth() + 1).padStart(2, '0');
+            const d = String(fecha.getDate()).padStart(2, '0');
+            return y + '-' + m + '-' + d;
+        }
+
+        $('#flt-bitacora-desde').val(formatoFecha(desde));
+        $('#flt-bitacora-hasta').val(formatoFecha(hoy));
     }
 
     function initTagPicker(config) {
@@ -870,6 +948,18 @@
         const filtros = filtrosBitacora();
 
         $.getJSON('{{ route('seguridad.bitacora.accesos') }}', filtros).done(function (response) {
+            (response.data || []).forEach(function (item) {
+                const usuarioCapturado = normalizarOpcionTexto(item.usuario_intentado);
+                const usuarioIdentificado = normalizarOpcionTexto(item.usuario_registrado);
+                if (usuarioCapturado) {
+                    registrarOpcionMapa(bitacoraOpciones.usuarios, usuarioCapturado, usuarioCapturado);
+                }
+                if (usuarioIdentificado) {
+                    registrarOpcionMapa(bitacoraOpciones.usuarios, usuarioIdentificado, usuarioIdentificado);
+                }
+            });
+            poblarSelectBitacora('#flt-bitacora-usuario', bitacoraOpciones.usuarios);
+
             if ($.fn.DataTable.isDataTable('#bitacora-accesos-table')) {
                 $('#bitacora-accesos-table').DataTable().clear().destroy();
             }
@@ -921,6 +1011,30 @@
         const filtros = filtrosBitacora();
 
         $.getJSON('{{ route('seguridad.bitacora.acciones') }}', filtros).done(function (response) {
+            (response.data || []).forEach(function (item) {
+                const usuarioLogin = normalizarOpcionTexto(item.usuario_login);
+                const usuarioLabel = normalizarOpcionTexto(item.usuario);
+                const eventoClave = normalizarOpcionTexto(item.accion);
+                const eventoLabel = normalizarOpcionTexto(item.evento);
+
+                if (usuarioLogin || usuarioLabel) {
+                    registrarOpcionMapa(
+                        bitacoraOpciones.usuarios,
+                        usuarioLogin || usuarioLabel,
+                        usuarioLabel || usuarioLogin
+                    );
+                }
+                if (eventoClave || eventoLabel) {
+                    registrarOpcionMapa(
+                        bitacoraOpciones.eventos,
+                        eventoClave || eventoLabel,
+                        eventoLabel || eventoClave
+                    );
+                }
+            });
+            poblarSelectBitacora('#flt-bitacora-usuario', bitacoraOpciones.usuarios);
+            poblarSelectBitacora('#flt-bitacora-accion', bitacoraOpciones.eventos);
+
             if ($.fn.DataTable.isDataTable('#bitacora-acciones-table')) {
                 $('#bitacora-acciones-table').DataTable().clear().destroy();
             }
@@ -1212,12 +1326,22 @@
 
     $('#btn-limpiar-filtros-bitacora').on('click', function () {
         $('#flt-bitacora-usuario').val('');
-        $('#flt-bitacora-desde').val('');
-        $('#flt-bitacora-hasta').val('');
         $('#flt-bitacora-resultado').val('');
         $('#flt-bitacora-accion').val('');
+        establecerFechasBitacoraUltimaSemana();
         cargarBitacoraAccesosTabla();
         cargarBitacoraAccionesTabla();
+    });
+
+    document.querySelectorAll('#bitacoraTabs button[data-bs-toggle="tab"]').forEach(function (button) {
+        button.addEventListener('shown.bs.tab', function () {
+            if ($.fn.DataTable.isDataTable('#bitacora-accesos-table')) {
+                $('#bitacora-accesos-table').DataTable().columns.adjust().responsive.recalc();
+            }
+            if ($.fn.DataTable.isDataTable('#bitacora-acciones-table')) {
+                $('#bitacora-acciones-table').DataTable().columns.adjust().responsive.recalc();
+            }
+        });
     });
 
     document.querySelectorAll('#seguridadTabs button[data-bs-toggle="tab"]').forEach(function (button) {
@@ -1281,6 +1405,7 @@
         }
     }
 
+    establecerFechasBitacoraUltimaSemana();
     activarTabInicial();
 })();
 </script>

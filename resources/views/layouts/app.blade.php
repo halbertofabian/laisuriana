@@ -7,7 +7,7 @@
     data-skin="default"
     data-bs-theme="light"
     data-assets-path="{{ $templateAssetBase }}/"
-    data-template="horizontal-menu-template"
+    data-template="vertical-menu-template"
 >
 <head>
     <meta charset="utf-8" />
@@ -584,118 +584,131 @@
     </style>
 </head>
 <body>
-    <div class="layout-wrapper layout-navbar-full layout-horizontal layout-without-menu">
+    <div class="layout-wrapper layout-content-navbar">
         <div class="layout-container">
 
-            <!-- Navbar superior -->
-            <nav class="layout-navbar navbar navbar-expand-xl align-items-center" id="layout-navbar">
-                <div class="container-xxl">
-                    <!-- Brand -->
-                    <div class="navbar-brand app-brand demo d-none d-xl-flex py-0 me-4 ms-0">
-                        <a href="{{ route('dashboard') }}" class="app-brand-link">
-                            <span class="app-brand-logo demo text-primary">
-                                <i class="icon-base ti tabler-building-store icon-lg"></i>
-                            </span>
-                            <span class="app-brand-text demo menu-text fw-bold text-heading ms-2">La I. Suriana</span>
-                        </a>
-                        <a href="javascript:void(0);" class="layout-menu-toggle menu-link text-large ms-auto d-xl-none">
-                            <i class="icon-base ti tabler-x icon-sm d-flex align-items-center justify-content-center"></i>
-                        </a>
-                    </div>
+            <!-- ── Sidebar vertical ─────────────────────────────────────────── -->
+            <aside id="layout-menu" class="layout-menu menu-vertical menu bg-menu-theme">
 
-                    <!-- Mobile toggle -->
-                    <div class="layout-menu-toggle navbar-nav align-items-xl-center me-3 me-xl-0 d-xl-none">
-                        <a class="nav-item nav-link px-0 me-xl-6" href="javascript:void(0)">
-                            <i class="icon-base ti tabler-menu-2 icon-md"></i>
-                        </a>
-                    </div>
-
-                    <!-- Navbar right: title + user info -->
-                    <div class="navbar-nav-right d-flex align-items-center justify-content-between w-100" id="navbar-collapse">
-                        <div class="navbar-nav align-items-center">
-                            <div class="nav-item">
-                                <span class="text-body-secondary"></span>
-                            </div>
-                        </div>
-
-                        <div class="d-flex align-items-center gap-3">
-                            <div class="text-end">
-                                <div class="fw-semibold">{{ auth()->user()?->usr_nombre }}</div>
-                                <small class="text-body-secondary">Usuario: {{ auth()->user()?->usr_usuario }}</small>
-                            </div>
-                            <form method="POST" action="{{ route('logout') }}">
-                                @csrf
-                                <button type="submit" class="btn btn-sm btn-outline-danger d-flex align-items-center gap-1">
-                                    <i class="icon-base ti tabler-logout"></i>
-                                    <span class="d-none d-md-inline">Salir</span>
-                                </button>
-                            </form>
-                        </div>
-                    </div>
+                <!-- Brand -->
+                <div class="app-brand demo">
+                    <a href="{{ route('dashboard') }}" class="app-brand-link">
+                        <span class="app-brand-logo demo text-primary">
+                            <i class="icon-base ti tabler-building-store icon-lg"></i>
+                        </span>
+                        <span class="app-brand-text demo menu-text fw-bold text-heading ms-2">La I. Suriana</span>
+                    </a>
+                    <a href="javascript:void(0);" class="layout-menu-toggle menu-link text-large ms-auto d-xl-none">
+                        <i class="icon-base ti tabler-x icon-sm d-flex align-items-center justify-content-center"></i>
+                    </a>
                 </div>
-            </nav>
-            <!-- / Navbar superior -->
+
+                <div class="menu-inner-shadow"></div>
+
+                <ul class="menu-inner py-1">
+
+                    <li class="menu-item {{ request()->routeIs('dashboard') ? 'active' : '' }}">
+                        <a href="{{ route('dashboard') }}" class="menu-link">
+                            <i class="menu-icon icon-base ti tabler-layout-dashboard"></i>
+                            <div>Dashboard</div>
+                        </a>
+                    </li>
+
+                    @if(auth()->user()?->tienePermiso('usuario.ver') || auth()->user()?->tienePermiso('rol.ver') || auth()->user()?->tienePermiso('permiso.ver') || auth()->user()?->tienePermiso('seguridad.ver_auditoria'))
+                        <li class="menu-item {{ request()->routeIs('seguridad.usuarios.*') || request()->routeIs('seguridad.roles.*') || request()->routeIs('seguridad.permisos.*') || request()->routeIs('seguridad.bitacora.*') ? 'active' : '' }}">
+                            <a href="{{ route('seguridad.usuarios.index') }}" class="menu-link">
+                                <i class="menu-icon icon-base ti tabler-users"></i>
+                                <div>Usuarios</div>
+                            </a>
+                        </li>
+                    @endif
+
+                    @if(auth()->user()?->tienePermiso('sucursal.ver') && auth()->user()?->tienePermiso('almacen.ver') && auth()->user()?->tienePermiso('tipo_almacen.ver'))
+                        <li class="menu-item {{ request()->routeIs('operacion.sucursales_almacenes.*') ? 'active' : '' }}">
+                            <a href="{{ route('operacion.sucursales_almacenes.index') }}" class="menu-link">
+                                <i class="menu-icon icon-base ti tabler-building-warehouse"></i>
+                                <div>Sucursales y almacenes</div>
+                            </a>
+                        </li>
+                    @endif
+
+                    @if(auth()->user()?->tienePermiso('catalogo_comercial.ver'))
+                        <li class="menu-item {{ request()->routeIs('operacion.catalogo_comercial.*') ? 'active' : '' }}">
+                            <a href="{{ route('operacion.catalogo_comercial.index') }}" class="menu-link">
+                                <i class="menu-icon icon-base ti tabler-box-multiple"></i>
+                                <div>Catálogo comercial</div>
+                            </a>
+                        </li>
+                    @endif
+
+                    @if(auth()->user()?->tienePermiso('escaneo_producto.ver'))
+                        <li class="menu-item {{ request()->routeIs('operacion.escaneo_productos.*') ? 'active' : '' }}">
+                            <a href="{{ route('operacion.escaneo_productos.index') }}" class="menu-link">
+                                <i class="menu-icon icon-base ti tabler-scan"></i>
+                                <div>Escaneo productos</div>
+                            </a>
+                        </li>
+                    @endif
+
+                    @if(auth()->user()?->tienePermiso('inventario_base.ver'))
+                        <li class="menu-item {{ request()->routeIs('operacion.inventario_base.*') ? 'active' : '' }}">
+                            <a href="{{ route('operacion.inventario_base.index') }}" class="menu-link">
+                                <i class="menu-icon icon-base ti tabler-packages"></i>
+                                <div>Inventario</div>
+                            </a>
+                        </li>
+                    @endif
+
+                    @if(auth()->user()?->tienePermiso('checklist_entregables.ver'))
+                        <li class="menu-item {{ request()->routeIs('operacion.checklist_entregables.*') ? 'active' : '' }}">
+                            <a href="{{ route('operacion.checklist_entregables.index') }}" class="menu-link">
+                                <i class="menu-icon icon-base ti tabler-checklist"></i>
+                                <div>Checklist entregables</div>
+                            </a>
+                        </li>
+                    @endif
+
+                </ul>
+            </aside>
+            <!-- / Sidebar vertical -->
 
             <!-- Layout page -->
             <div class="layout-page">
+
+                <!-- Navbar superior (solo usuario + toggle mobile) -->
+                <nav class="layout-navbar navbar navbar-expand-xl align-items-center bg-navbar-theme" id="layout-navbar">
+                    <div class="container-xxl">
+
+                        <!-- Mobile toggle -->
+                        <div class="layout-menu-toggle navbar-nav align-items-xl-center me-3 me-xl-0 d-xl-none">
+                            <a class="nav-item nav-link px-0" href="javascript:void(0)">
+                                <i class="icon-base ti tabler-menu-2 icon-md"></i>
+                            </a>
+                        </div>
+
+                        <!-- Spacer -->
+                        <div class="navbar-nav-right d-flex align-items-center justify-content-end w-100" id="navbar-collapse">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="text-end">
+                                    <div class="fw-semibold" style="font-size:.88rem;">{{ auth()->user()?->usr_nombre }}</div>
+                                    <small class="text-body-secondary">{{ auth()->user()?->usr_usuario }}</small>
+                                </div>
+                                <form method="POST" action="{{ route('logout') }}">
+                                    @csrf
+                                    <button type="submit" class="btn btn-sm btn-outline-danger d-flex align-items-center gap-1">
+                                        <i class="icon-base ti tabler-logout"></i>
+                                        <span class="d-none d-md-inline">Salir</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                    </div>
+                </nav>
+                <!-- / Navbar superior -->
+
                 <!-- Content wrapper -->
                 <div class="content-wrapper">
-
-                    <!-- Menú horizontal -->
-                    <aside id="layout-menu" class="layout-menu-horizontal menu-horizontal menu flex-grow-0">
-                        <div class="container-xxl d-flex h-100">
-                            <ul class="menu-inner">
-
-                                <li class="menu-item {{ request()->routeIs('dashboard') ? 'active' : '' }}">
-                                    <a href="{{ route('dashboard') }}" class="menu-link">
-                                        <i class="menu-icon icon-base ti tabler-layout-dashboard"></i>
-                                        <div>Dashboard</div>
-                                    </a>
-                                </li>
-
-                                @if(auth()->user()?->tienePermiso('usuario.ver') || auth()->user()?->tienePermiso('rol.ver') || auth()->user()?->tienePermiso('permiso.ver') || auth()->user()?->tienePermiso('seguridad.ver_auditoria'))
-                                    <li class="menu-item {{ request()->routeIs('seguridad.usuarios.*') || request()->routeIs('seguridad.roles.*') || request()->routeIs('seguridad.permisos.*') || request()->routeIs('seguridad.bitacora.*') ? 'active' : '' }}">
-                                        <a href="{{ route('seguridad.usuarios.index') }}" class="menu-link">
-                                            <i class="menu-icon icon-base ti tabler-users"></i>
-                                            <div>Usuarios</div>
-                                        </a>
-                                    </li>
-                                @endif
-
-                                @if(auth()->user()?->tienePermiso('sucursal.ver') && auth()->user()?->tienePermiso('almacen.ver') && auth()->user()?->tienePermiso('tipo_almacen.ver'))
-                                    <li class="menu-item {{ request()->routeIs('operacion.sucursales_almacenes.*') ? 'active' : '' }}">
-                                        <a href="{{ route('operacion.sucursales_almacenes.index') }}" class="menu-link">
-                                            <i class="menu-icon icon-base ti tabler-building-warehouse"></i>
-                                            <div>Sucursales y almacenes</div>
-                                        </a>
-                                    </li>
-                                @endif
-
-                                @if(auth()->user()?->tienePermiso('catalogo_comercial.ver'))
-                                    <li class="menu-item {{ request()->routeIs('operacion.catalogo_comercial.*') ? 'active' : '' }}">
-                                        <a href="{{ route('operacion.catalogo_comercial.index') }}" class="menu-link">
-                                            <i class="menu-icon icon-base ti tabler-box-multiple"></i>
-                                            <div>Catálogo comercial</div>
-                                        </a>
-                                    </li>
-                                @endif
-
-                                @if(auth()->user()?->tienePermiso('escaneo_producto.ver'))
-                                    <li class="menu-item {{ request()->routeIs('operacion.escaneo_productos.*') ? 'active' : '' }}">
-                                        <a href="{{ route('operacion.escaneo_productos.index') }}" class="menu-link">
-                                            <i class="menu-icon icon-base ti tabler-scan"></i>
-                                            <div>Escaneo productos</div>
-                                        </a>
-                                    </li>
-                                @endif
-
-                                
-
-                            </ul>
-                        </div>
-                    </aside>
-                    <!-- / Menú horizontal -->
-
                     <div class="container-xxl flex-grow-1 container-p-y">
                         @yield('content')
                     </div>
@@ -704,10 +717,10 @@
                         <div class="container-xxl">
                             <div class="footer-container d-flex align-items-center justify-content-between py-4 flex-md-row flex-column">
                                 <div class="text-body">
-                                    {{ now()->year }} - La I. Suriana Retail
+                                    {{ now()->year }} &mdash; La I. Suriana Retail
                                 </div>
-                                <div class="d-none d-lg-inline-block text-body-secondary">
-                                    Base Laravel + Bootstrap 5 + AJAX + DataTables
+                                <div class="d-none d-lg-inline-block text-body-secondary" style="font-size:.8rem;">
+                                    Laravel + Bootstrap 5 + AJAX + DataTables
                                 </div>
                             </div>
                         </div>
@@ -716,6 +729,7 @@
                     <div class="content-backdrop fade"></div>
                 </div>
                 <!-- / Content wrapper -->
+
             </div>
             <!-- / Layout page -->
 

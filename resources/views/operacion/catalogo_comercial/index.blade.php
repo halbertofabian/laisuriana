@@ -753,7 +753,8 @@
                                             <div class="col-md-4"><label class="form-label">Línea</label><select class="form-select" name="prd_lna_id" id="prd_lna_id" required><option value="">Selecciona</option>@foreach($opciones['lineas'] as $item)<option value="{{ $item->lna_id }}">{{ $item->lna_nombre }}</option>@endforeach</select></div>
                                             <div class="col-md-4"><label class="form-label">Categoría</label><select class="form-select" name="prd_ctg_id" id="prd_ctg_id" required><option value="">Selecciona</option>@foreach($opciones['categorias'] as $item)<option value="{{ $item->ctg_id }}">{{ $item->ctg_nombre }}</option>@endforeach</select></div>
                                             <div class="col-md-4"><label class="form-label">Unidad</label><select class="form-select" name="prd_umd_id" id="prd_umd_id" required><option value="">Selecciona</option>@foreach($opciones['unidades'] as $item)<option value="{{ $item->umd_id }}"{{ $item->umd_es_predeterminada ? ' data-predeterminada="1"' : '' }}>{{ $item->umd_nombre }} ({{ $item->umd_codigo }}){{ $item->umd_es_predeterminada ? ' ★' : '' }}</option>@endforeach</select></div>
-                                            <div class="col-md-4"><label class="form-label">Código de barras</label><input type="text" class="form-control" name="prd_codigo_barras" id="prd_codigo_barras" maxlength="80" placeholder="Opcional"></div>
+                                            <div class="col-md-2"><label class="form-label">Código de barras</label><input type="text" class="form-control" name="prd_codigo_barras" id="prd_codigo_barras" maxlength="80" placeholder="Opcional"></div>
+                                            <div class="col-md-2"><label class="form-label">Clave SAT</label><input type="text" class="form-control" name="prd_clave_sat" id="prd_clave_sat" maxlength="20" placeholder="Opcional"></div>
                                             <div class="col-12">
                                                 <label class="form-label d-block">Tipo de producto</label>
                                                 <div class="cc-product-type">
@@ -1218,7 +1219,9 @@
                         <div class="col-md-3"><label class="form-label">Código SKU</label><input type="text" class="form-control" name="psk_codigo" id="psk_codigo" required maxlength="60"></div>
                         <div class="col-md-3"><label class="form-label">Código de barras SKU</label><input type="text" class="form-control" name="psk_codigo_barras" id="psk_codigo_barras" maxlength="80"></div>
                         <div class="col-md-6"><label class="form-label">Nombre SKU</label><input type="text" class="form-control" name="psk_nombre" id="psk_nombre" maxlength="180"></div>
-                        <div class="col-md-8">
+                        <div class="col-md-3"><label class="form-label">Stock mínimo variante</label><input type="number" class="form-control" name="psk_stock_minimo" id="psk_stock_minimo" min="0" step="1"></div>
+                        <div class="col-md-3"><label class="form-label">Stock máximo variante</label><input type="number" class="form-control" name="psk_stock_maximo" id="psk_stock_maximo" min="0" step="1"></div>
+                        <div class="col-md-8" id="psk-valores-wrap">
                             <label class="form-label">Valores de atributo de la variante</label>
                             <select class="form-select" name="valor_atributo_ids[]" id="psk_valor_atributo_ids" multiple size="8" required>
                                 @foreach($opciones['valores'] as $valor)
@@ -1479,6 +1482,12 @@
             $('.cc-image-block[data-image-method="' + metodo + '"]').addClass('is-active');
         }
 
+        if (metodo !== 'qr') {
+            limpiarPollingImagenProducto();
+            catalogoState.productoImagenSesion = null;
+            $('#prd_imagen_temp_token').val('');
+        }
+
         if (metodo === 'qr' && !catalogoState.productoImagenSesion) {
             iniciarSesionImagenProducto();
         }
@@ -1547,7 +1556,7 @@
         }
 
         let html = '<div class="dropdown"><button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">Acciones</button><ul class="dropdown-menu dropdown-menu-end">';
-        if (permisos.editar && section !== 'sku') html += '<li><button type="button" class="dropdown-item" data-action="edit-' + section + '" data-id="' + id + '">Editar</button></li>';
+        if (permisos.editar) html += '<li><button type="button" class="dropdown-item" data-action="edit-' + section + '" data-id="' + id + '">Editar</button></li>';
         if (permisos.inactivar) html += '<li><button type="button" class="dropdown-item" data-action="toggle-' + section + '" data-id="' + id + '" data-next="' + (isActive ? 'inactivo' : 'activo') + '">' + (isActive ? 'Inactivar' : 'Activar') + '</button></li>';
         if (permisos.eliminar) html += '<li><hr class="dropdown-divider"></li><li><button type="button" class="dropdown-item text-danger" data-action="delete-' + section + '" data-id="' + id + '" data-name="' + (name || '') + '">Eliminar</button></li>';
         html += '</ul></div>';
@@ -1881,6 +1890,7 @@
         $('#prd_id').val('');
         $('#prd_codigo').val('');
         $('#prd_codigo_barras').val('');
+        $('#prd_clave_sat').val('');
         $('#prd_prv_id').val('');
         $('#prd_precio_base').val('0.00');
         $('#prd_costo').val('0.00');
@@ -2013,6 +2023,7 @@
                 .filter(Boolean)
                 .join(' / ') || 'Sin clasificación';
             const barcode = producto.prd_codigo_barras ? 'Barcode: ' + producto.prd_codigo_barras : 'Sin barcode';
+            const claveSat = producto.prd_clave_sat ? 'Clave SAT: ' + producto.prd_clave_sat : 'Sin clave SAT';
             const proveedor = producto.proveedor ? '<br><small>Proveedor: ' + producto.proveedor + '</small>' : '';
 
             return `
@@ -2024,7 +2035,7 @@
                         </div>
                         ${buildActions('producto', producto.prd_id, producto.prd_nombre, producto.prd_estatus === 'activo')}
                     </div>
-                    <div class="cc-product-card__meta">${clasificacion}<br><small>${barcode}</small>${proveedor}</div>
+                    <div class="cc-product-card__meta">${clasificacion}<br><small>${barcode}</small><br><small>${claveSat}</small>${proveedor}</div>
                     <div class="cc-product-card__chips">
                         <span class="badge bg-label-${producto.prd_tipo === 'variable' ? 'info' : 'primary'}">${producto.prd_tipo === 'variable' ? 'Variable' : 'Simple'}</span>
                         ${estatusBadge(producto.prd_estatus)}
@@ -2067,7 +2078,7 @@
                 columns: [
                     { data: 'prd_codigo' },
                     { data: 'prd_nombre' },
-                    { data: null, render: (r) => '<span class="badge bg-label-' + (r.prd_tipo === 'variable' ? 'info' : 'primary') + ' mb-1">' + (r.prd_tipo === 'variable' ? 'Variable' : 'Simple') + '</span><div class="small text-body-secondary">Precio base: $' + Number(r.prd_precio_base || 0).toFixed(2) + ' | Costo: $' + Number(r.prd_costo || 0).toFixed(2) + '</div><div class="small text-body-secondary">Stock min/max: ' + (r.prd_stock_minimo ?? 0) + ' / ' + (r.prd_stock_maximo ?? 0) + '</div><div class="small text-body-secondary">Barcode: ' + (r.prd_codigo_barras || '-') + '</div>' },
+                    { data: null, render: (r) => '<span class="badge bg-label-' + (r.prd_tipo === 'variable' ? 'info' : 'primary') + ' mb-1">' + (r.prd_tipo === 'variable' ? 'Variable' : 'Simple') + '</span><div class="small text-body-secondary">Precio base: $' + Number(r.prd_precio_base || 0).toFixed(2) + ' | Costo: $' + Number(r.prd_costo || 0).toFixed(2) + '</div><div class="small text-body-secondary">Stock min/max: ' + (r.prd_stock_minimo ?? 0) + ' / ' + (r.prd_stock_maximo ?? 0) + '</div><div class="small text-body-secondary">Barcode: ' + (r.prd_codigo_barras || '-') + '</div><div class="small text-body-secondary">Clave SAT: ' + (r.prd_clave_sat || '-') + '</div>' },
                     { data: null, render: (r) => {
                         const principal = [r.marca, r.linea, r.categoria, r.unidad].filter(Boolean).join(' / ') || '-';
                         const proveedor = r.proveedor ? '<div class="small text-body-secondary">Proveedor: ' + r.proveedor + '</div>' : '';
@@ -2487,6 +2498,9 @@
 
     $('#prd_imagen_archivo').on('change', function (event) {
         $('#prd_imagen_reset').val('0');
+        limpiarPollingImagenProducto();
+        catalogoState.productoImagenSesion = null;
+        $('#prd_imagen_temp_token').val('');
         const file = event.target.files && event.target.files[0];
         if (!file) {
             return;
@@ -2497,6 +2511,9 @@
 
     $('#prd_imagen_url').on('input', function () {
         $('#prd_imagen_reset').val('0');
+        limpiarPollingImagenProducto();
+        catalogoState.productoImagenSesion = null;
+        $('#prd_imagen_temp_token').val('');
         const url = ($(this).val() || '').trim();
         establecerPreviewImagenProducto(url || null);
     });
@@ -2508,6 +2525,10 @@
 
     $('#btn-quitar-imagen-producto').on('click', function () {
         $('#prd_imagen_reset').val('1');
+        limpiarPollingImagenProducto();
+        catalogoState.productoImagenSesion = null;
+        $('input[name="prd_imagen_metodo"]').prop('checked', false);
+        actualizarUiMetodoImagen();
         $('#prd_imagen_archivo').val('');
         $('#prd_imagen_url').val('');
         $('#prd_imagen_temp_token').val('');
@@ -2590,6 +2611,7 @@
             $('#prd_id').val(d.prd_id || '');
             $('#prd_codigo').val(d.prd_codigo || '');
             $('#prd_codigo_barras').val(d.prd_codigo_barras || '');
+            $('#prd_clave_sat').val(d.prd_clave_sat || '');
             $('#prd_nombre').val(d.prd_nombre || '');
             $('#prd_descripcion').val(d.prd_descripcion || '');
             $('#prd_precio_base').val(d.prd_precio_base ?? '0.00');
@@ -2657,8 +2679,12 @@
             $('#psk_codigo').val(d.psk_codigo || '');
             $('#psk_codigo_barras').val(d.psk_codigo_barras || '');
             $('#psk_nombre').val(d.psk_nombre || '');
+            $('#psk_stock_minimo').val(d.psk_stock_minimo ?? 0);
+            $('#psk_stock_maximo').val(d.psk_stock_maximo ?? 0);
             $('#psk_estatus').val(d.psk_estatus || 'activo');
-            $('#psk_valor_atributo_ids').val((d.valor_atributo_ids || []).map(String));
+            $('#psk_valor_atributo_ids').val((d.valor_atributo_ids || []).map(String)).prop('disabled', true).prop('required', false);
+            $('#psk-valores-wrap').hide();
+            $('#modal-sku-title').text('Editar SKU / Variante');
             modalSku.show();
         });
     });
@@ -2714,6 +2740,16 @@
 
     document.getElementById('modal-proveedor').addEventListener('hidden.bs.modal', function () {
         prepararNuevoProveedor();
+    });
+
+    document.getElementById('modal-sku').addEventListener('hidden.bs.modal', function () {
+        $('#form-sku')[0].reset();
+        $('#psk_id').val('');
+        $('#psk_valor_atributo_ids').val([]).prop('disabled', false).prop('required', true);
+        $('#psk-valores-wrap').show();
+        $('#psk_stock_minimo').val('');
+        $('#psk_stock_maximo').val('');
+        $('#modal-sku-title').text('SKU / Variante');
     });
 
     $(document).on('click', '[data-action="toggle-catalogo"]', function () {

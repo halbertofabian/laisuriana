@@ -58,4 +58,19 @@ class ProductoSku extends Model
     {
         return $this->hasMany(ExistenciaSucursal::class, 'exs_psk_id', 'psk_id');
     }
+
+    public function existenciasAlmacen()
+    {
+        return $this->hasMany(ExistenciaAlmacen::class, 'exa_psk_id', 'psk_id');
+    }
+
+    public function minimosInventario()
+    {
+        return $this->hasMany(MinimoInventario::class, 'mni_psk_id', 'psk_id');
+    }
+
+    public function movimientosInventario()
+    {
+        return $this->hasMany(MovimientoInventario::class, 'min_psk_id', 'psk_id');
+    }
 }

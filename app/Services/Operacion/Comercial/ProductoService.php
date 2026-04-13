@@ -44,6 +44,7 @@ class ProductoService
                 $query->where(function ($sub) use ($buscar): void {
                     $sub->where('prd_codigo', 'like', "%{$buscar}%")
                         ->orWhere('prd_codigo_barras', 'like', "%{$buscar}%")
+                        ->orWhere('prd_clave_sat', 'like', "%{$buscar}%")
                         ->orWhere('prd_nombre', 'like', "%{$buscar}%");
                 });
             })
@@ -84,6 +85,7 @@ class ProductoService
             $producto = Producto::query()->create([
                 'prd_codigo' => $codigoSolicitado !== '' ? $codigoSolicitado : $this->generarCodigoTemporal(),
                 'prd_codigo_barras' => Arr::get($datos, 'prd_codigo_barras'),
+                'prd_clave_sat' => Arr::get($datos, 'prd_clave_sat'),
                 'prd_nombre' => $datos['prd_nombre'],
                 'prd_descripcion' => $datos['prd_descripcion'] ?? null,
                 'prd_imagen_tipo' => $imagen['tipo'],
@@ -151,6 +153,7 @@ class ProductoService
             $producto->update([
                 'prd_codigo' => $codigoFinal,
                 'prd_codigo_barras' => Arr::get($datos, 'prd_codigo_barras'),
+                'prd_clave_sat' => Arr::get($datos, 'prd_clave_sat'),
                 'prd_nombre' => $datos['prd_nombre'],
                 'prd_descripcion' => $datos['prd_descripcion'] ?? null,
                 'prd_imagen_tipo' => $imagen['tipo'],

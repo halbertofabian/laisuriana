@@ -38,4 +38,19 @@ class Almacen extends Model
     {
         return $this->belongsTo(TipoAlmacen::class, 'alm_tal_id', 'tal_id');
     }
+
+    public function existenciasInventario()
+    {
+        return $this->hasMany(ExistenciaAlmacen::class, 'exa_alm_id', 'alm_id');
+    }
+
+    public function minimosInventario()
+    {
+        return $this->hasMany(MinimoInventario::class, 'mni_alm_id', 'alm_id');
+    }
+
+    public function movimientosInventario()
+    {
+        return $this->hasMany(MovimientoInventario::class, 'min_alm_id', 'alm_id');
+    }
 }

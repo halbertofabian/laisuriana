@@ -22,6 +22,7 @@ class Producto extends Model
     protected $fillable = [
         'prd_codigo',
         'prd_codigo_barras',
+        'prd_clave_sat',
         'prd_nombre',
         'prd_descripcion',
         'prd_imagen_tipo',

@@ -33,6 +33,7 @@ class UpdateProductoRequest extends FormRequest
                     ->ignore($id, 'prd_id')
                     ->where(fn ($query) => $query->where('prd_deleted', false)),
             ],
+            'prd_clave_sat' => ['nullable', 'string', 'max:20'],
             'prd_nombre' => [
                 'required',
                 'string',

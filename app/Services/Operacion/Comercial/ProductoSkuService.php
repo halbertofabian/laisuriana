@@ -67,8 +67,8 @@ class ProductoSkuService
                 'psk_codigo_barras' => ($datos['psk_codigo_barras'] ?? null) ?: $datos['psk_codigo'],
                 'psk_nombre' => $datos['psk_nombre'] ?? null,
                 'psk_precio' => $producto->prd_precio_base,
-                'psk_stock_minimo' => $producto->prd_stock_minimo,
-                'psk_stock_maximo' => $producto->prd_stock_maximo,
+                'psk_stock_minimo' => $datos['psk_stock_minimo'] ?? $producto->prd_stock_minimo,
+                'psk_stock_maximo' => $datos['psk_stock_maximo'] ?? $producto->prd_stock_maximo,
                 'psk_estatus' => $datos['psk_estatus'],
                 'psk_created_by_usr_id' => optional($request->user())->usr_id,
                 'psk_updated_by_usr_id' => optional($request->user())->usr_id,
@@ -91,8 +91,12 @@ class ProductoSkuService
     public function actualizar(Request $request, int $id, array $datos): ProductoSku
     {
         return DB::transaction(function () use ($request, $id, $datos): ProductoSku {
-            $sku = ProductoSku::query()->findOrFail($id);
-            $valorIds = $this->normalizarValorIds($datos['valor_atributo_ids']);
+            $sku = ProductoSku::query()->with('valoresAtributo:vat_id')->findOrFail($id);
+            $valorIds = $sku->valoresAtributo->pluck('vat_id')->map(fn ($v) => (int) $v)->values()->all();
+
+            if (empty($valorIds)) {
+                $valorIds = $this->normalizarValorIds((array) ($datos['valor_atributo_ids'] ?? []));
+            }
 
             if ($datos['psk_estatus'] === 'inactivo') {
                 $this->validarInactivacionSku($id);
@@ -107,6 +111,8 @@ class ProductoSkuService
                 'psk_codigo' => $datos['psk_codigo'],
                 'psk_codigo_barras' => ($datos['psk_codigo_barras'] ?? null) ?: $datos['psk_codigo'],
                 'psk_nombre' => $datos['psk_nombre'] ?? null,
+                'psk_stock_minimo' => $datos['psk_stock_minimo'] ?? $sku->psk_stock_minimo,
+                'psk_stock_maximo' => $datos['psk_stock_maximo'] ?? $sku->psk_stock_maximo,
                 'psk_estatus' => $datos['psk_estatus'],
                 'psk_updated_by_usr_id' => optional($request->user())->usr_id,
             ]);

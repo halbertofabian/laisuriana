@@ -27,6 +27,7 @@ class StoreProductoRequest extends FormRequest
                 'max:80',
                 Rule::unique('tbl_productos_prd', 'prd_codigo_barras')->where(fn ($query) => $query->where('prd_deleted', false)),
             ],
+            'prd_clave_sat' => ['nullable', 'string', 'max:20'],
             'prd_nombre' => [
                 'required',
                 'string',
@@ -82,18 +83,20 @@ class StoreProductoRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator): void {
-            $metodoImagen = $this->input('prd_imagen_metodo');
+            if (!$this->boolean('prd_imagen_reset')) {
+                $metodoImagen = $this->input('prd_imagen_metodo');
 
-            if ($metodoImagen === 'archivo' && !$this->hasFile('prd_imagen_archivo')) {
-                $validator->errors()->add('prd_imagen_archivo', 'Debes seleccionar una imagen desde el dispositivo.');
-            }
+                if ($metodoImagen === 'archivo' && !$this->hasFile('prd_imagen_archivo')) {
+                    $validator->errors()->add('prd_imagen_archivo', 'Debes seleccionar una imagen desde el dispositivo.');
+                }
 
-            if ($metodoImagen === 'url' && blank($this->input('prd_imagen_url'))) {
-                $validator->errors()->add('prd_imagen_url', 'Debes capturar el enlace externo de la imagen.');
-            }
+                if ($metodoImagen === 'url' && blank($this->input('prd_imagen_url'))) {
+                    $validator->errors()->add('prd_imagen_url', 'Debes capturar el enlace externo de la imagen.');
+                }
 
-            if ($metodoImagen === 'qr' && blank($this->input('prd_imagen_temp_token'))) {
-                $validator->errors()->add('prd_imagen_temp_token', 'Debes cargar la imagen desde el celular antes de guardar.');
+                if ($metodoImagen === 'qr' && blank($this->input('prd_imagen_temp_token'))) {
+                    $validator->errors()->add('prd_imagen_temp_token', 'Debes cargar la imagen desde el celular antes de guardar.');
+                }
             }
 
             if ($this->input('prd_tipo') !== 'variable') {

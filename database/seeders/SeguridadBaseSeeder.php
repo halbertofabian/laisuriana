@@ -52,6 +52,14 @@ class SeguridadBaseSeeder extends Seeder
             ['clave' => 'checklist_entregables.crear', 'descripcion' => 'Crear checklist de entregables', 'modulo' => 'operacion'],
             ['clave' => 'checklist_entregables.editar', 'descripcion' => 'Editar revisión de checklist de entregables', 'modulo' => 'operacion'],
             ['clave' => 'escaneo_producto.ver', 'descripcion' => 'Consultar productos por escaneo y existencias por sucursal', 'modulo' => 'operacion'],
+            ['clave' => 'inventario_base.ver', 'descripcion' => 'Ver inventario base', 'modulo' => 'inventario'],
+            ['clave' => 'inventario_base.inicial', 'descripcion' => 'Registrar inventario inicial', 'modulo' => 'inventario'],
+            ['clave' => 'inventario_base.entrada', 'descripcion' => 'Registrar entradas de inventario', 'modulo' => 'inventario'],
+            ['clave' => 'inventario_base.salida', 'descripcion' => 'Registrar salidas de inventario', 'modulo' => 'inventario'],
+            ['clave' => 'inventario_base.ajustar', 'descripcion' => 'Realizar ajustes de inventario', 'modulo' => 'inventario'],
+            ['clave' => 'inventario_base.cancelar', 'descripcion' => 'Cancelar movimientos de inventario', 'modulo' => 'inventario'],
+            ['clave' => 'inventario_base.corregir', 'descripcion' => 'Corregir movimientos de inventario', 'modulo' => 'inventario'],
+            ['clave' => 'inventario_base.minimos', 'descripcion' => 'Gestionar mínimos de inventario', 'modulo' => 'inventario'],
         ];
 
         foreach ($permisosBase as $permiso) {
@@ -102,6 +110,11 @@ class SeguridadBaseSeeder extends Seeder
                     'almacen.ver',
                     'tipo_almacen.ver',
                     'escaneo_producto.ver',
+                    'inventario_base.ver',
+                    'inventario_base.inicial',
+                    'inventario_base.entrada',
+                    'inventario_base.salida',
+                    'inventario_base.minimos',
                 ],
             ],
             'Cajero' => [
@@ -109,6 +122,7 @@ class SeguridadBaseSeeder extends Seeder
                 'permisos' => [
                     'catalogo_comercial.ver',
                     'escaneo_producto.ver',
+                    'inventario_base.ver',
                 ],
             ],
             'Vendedor piso' => [
@@ -116,6 +130,7 @@ class SeguridadBaseSeeder extends Seeder
                 'permisos' => [
                     'catalogo_comercial.ver',
                     'escaneo_producto.ver',
+                    'inventario_base.ver',
                 ],
             ],
         ];

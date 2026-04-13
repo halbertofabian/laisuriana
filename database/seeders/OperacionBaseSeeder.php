@@ -10,6 +10,8 @@ class OperacionBaseSeeder extends Seeder
     public function run(): void
     {
         $tiposBase = [
+            ['clave' => 'producto_facturado', 'nombre' => 'Almacén de Producto Facturado', 'descripcion' => 'Inventario disponible para venta facturada.'],
+            ['clave' => 'producto_no_facturado', 'nombre' => 'Almacén de Producto No Facturado', 'descripcion' => 'Inventario para operación no facturada y regularización.'],
             ['clave' => 'principal', 'nombre' => 'Principal', 'descripcion' => 'Almacén principal de la sucursal.'],
             ['clave' => 'piso_venta', 'nombre' => 'Piso de Venta', 'descripcion' => 'Zona de inventario disponible para venta directa.'],
             ['clave' => 'bodega', 'nombre' => 'Bodega', 'descripcion' => 'Almacén de resguardo y reposición interna.'],

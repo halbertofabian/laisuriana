@@ -85,7 +85,8 @@ class BitacoraController extends Controller
         if ($filtroEvento !== '') {
             $filtroMin = mb_strtolower($filtroEvento);
             $data = $data->filter(function (array $row) use ($filtroMin): bool {
-                return str_contains(mb_strtolower((string) $row['evento']), $filtroMin)
+                return str_contains(mb_strtolower((string) $row['accion']), $filtroMin)
+                    || str_contains(mb_strtolower((string) $row['evento']), $filtroMin)
                     || str_contains(mb_strtolower((string) $row['detalle']), $filtroMin);
             });
         }

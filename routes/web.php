@@ -6,6 +6,7 @@ use App\Http\Controllers\Demo\DataTableDemoController;
 use App\Http\Controllers\Operacion\CatalogoComercialController;
 use App\Http\Controllers\Operacion\ChecklistEntregableController;
 use App\Http\Controllers\Operacion\EscaneoProductoController;
+use App\Http\Controllers\Operacion\InventarioBaseController;
 use App\Http\Controllers\Operacion\SucursalAlmacenController;
 use App\Http\Controllers\Seguridad\BitacoraController;
 use App\Http\Controllers\Seguridad\PermisoController;
@@ -143,6 +144,32 @@ Route::middleware('auth')->group(function () {
         Route::prefix('escaneo-productos')->name('escaneo_productos.')->group(function () {
             Route::get('/', [EscaneoProductoController::class, 'index'])->name('index')->middleware('permiso:escaneo_producto.ver');
             Route::get('/buscar', [EscaneoProductoController::class, 'buscar'])->name('buscar')->middleware('permiso:escaneo_producto.ver');
+        });
+
+        Route::prefix('inventario-base')->name('inventario_base.')->group(function () {
+            Route::get('/', [InventarioBaseController::class, 'index'])->name('index')->middleware('permiso:inventario_base.ver');
+            Route::get('/entradas-wizard', [InventarioBaseController::class, 'wizardEntradas'])->name('entradas_wizard')->middleware('permiso:inventario_base.ver');
+
+            Route::get('/existencias/data', [InventarioBaseController::class, 'dataExistencias'])->name('existencias.data')->middleware('permiso:inventario_base.ver');
+            Route::get('/productos-base/data', [InventarioBaseController::class, 'dataProductosBase'])->name('productos.data')->middleware('permiso:inventario_base.ver');
+            Route::get('/productos-base/buscar', [InventarioBaseController::class, 'buscarProductosBase'])->name('productos.buscar')->middleware('permiso:inventario_base.ver');
+            Route::get('/skus/buscar', [InventarioBaseController::class, 'buscarSkus'])->name('skus.buscar')->middleware('permiso:inventario_base.ver');
+            Route::get('/kardex/data', [InventarioBaseController::class, 'dataKardex'])->name('kardex.data')->middleware('permiso:inventario_base.ver');
+            Route::get('/minimos/bajo/data', [InventarioBaseController::class, 'dataBajoMinimo'])->name('minimos.bajo.data')->middleware('permiso:inventario_base.ver');
+            Route::get('/reportes/entradas/data', [InventarioBaseController::class, 'dataReportesEntradas'])->name('reportes.entradas.data')->middleware('permiso:inventario_base.ver');
+            Route::get('/reportes/entradas/{reporte}/pdf', [InventarioBaseController::class, 'verReporteEntradasPdf'])->name('reportes.entradas.ver')->middleware('permiso:inventario_base.ver');
+            Route::get('/disponibilidad', [InventarioBaseController::class, 'disponibilidad'])->name('disponibilidad')->middleware('permiso:inventario_base.ver');
+            Route::get('/productos/{producto}/matriz', [InventarioBaseController::class, 'matrizProducto'])->name('productos.matriz')->middleware('permiso:inventario_base.ver');
+
+            Route::post('/inventario-inicial', [InventarioBaseController::class, 'storeInventarioInicial'])->name('inicial.store')->middleware('permiso:inventario_base.inicial');
+            Route::post('/inventario-inicial/masivo', [InventarioBaseController::class, 'storeInventarioInicialMasivo'])->name('inicial.masivo.store')->middleware('permiso:inventario_base.inicial');
+            Route::post('/reportes/entradas-seleccionadas/pdf', [InventarioBaseController::class, 'reporteEntradasSeleccionadasPdf'])->name('reportes.entradas_seleccionadas.pdf')->middleware('permiso:inventario_base.ver');
+            Route::post('/entradas', [InventarioBaseController::class, 'storeEntrada'])->name('entradas.store')->middleware('permiso:inventario_base.entrada');
+            Route::post('/salidas', [InventarioBaseController::class, 'storeSalida'])->name('salidas.store')->middleware('permiso:inventario_base.salida');
+            Route::post('/minimos', [InventarioBaseController::class, 'storeMinimo'])->name('minimos.store')->middleware('permiso:inventario_base.minimos');
+
+            Route::post('/movimientos/{movimiento}/cancelar', [InventarioBaseController::class, 'cancelar'])->name('movimientos.cancelar')->middleware('permiso:inventario_base.cancelar');
+            Route::post('/movimientos/{movimiento}/corregir', [InventarioBaseController::class, 'corregir'])->name('movimientos.corregir')->middleware('permiso:inventario_base.corregir');
         });
     });
 
