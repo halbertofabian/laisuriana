@@ -77,6 +77,12 @@ class InventarioBaseService
                 ->where('mtv_estatus', 'activo')
                 ->orderBy('mtv_nombre')
                 ->get(['mtv_id', 'mtv_nombre']),
+            'proveedores' => DB::table('tbl_proveedores_prv')
+                ->where('prv_deleted', false)
+                ->whereNull('prv_deleted_at')
+                ->where('prv_estatus', 'activo')
+                ->orderBy('prv_nombre_empresa')
+                ->get(['prv_id', 'prv_nombre_empresa']),
         ];
     }
 
@@ -232,6 +238,8 @@ class InventarioBaseService
             'prd.prd_codigo',
             'prd.prd_nombre',
             'prd.prd_tipo',
+            'prd.prd_costo',
+            'prd.prd_precio_base',
             'prd.prd_mrc_id',
             'prd.prd_mdl_id',
             'prd.prd_lna_id',
@@ -366,6 +374,8 @@ class InventarioBaseService
                 'prd_codigo' => $producto->prd_codigo,
                 'prd_nombre' => $producto->prd_nombre,
                 'prd_tipo' => $producto->prd_tipo,
+                'prd_costo' => (float) ($producto->prd_costo ?? 0),
+                'prd_precio_base' => (float) ($producto->prd_precio_base ?? 0),
             ],
             'atributos' => $atributos,
             'lineas' => $lineas,
@@ -575,6 +585,7 @@ class InventarioBaseService
                 'tipo_entrada' => (string) ($payload['tipo_entrada'] ?? 'entrada_normal'),
                 'total_folios' => (int) ($payload['total_folios'] ?? $folios->count()),
                 'folios_texto' => $folios->implode(', '),
+                'total_documento' => (float) ($payload['total_documento'] ?? 0),
             ];
         })->values();
     }
@@ -607,7 +618,14 @@ class InventarioBaseService
             'min_documento_tipo' => (string) ($payload['tipo_entrada'] ?? 'entrada_normal'),
             'min_documento_referencia' => (string) ($payload['referencia'] ?? ''),
             'min_motivo_texto' => (string) ($payload['motivo'] ?? ''),
+            'min_observaciones' => (string) ($payload['observaciones'] ?? ''),
             'min_fecha_movimiento' => (string) ($payload['fecha_captura'] ?? now()->toDateTimeString()),
+            'min_fecha_emision' => (string) ($payload['fecha_emision'] ?? ''),
+            'min_prv_id' => (int) ($payload['proveedor_id'] ?? 0),
+            'min_descuento_tipo' => (string) ($payload['descuento_tipo'] ?? 'ninguno'),
+            'min_descuento_valor' => (float) ($payload['descuento_valor'] ?? 0),
+            'min_flete_total' => (float) ($payload['flete_total'] ?? 0),
+            'min_iva_porcentaje' => (float) ($payload['iva_porcentaje'] ?? 16),
         ];
 
         return $this->generarReporteEntradasSeleccionadasPdf($request, $datos, false);
@@ -678,6 +696,7 @@ class InventarioBaseService
                 ->map(fn ($linea) => [
                     'min_psk_id' => (int) ($linea['min_psk_id'] ?? 0),
                     'min_cantidad' => round((float) ($linea['min_cantidad'] ?? 0), 2),
+                    'min_precio_unitario' => round((float) ($linea['min_precio_unitario'] ?? 0), 2),
                 ])
                 ->filter(fn ($linea) => $linea['min_cantidad'] > 0)
                 ->values();
@@ -724,7 +743,41 @@ class InventarioBaseService
             };
 
             $movimientos = [];
+            $subtotal = round((float) $lineas->sum(fn ($linea) => ((float) $linea['min_cantidad']) * ((float) $linea['min_precio_unitario'])), 2);
+            $descuentoTipo = (string) ($datos['min_descuento_tipo'] ?? 'ninguno');
+            $descuentoValor = round((float) ($datos['min_descuento_valor'] ?? 0), 2);
+            $fleteTotal = round((float) ($datos['min_flete_total'] ?? 0), 2);
+            $ivaPorcentaje = round((float) ($datos['min_iva_porcentaje'] ?? 16), 2);
+            if ($ivaPorcentaje < 0) {
+                $ivaPorcentaje = 0;
+            }
+
+            $descuentoMonto = 0.0;
+            if ($descuentoTipo === 'porcentaje') {
+                $descuentoMonto = round($subtotal * ($descuentoValor / 100), 2);
+            } elseif ($descuentoTipo === 'importe') {
+                $descuentoMonto = min($subtotal, $descuentoValor);
+            }
+            $baseSinIva = max(0, round($subtotal - $descuentoMonto + $fleteTotal, 2));
+            $ivaTotal = $tipoEntrada === 'compra_factura'
+                ? round($baseSinIva * ($ivaPorcentaje / 100), 2)
+                : 0.0;
+            $totalDocumento = round($baseSinIva + $ivaTotal, 2);
+
+            $totalPiezas = max(0.01, (float) $lineas->sum(fn ($linea) => (float) $linea['min_cantidad']));
             foreach ($lineas as $linea) {
+                $subtotalLinea = round(((float) $linea['min_cantidad']) * ((float) $linea['min_precio_unitario']), 2);
+                $proporcion = $subtotal > 0
+                    ? ($subtotalLinea / max(0.01, $subtotal))
+                    : (((float) $linea['min_cantidad']) / $totalPiezas);
+                $descuentoLinea = round($descuentoMonto * $proporcion, 2);
+                $fleteLinea = round($fleteTotal * $proporcion, 2);
+                $baseLinea = round(max(0, $subtotalLinea - $descuentoLinea + $fleteLinea), 2);
+                $ivaLinea = $tipoEntrada === 'compra_factura'
+                    ? round($baseLinea * ($ivaPorcentaje / 100), 2)
+                    : 0.0;
+                $totalLinea = round($baseLinea + $ivaLinea, 2);
+
                 $movimientos[] = $this->registrarMovimientoInterno(
                     request: $request,
                     datos: [
@@ -733,8 +786,21 @@ class InventarioBaseService
                         'min_alm_id' => $datos['min_alm_id'],
                         'min_cantidad' => $linea['min_cantidad'],
                         'min_fecha_movimiento' => $datos['min_fecha_movimiento'],
+                        'min_fecha_emision' => $datos['min_fecha_emision'] ?? null,
                         'min_documento_referencia' => $datos['min_documento_referencia'] ?? null,
+                        'min_descuento_tipo' => $descuentoTipo,
+                        'min_descuento_valor' => $descuentoValor,
+                        'min_flete_total' => $fleteTotal,
                         'min_motivo_texto' => $datos['min_motivo_texto'],
+                        'min_observaciones' => $datos['min_observaciones'] ?? null,
+                        'min_prv_id' => $datos['min_prv_id'] ?? null,
+                        'min_precio_unitario' => $linea['min_precio_unitario'],
+                        'min_subtotal_linea' => $subtotalLinea,
+                        'min_descuento_linea' => $descuentoLinea,
+                        'min_flete_linea' => $fleteLinea,
+                        'min_iva_porcentaje' => $ivaPorcentaje,
+                        'min_iva_linea' => $ivaLinea,
+                        'min_total_linea' => $totalLinea,
                     ],
                     tmiClave: 'inventario.entrada',
                     documentoTipo: $documentoTipo,
@@ -760,6 +826,16 @@ class InventarioBaseService
                     'sucursal' => (int) $datos['min_scl_id'],
                     'almacen' => (int) $datos['min_alm_id'],
                     'tipo_entrada' => $tipoEntrada,
+                    'proveedor_id' => (int) ($datos['min_prv_id'] ?? 0),
+                    'fecha_emision' => (string) ($datos['min_fecha_emision'] ?? ''),
+                    'subtotal' => $subtotal,
+                    'descuento_tipo' => $descuentoTipo,
+                    'descuento_valor' => $descuentoValor,
+                    'descuento_monto' => $descuentoMonto,
+                    'flete_total' => $fleteTotal,
+                    'iva_porcentaje' => $ivaPorcentaje,
+                    'iva_total' => $ivaTotal,
+                    'total_documento' => $totalDocumento,
                 ]
             );
 
@@ -798,11 +874,24 @@ class InventarioBaseService
                 'min_psk_id',
                 'min_scl_id',
                 'min_alm_id',
+                'min_prv_id',
                 'min_cantidad',
                 'min_fecha_movimiento',
+                'min_fecha_emision',
                 'min_documento_tipo',
                 'min_documento_referencia',
+                'min_descuento_tipo',
+                'min_descuento_valor',
+                'min_flete_total',
+                'min_precio_unitario',
+                'min_subtotal_linea',
+                'min_descuento_linea',
+                'min_flete_linea',
+                'min_iva_porcentaje',
+                'min_iva_linea',
+                'min_total_linea',
                 'min_motivo_texto',
+                'min_observaciones',
                 'min_created_by_usr_id',
             ]);
 
@@ -921,8 +1010,12 @@ class InventarioBaseService
 
         $sucursalId = (int) ($datos['min_scl_id'] ?? (int) $movimientos->first()->min_scl_id);
         $almacenId = (int) ($datos['min_alm_id'] ?? (int) $movimientos->first()->min_alm_id);
+        $proveedorId = (int) ($datos['min_prv_id'] ?? (int) ($movimientos->first()->min_prv_id ?? 0));
         $sucursalNombre = (string) (Sucursal::query()->where('scl_id', $sucursalId)->value('scl_nombre') ?? 'N/D');
         $almacenNombre = (string) (Almacen::query()->where('alm_id', $almacenId)->value('alm_nombre') ?? 'N/D');
+        $proveedorNombre = $proveedorId > 0
+            ? (string) (DB::table('tbl_proveedores_prv')->where('prv_id', $proveedorId)->value('prv_nombre_empresa') ?? 'N/D')
+            : 'N/D';
 
         $tipoEntrada = (string) ($datos['min_documento_tipo'] ?? 'entrada_normal');
         $tipoEntradaLabel = match ($tipoEntrada) {
@@ -935,7 +1028,29 @@ class InventarioBaseService
 
         $referencia = trim((string) ($datos['min_documento_referencia'] ?? ($datos['referencia'] ?? '')));
         $motivo = trim((string) ($datos['min_motivo_texto'] ?? ($datos['motivo'] ?? '')));
+        $observaciones = trim((string) ($datos['min_observaciones'] ?? ($datos['observaciones'] ?? ($movimientos->first()->min_observaciones ?? ''))));
         $fechaCaptura = (string) ($datos['min_fecha_movimiento'] ?? now()->toDateTimeString());
+        $fechaEmision = (string) ($datos['min_fecha_emision'] ?? ($movimientos->first()->min_fecha_emision ?? ''));
+        $descuentoTipo = (string) ($datos['min_descuento_tipo'] ?? ($movimientos->first()->min_descuento_tipo ?? 'ninguno'));
+        $descuentoValor = round((float) ($datos['min_descuento_valor'] ?? ($movimientos->first()->min_descuento_valor ?? 0)), 2);
+        $fleteTotal = round((float) ($datos['min_flete_total'] ?? ($movimientos->first()->min_flete_total ?? 0)), 2);
+        $ivaPorcentaje = round((float) ($datos['min_iva_porcentaje'] ?? ($movimientos->first()->min_iva_porcentaje ?? 16)), 2);
+        $subtotalMonetario = round((float) $movimientos->sum('min_subtotal_linea'), 2);
+        $descuentoMonetario = round((float) $movimientos->sum('min_descuento_linea'), 2);
+        if ($descuentoMonetario <= 0 && $descuentoValor > 0) {
+            $descuentoMonetario = $descuentoTipo === 'porcentaje'
+                ? round($subtotalMonetario * ($descuentoValor / 100), 2)
+                : min($subtotalMonetario, $descuentoValor);
+        }
+        $ivaMonetario = round((float) $movimientos->sum('min_iva_linea'), 2);
+        $totalMonetario = round((float) $movimientos->sum('min_total_linea'), 2);
+        if ($totalMonetario <= 0) {
+            $baseMonetaria = max(0, round($subtotalMonetario - $descuentoMonetario + $fleteTotal, 2));
+            $ivaMonetario = $tipoEntrada === 'compra_factura'
+                ? round($baseMonetaria * ($ivaPorcentaje / 100), 2)
+                : 0.0;
+            $totalMonetario = round($baseMonetaria + $ivaMonetario, 2);
+        }
 
         // ── Totales globales por columna ────────────────────────────────────
         $totalesPorColumna = [];
@@ -1024,8 +1139,16 @@ class InventarioBaseService
                             <td style="border:none;padding:1px 3px;font-size:9px;color:' . $colorPrimario . ';">' . $this->esc($tipoEntradaLabel) . '</td>
                         </tr>
                         <tr>
+                            <td style="border:none;padding:1px 3px;font-size:8px;color:#64748b;">Proveedor</td>
+                            <td style="border:none;padding:1px 3px;font-size:9px;color:' . $colorPrimario . ';">' . $this->esc($proveedorNombre) . '</td>
+                        </tr>
+                        <tr>
                             <td style="border:none;padding:1px 3px;font-size:8px;color:#64748b;">Fecha captura</td>
                             <td style="border:none;padding:1px 3px;font-size:9px;color:' . $colorPrimario . ';">' . $this->esc($fechaCapturaFmt) . '</td>
+                        </tr>
+                        <tr>
+                            <td style="border:none;padding:1px 3px;font-size:8px;color:#64748b;">Fecha emisión</td>
+                            <td style="border:none;padding:1px 3px;font-size:9px;color:' . $colorPrimario . ';">' . $this->esc($fechaEmision !== '' ? date('d/m/Y H:i', strtotime($fechaEmision)) : 'N/D') . '</td>
                         </tr>
                     </table>
                 </td>
@@ -1042,6 +1165,10 @@ class InventarioBaseService
                         <tr>
                             <td style="border:none;padding:1px 3px;font-size:8px;color:#64748b;">Motivo</td>
                             <td style="border:none;padding:1px 3px;font-size:9px;color:' . $colorPrimario . ';">' . $this->esc($motivo !== '' ? $motivo : '—') . '</td>
+                        </tr>
+                        <tr>
+                            <td style="border:none;padding:1px 3px;font-size:8px;color:#64748b;">Observaciones</td>
+                            <td style="border:none;padding:1px 3px;font-size:9px;color:' . $colorPrimario . ';">' . $this->esc($observaciones !== '' ? $observaciones : '—') . '</td>
                         </tr>
                     </table>
                 </td>
@@ -1073,6 +1200,25 @@ class InventarioBaseService
                     <div style="font-size:7px;color:#166534;text-transform:uppercase;letter-spacing:0.5px;">Total piezas</div>
                     <div style="font-size:14px;font-weight:bold;color:#166534;">' . number_format($granTotal, 0, '.', ',') . '</div>
                 </td>
+            </tr>
+        </table>';
+
+        $baseMonetaria = max(0, round($subtotalMonetario - $descuentoMonetario + $fleteTotal, 2));
+        $html .= '
+        <table style="border-collapse:collapse;margin-bottom:8px;width:283mm;">
+            <tr>
+                <td style="border:1px solid ' . $colorBorderTbl . ';padding:5px 8px;background:#ffffff;width:47mm;"><strong>Subtotal</strong><br>' . number_format($subtotalMonetario, 2, '.', ',') . '</td>
+                <td style="border:1px solid ' . $colorBorderTbl . ';padding:5px 8px;background:#ffffff;width:47mm;"><strong>Descuento</strong><br>' . number_format($descuentoMonetario, 2, '.', ',') . '</td>
+                <td style="border:1px solid ' . $colorBorderTbl . ';padding:5px 8px;background:#ffffff;width:47mm;"><strong>Flete</strong><br>' . number_format($fleteTotal, 2, '.', ',') . '</td>';
+
+        if ($tipoEntrada === 'compra_factura') {
+            $html .= '<td style="border:1px solid ' . $colorBorderTbl . ';padding:5px 8px;background:#ffffff;width:47mm;"><strong>Base</strong><br>' . number_format($baseMonetaria, 2, '.', ',') . '</td>';
+            $html .= '<td style="border:1px solid ' . $colorBorderTbl . ';padding:5px 8px;background:#ffffff;width:47mm;"><strong>IVA (' . number_format($ivaPorcentaje, 2, '.', ',') . '%)</strong><br>' . number_format($ivaMonetario, 2, '.', ',') . '</td>';
+        } else {
+            $html .= '<td style="border:1px solid ' . $colorBorderTbl . ';padding:5px 8px;background:#ffffff;width:94mm;" colspan="2"><strong>Base</strong><br>' . number_format($baseMonetaria, 2, '.', ',') . '</td>';
+        }
+
+        $html .= '<td style="border:1px solid ' . $colorAccent . ';padding:5px 8px;background:' . $colorAccent . ';color:#ffffff;width:48mm;"><strong>Total</strong><br>' . number_format($totalMonetario, 2, '.', ',') . '</td>
             </tr>
         </table>';
 
@@ -1199,7 +1345,18 @@ class InventarioBaseService
                     'tipo_entrada' => $tipoEntrada,
                     'referencia' => $referencia,
                     'motivo' => $motivo,
+                    'observaciones' => $observaciones,
                     'fecha_captura' => $fechaCaptura,
+                    'fecha_emision' => $fechaEmision,
+                    'proveedor_id' => $proveedorId,
+                    'subtotal' => $subtotalMonetario,
+                    'descuento_tipo' => $descuentoTipo,
+                    'descuento_valor' => $descuentoValor,
+                    'descuento_monto' => $descuentoMonetario,
+                    'flete_total' => $fleteTotal,
+                    'iva_porcentaje' => $ivaPorcentaje,
+                    'iva_total' => $ivaMonetario,
+                    'total_documento' => $totalMonetario,
                     'dominante_atr_id' => $dominanteAtrId,
                 ]
             );
@@ -1534,19 +1691,32 @@ class InventarioBaseService
             'min_psk_id' => $skuId,
             'min_scl_id' => $sucursalId,
             'min_alm_id' => $almacenId,
+            'min_prv_id' => $datos['min_prv_id'] ?? null,
             'min_mtv_id' => $datos['min_mtv_id'] ?? null,
             'min_origen_min_id' => $movimientoOrigenId,
             'min_reversa_de_min_id' => $reversaDeId,
             'min_documento_tipo' => $documentoTipo,
             'min_documento_referencia' => $datos['min_documento_referencia'] ?? null,
+            'min_descuento_tipo' => $datos['min_descuento_tipo'] ?? null,
+            'min_descuento_valor' => $datos['min_descuento_valor'] ?? null,
+            'min_flete_total' => $datos['min_flete_total'] ?? null,
             'min_cantidad' => $cantidad,
+            'min_precio_unitario' => $datos['min_precio_unitario'] ?? null,
+            'min_subtotal_linea' => $datos['min_subtotal_linea'] ?? null,
+            'min_descuento_linea' => $datos['min_descuento_linea'] ?? null,
+            'min_flete_linea' => $datos['min_flete_linea'] ?? null,
+            'min_iva_porcentaje' => $datos['min_iva_porcentaje'] ?? null,
+            'min_iva_linea' => $datos['min_iva_linea'] ?? null,
+            'min_total_linea' => $datos['min_total_linea'] ?? null,
             'min_signo' => $signo,
             'min_existencia_antes' => $antes,
             'min_existencia_despues' => $despues,
             'min_motivo_texto' => $datos['min_motivo_texto'] ?? null,
+            'min_observaciones' => $datos['min_observaciones'] ?? null,
             'min_estatus' => 'activo',
             'min_es_reversa' => $esReversa,
             'min_fecha_movimiento' => $datos['min_fecha_movimiento'] ?? now(),
+            'min_fecha_emision' => $datos['min_fecha_emision'] ?? null,
             'min_created_by_usr_id' => optional($request->user())->usr_id,
             'min_updated_by_usr_id' => optional($request->user())->usr_id,
         ]);

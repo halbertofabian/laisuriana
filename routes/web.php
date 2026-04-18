@@ -163,6 +163,7 @@ Route::middleware('auth')->group(function () {
 
             Route::post('/inventario-inicial', [InventarioBaseController::class, 'storeInventarioInicial'])->name('inicial.store')->middleware('permiso:inventario_base.inicial');
             Route::post('/inventario-inicial/masivo', [InventarioBaseController::class, 'storeInventarioInicialMasivo'])->name('inicial.masivo.store')->middleware('permiso:inventario_base.inicial');
+            Route::post('/entradas/masivo', [InventarioBaseController::class, 'storeEntradaMasiva'])->name('entradas.masivo.store')->middleware('permiso:inventario_base.entrada');
             Route::post('/reportes/entradas-seleccionadas/pdf', [InventarioBaseController::class, 'reporteEntradasSeleccionadasPdf'])->name('reportes.entradas_seleccionadas.pdf')->middleware('permiso:inventario_base.ver');
             Route::post('/entradas', [InventarioBaseController::class, 'storeEntrada'])->name('entradas.store')->middleware('permiso:inventario_base.entrada');
             Route::post('/salidas', [InventarioBaseController::class, 'storeSalida'])->name('salidas.store')->middleware('permiso:inventario_base.salida');

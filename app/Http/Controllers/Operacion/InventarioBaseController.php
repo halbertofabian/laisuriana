@@ -217,6 +217,16 @@ class InventarioBaseController extends Controller
         ]);
     }
 
+    public function storeEntradaMasiva(StoreInventarioInicialMasivoRequest $request): JsonResponse
+    {
+        $resultado = $this->inventarioService->registrarInventarioInicialMasivo($request, $request->validated());
+
+        return response()->json([
+            'message' => 'Entrada registrada correctamente para las variantes capturadas.',
+            'data' => $resultado,
+        ]);
+    }
+
     public function storeEntrada(StoreEntradaInventarioRequest $request): JsonResponse
     {
         $movimiento = $this->inventarioService->registrarEntrada($request, $request->validated());
@@ -292,7 +302,14 @@ class InventarioBaseController extends Controller
             'min_documento_tipo' => ['nullable', 'string', 'max:40'],
             'min_documento_referencia' => ['nullable', 'string', 'max:120'],
             'min_motivo_texto' => ['nullable', 'string', 'max:500'],
+            'min_observaciones' => ['nullable', 'string', 'max:1500'],
             'min_fecha_movimiento' => ['nullable', 'date'],
+            'min_fecha_emision' => ['nullable', 'date'],
+            'min_prv_id' => ['nullable', 'integer'],
+            'min_descuento_tipo' => ['nullable', 'string', 'max:20'],
+            'min_descuento_valor' => ['nullable', 'numeric'],
+            'min_flete_total' => ['nullable', 'numeric'],
+            'min_iva_porcentaje' => ['nullable', 'numeric'],
         ]);
 
         $pdf = $this->inventarioService->generarReporteEntradasSeleccionadasPdf($request, $datos);

@@ -22,6 +22,81 @@
         .multi-td-na { background:#f4f5f7; }
         .multi-cell-ok { background:#e9f8ef !important;border-color:#8dd8aa !important; }
         .multi-cell-na { background:#eef1f5 !important;color:#8a93a2 !important;border-color:#d7deea !important; cursor:not-allowed; }
+        .multi-grid-wrap {
+            max-height: 62vh;
+            overflow: auto;
+            border: 1px solid var(--ls-border);
+            border-radius: var(--ls-radius);
+            background: #fff;
+        }
+        .multi-grid-wrap.multi-density-compact .multi-grid-table th,
+        .multi-grid-wrap.multi-density-compact .multi-grid-table td {
+            padding: .28rem .42rem;
+            font-size: .78rem;
+        }
+        .multi-grid-wrap.multi-density-compact .multi-cell-ok,
+        .multi-grid-wrap.multi-density-compact .multi-cell-na {
+            min-height: 1.95rem;
+            padding: .18rem .35rem;
+            font-size: .78rem;
+        }
+        .multi-grid-wrap.multi-density-comfortable .multi-grid-table th,
+        .multi-grid-wrap.multi-density-comfortable .multi-grid-table td {
+            padding: .52rem .58rem;
+            font-size: .9rem;
+        }
+        .multi-grid-wrap.multi-density-comfortable .multi-cell-ok,
+        .multi-grid-wrap.multi-density-comfortable .multi-cell-na {
+            min-height: 2.35rem;
+            padding: .34rem .48rem;
+            font-size: .88rem;
+        }
+        .multi-grid-table thead tr:first-child th {
+            position: sticky;
+            top: 0;
+            z-index: 3;
+            box-shadow: inset 0 -1px 0 var(--ls-border);
+        }
+        .multi-grid-table thead tr:nth-child(2) th {
+            position: sticky;
+            top: 38px;
+            z-index: 2;
+            box-shadow: inset 0 -1px 0 var(--ls-border);
+        }
+        .multi-grid-table tbody tr:nth-child(even) td,
+        .multi-grid-table tbody tr:nth-child(even) th[scope="row"] {
+            background: #fafbfd;
+        }
+        .multi-grid-table th[scope="rowgroup"] {
+            background: #f5f7fb;
+            border-right: 2px solid #d8deea;
+        }
+        .multi-col-head small {
+            display: block;
+            font-size: .68rem;
+            color: #5f6b7f;
+            font-weight: 600;
+            margin-top: .1rem;
+        }
+        .density-switch .btn {
+            min-width: 100px;
+            font-size: .78rem;
+            font-weight: 600;
+        }
+        .density-state-chip {
+            display: inline-flex;
+            align-items: center;
+            border: 1px solid var(--ls-border);
+            border-radius: 999px;
+            padding: .14rem .55rem;
+            font-size: .74rem;
+            font-weight: 700;
+            color: var(--ls-text-secondary);
+            background: var(--ls-surface);
+            letter-spacing: .01em;
+        }
+        .multi-focus-cell { box-shadow: inset 0 0 0 2px #0d6efd; background: #e9f1ff !important; }
+        .multi-focus-col { background: #eef4ff !important; }
         .multi-cell-ok:focus-visible {
             outline: 3px solid #0d6efd;
             outline-offset: 1px;
@@ -32,6 +107,22 @@
         .multi-dot { width:12px;height:12px;border-radius:999px;display:inline-block; }
         .multi-dot-ok { background:var(--ls-success); }
         .multi-dot-na { background:#8a93a2; }
+        .attr-chip {
+            display:inline-flex;align-items:center;gap:.35rem;
+            border:1px solid var(--ls-border);border-radius:999px;
+            padding:.2rem .55rem;font-size:.78rem;background:#fff;
+        }
+        .attr-chip input { margin-top:0; }
+        .multi-col-na { opacity:.55; }
+        .multi-col-ok { background:rgba(34,197,94,.09); }
+
+        @media (max-width: 992px) {
+            .multi-grid-wrap { max-height: 54vh; }
+            .multi-grid-table { font-size: .8rem; }
+            .multi-grid-table thead tr:nth-child(2) th { top: 34px; }
+            .multi-cell-ok, .multi-cell-na { min-width: 78px; }
+            .density-switch .btn { min-width: 86px; }
+        }
 
         /* ── Filter bar ─────────────────────────────────────────── */
         .inv-filter-bar {
@@ -145,6 +236,7 @@
         <ul class="nav nav-tabs app-tabs-shell__tabs" role="tablist">
             <li class="nav-item"><button class="nav-link {{ $soloEntradas ? '' : 'active' }}" data-bs-toggle="tab" data-bs-target="#tab-existencias" type="button"><i class="ti tabler-layout-grid"></i>Existencias</button></li>
             <li class="nav-item"><button class="nav-link {{ $soloEntradas ? 'active' : '' }}" data-bs-toggle="tab" data-bs-target="#tab-inicial" type="button"><i class="ti tabler-package-import"></i>Entradas</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-recibir-mercancia" type="button"><i class="ti tabler-truck-delivery"></i>Recibir mercancía</button></li>
             <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-salidas" type="button"><i class="ti tabler-package-export"></i>Salidas</button></li>
             <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-correcciones" type="button"><i class="ti tabler-pencil"></i>Corrección/Cancelación</button></li>
             <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-kardex" type="button"><i class="ti tabler-list-details"></i>Kardex</button></li>
@@ -389,16 +481,58 @@
                                 <select class="form-select" id="multi-alm-id" required><option value="">Selecciona</option></select>
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label">Fecha</label>
+                                <label class="form-label">Fecha captura</label>
                                 <input type="datetime-local" class="form-control" id="multi-fecha" required>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
+                                <label class="form-label">Proveedor</label>
+                                <select class="form-select" id="multi-prv-id">
+                                    <option value="">Sin proveedor</option>
+                                    @foreach($opciones['proveedores'] as $proveedor)
+                                        <option value="{{ $proveedor->prv_id }}">{{ $proveedor->prv_nombre_empresa }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Fecha emisión</label>
+                                <input type="datetime-local" class="form-control" id="multi-fecha-emision">
+                            </div>
+                            <div class="col-md-3">
                                 <label class="form-label" id="lbl-multi-referencia">Referencia (opcional)</label>
                                 <input type="text" class="form-control" id="multi-referencia" maxlength="120">
                             </div>
-                            <div class="col-md-8">
+                            <div class="col-md-3 d-flex align-items-end">
+                                <div class="form-check pb-2">
+                                    <input class="form-check-input" type="checkbox" id="multi-referencia-na">
+                                    <label class="form-check-label" for="multi-referencia-na">Sin folio (N/A)</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
                                 <label class="form-label">Motivo</label>
                                 <input type="text" class="form-control" id="multi-motivo" maxlength="500" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Observaciones</label>
+                                <input type="text" class="form-control" id="multi-observaciones" maxlength="1500" placeholder="Defectos, faltantes o detalles importantes">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Descuento</label>
+                                <div class="input-group">
+                                    <select class="form-select" id="multi-descuento-tipo" style="max-width:150px;">
+                                        <option value="ninguno">Sin descuento</option>
+                                        <option value="importe">Importe</option>
+                                        <option value="porcentaje">Porcentaje</option>
+                                    </select>
+                                    <input type="number" class="form-control" id="multi-descuento-valor" min="0" step="0.01" value="0">
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Flete</label>
+                                <input type="number" class="form-control" id="multi-flete-total" min="0" step="0.01" value="0">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">IVA %</label>
+                                <input type="number" class="form-control" id="multi-iva-porcentaje" min="0" max="100" step="0.01" value="16">
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Dominante global</label>
@@ -413,21 +547,70 @@
                                 </div>
                             </div>
                             <div class="col-12">
-                                <div class="multi-legend d-flex align-items-center gap-3 mb-2">
-                                    <span class="d-inline-flex align-items-center gap-1">
-                                        <span class="multi-dot multi-dot-ok"></span>
-                                        <span>Aplica</span>
-                                    </span>
-                                    <span class="d-inline-flex align-items-center gap-1">
-                                        <span class="multi-dot multi-dot-na"></span>
-                                        <span>No aplica (solo lectura)</span>
-                                    </span>
+                                <div class="card border">
+                                    <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                                        <strong>Productos seleccionados</strong>
+                                        <small class="text-body-secondary">Define precio unitario por producto y elimina los que no apliquen.</small>
+                                    </div>
+                                    <div class="card-body p-0">
+                                        <div id="multi-productos-shell" class="table-responsive">
+                                            <table class="table table-sm table-mini mb-0">
+                                                <thead>
+                                                    <tr>
+                                                        <th style="min-width:360px;">Producto</th>
+                                                        <th style="width:220px;">Precio unitario</th>
+                                                        <th style="width:120px;">Acción</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody><tr><td colspan="3" class="text-body-secondary">Selecciona productos para comenzar.</td></tr></tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="card border">
+                                    <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                                        <strong>Filtro de atributos</strong>
+                                        <small class="text-body-secondary">Selecciona solo valores que vas a capturar; puedes quitar o volver a incluir cuando quieras.</small>
+                                    </div>
+                                    <div class="card-body" id="multi-atributos-shell">
+                                        <div class="text-body-secondary small">Selecciona productos para habilitar filtros de atributos.</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="multi-legend d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                                    <div class="d-flex flex-wrap align-items-center gap-3">
+                                        <span class="d-inline-flex align-items-center gap-1">
+                                            <span class="multi-dot multi-dot-ok"></span>
+                                            <span>Aplica</span>
+                                        </span>
+                                        <span class="d-inline-flex align-items-center gap-1">
+                                            <span class="multi-dot multi-dot-na"></span>
+                                            <span>No aplica (solo lectura)</span>
+                                        </span>
+                                    </div>
+                                    <div class="btn-group btn-group-sm density-switch" role="group" aria-label="Densidad de matriz">
+                                        <button type="button" class="btn btn-outline-secondary" id="btn-density-auto" data-density="auto">Auto</button>
+                                        <button type="button" class="btn btn-outline-secondary active" id="btn-density-compact" data-density="compact">Compacta</button>
+                                        <button type="button" class="btn btn-outline-secondary" id="btn-density-comfortable" data-density="comfortable">Amplia</button>
+                                    </div>
+                                    <span class="density-state-chip" id="density-state-chip" aria-live="polite">Auto -> Compacta</span>
                                 </div>
                                 <p id="multi-grid-help" class="small text-body-secondary mb-2">
                                     Usa Tab para avanzar. También puedes usar flechas para moverte entre celdas aplicables.
                                 </p>
                                 <div id="multi-a11y-status" class="visually-hidden" aria-live="polite"></div>
-                                <div id="multi-grid-shell" class="table-responsive">
+                                <div class="row g-2 mb-2" id="multi-totales-shell">
+                                    <div class="col-md-2"><div class="inv-stat-card"><div><div class="inv-stat-card__lbl">Subtotal</div><div class="inv-stat-card__val" id="multi-total-subtotal">$0.00</div></div></div></div>
+                                    <div class="col-md-2"><div class="inv-stat-card"><div><div class="inv-stat-card__lbl">Descuento</div><div class="inv-stat-card__val" id="multi-total-descuento">$0.00</div></div></div></div>
+                                    <div class="col-md-2"><div class="inv-stat-card"><div><div class="inv-stat-card__lbl">Flete</div><div class="inv-stat-card__val" id="multi-total-flete">$0.00</div></div></div></div>
+                                    <div class="col-md-2"><div class="inv-stat-card"><div><div class="inv-stat-card__lbl">IVA</div><div class="inv-stat-card__val" id="multi-total-iva">$0.00</div></div></div></div>
+                                    <div class="col-md-2"><div class="inv-stat-card"><div><div class="inv-stat-card__lbl">Piezas</div><div class="inv-stat-card__val" id="multi-total-piezas">0</div></div></div></div>
+                                    <div class="col-md-2"><div class="inv-stat-card"><div><div class="inv-stat-card__lbl">Total</div><div class="inv-stat-card__val" id="multi-total-general">$0.00</div></div></div></div>
+                                </div>
+                                <div id="multi-grid-shell" class="multi-grid-wrap">
                                     <table class="table table-sm table-mini mb-0">
                                         <tbody><tr><td class="text-body-secondary">Selecciona productos para cargar líneas.</td></tr></tbody>
                                     </table>
@@ -512,6 +695,182 @@
                         </div>
                     </form>
                 </div>
+            </div>
+
+            <div class="tab-pane fade" id="tab-recibir-mercancia" role="tabpanel">
+                <div class="inv-section-label"><i class="ti tabler-truck-delivery me-1"></i>Recibir mercancía (manual)</div>
+                <form id="form-recibir-mercancia" class="row g-3">
+                    @csrf
+                    <div class="col-md-3">
+                        <label class="form-label">Tipo de entrada</label>
+                        <select class="form-select" id="recibir-tipo-entrada" required>
+                            <option value="compra_factura">Compra con factura</option>
+                            <option value="compra_remision">Compra con remisión</option>
+                            <option value="entrada_normal">Entrada normal</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Sucursal</label>
+                        <select class="form-select" id="recibir-scl-id" required>
+                            <option value="">Selecciona</option>
+                            @foreach($opciones['sucursales'] as $sucursal)
+                                <option value="{{ $sucursal->scl_id }}">{{ $sucursal->scl_nombre }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Almacén</label>
+                        <select class="form-select" id="recibir-alm-id" required><option value="">Selecciona</option></select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Usuario</label>
+                        <input type="text" class="form-control" value="{{ auth()->user()->usr_nombre ?? 'N/D' }}" readonly>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Proveedor</label>
+                        <select class="form-select" id="recibir-prv-id">
+                            <option value="">Sin proveedor</option>
+                            @foreach($opciones['proveedores'] as $proveedor)
+                                <option value="{{ $proveedor->prv_id }}">{{ $proveedor->prv_nombre_empresa }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Factura / Ref.</label>
+                        <input type="text" class="form-control" id="recibir-referencia" maxlength="120">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <div class="form-check pb-2">
+                            <input class="form-check-input" type="checkbox" id="recibir-referencia-na">
+                            <label class="form-check-label" for="recibir-referencia-na">N/A</label>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Fecha factura</label>
+                        <input type="datetime-local" class="form-control" id="recibir-fecha-emision">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Fecha captura</label>
+                        <input type="datetime-local" class="form-control" id="recibir-fecha-captura" required>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Comentario</label>
+                        <input type="text" class="form-control" id="recibir-observaciones" maxlength="1500" placeholder="Defectos, faltantes o notas de recepción">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Descuento</label>
+                        <div class="input-group">
+                            <select class="form-select" id="recibir-descuento-tipo" style="max-width:150px;">
+                                <option value="ninguno">Sin descuento</option>
+                                <option value="porcentaje">Porcentaje</option>
+                                <option value="importe">Importe</option>
+                            </select>
+                            <input type="number" class="form-control" id="recibir-descuento-valor" min="0" step="0.01" value="0">
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Flete</label>
+                        <input type="number" class="form-control" id="recibir-flete-total" min="0" step="0.01" value="0">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">IVA %</label>
+                        <input type="number" class="form-control" id="recibir-iva-porcentaje" min="0" max="100" step="0.01" value="16">
+                    </div>
+                    <div class="col-md-1 d-flex align-items-end">
+                        <div class="form-check pb-2">
+                            <input class="form-check-input" type="checkbox" id="recibir-incluir-iva" checked>
+                            <label class="form-check-label" for="recibir-incluir-iva">IVA</label>
+                        </div>
+                    </div>
+
+                    <div class="col-12 d-flex justify-content-between align-items-center">
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-primary" id="btn-recibir-buscar-articulos">
+                                <i class="ti tabler-search me-1"></i>Buscar artículos
+                            </button>
+                        </div>
+                        <button type="submit" class="btn btn-primary" {{ ($permisosUI['inicial'] || $permisosUI['entrada']) ? '' : 'disabled' }}>
+                            <i class="ti tabler-device-floppy me-1"></i>Guardar entrada
+                        </button>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Dominante global</label>
+                        <select class="form-select" id="recibir-dominante-global">
+                            <option value="">Selecciona dominante</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <div class="card border">
+                            <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                                <strong>Productos seleccionados</strong>
+                                <small class="text-body-secondary">Define costo unitario por producto y elimina los que no apliquen.</small>
+                            </div>
+                            <div class="card-body p-0">
+                                <div id="recibir-productos-shell" class="table-responsive">
+                                    <table class="table table-sm table-mini mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th style="min-width:360px;">Producto</th>
+                                                <th style="width:120px;">Acción</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody><tr><td colspan="2" class="text-body-secondary">Sin productos seleccionados.</td></tr></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="card border">
+                            <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                                <strong>Filtro de atributos</strong>
+                                <small class="text-body-secondary">Selecciona solo atributos que aplican en esta recepción.</small>
+                            </div>
+                            <div class="card-body" id="recibir-atributos-shell">
+                                <div class="text-body-secondary small">Selecciona productos para habilitar filtros.</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="multi-legend d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                            <div class="d-flex flex-wrap align-items-center gap-3">
+                                <span class="d-inline-flex align-items-center gap-1">
+                                    <span class="multi-dot multi-dot-ok"></span>
+                                    <span>Aplica</span>
+                                </span>
+                                <span class="d-inline-flex align-items-center gap-1">
+                                    <span class="multi-dot multi-dot-na"></span>
+                                    <span>No aplica (solo lectura)</span>
+                                </span>
+                            </div>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-recibir-restaurar-filas" disabled>
+                                <i class="ti tabler-restore me-1"></i>Restaurar quitados
+                            </button>
+                        </div>
+                        <p id="recibir-grid-help" class="small text-body-secondary mb-2">
+                            Captura en matriz horizontal por dominante. Usa Tab o flechas para moverte.
+                        </p>
+                        <div id="recibir-grid-shell" class="multi-grid-wrap">
+                            <table class="table table-sm table-mini mb-0">
+                                <tbody><tr><td class="text-body-secondary">Sin productos seleccionados. Usa "Buscar artículos".</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <div class="row g-2" id="recibir-totales-shell">
+                            <div class="col-md-2"><div class="inv-stat-card"><div><div class="inv-stat-card__lbl">Artículos</div><div class="inv-stat-card__val" id="recibir-total-articulos">0</div></div></div></div>
+                            <div class="col-md-2"><div class="inv-stat-card"><div><div class="inv-stat-card__lbl">Subtotal</div><div class="inv-stat-card__val" id="recibir-total-subtotal">$0.00</div></div></div></div>
+                            <div class="col-md-2"><div class="inv-stat-card"><div><div class="inv-stat-card__lbl">Descuento</div><div class="inv-stat-card__val" id="recibir-total-descuento">$0.00</div></div></div></div>
+                            <div class="col-md-2"><div class="inv-stat-card"><div><div class="inv-stat-card__lbl">Flete</div><div class="inv-stat-card__val" id="recibir-total-flete">$0.00</div></div></div></div>
+                            <div class="col-md-2"><div class="inv-stat-card"><div><div class="inv-stat-card__lbl">IVA</div><div class="inv-stat-card__val" id="recibir-total-iva">$0.00</div></div></div></div>
+                            <div class="col-md-2"><div class="inv-stat-card"><div><div class="inv-stat-card__lbl">Total</div><div class="inv-stat-card__val" id="recibir-total-general">$0.00</div></div></div></div>
+                        </div>
+                    </div>
+                </form>
             </div>
 
             <div class="tab-pane fade" id="tab-salidas" role="tabpanel">
@@ -774,12 +1133,95 @@
                                 <th>Almacén</th>
                                 <th>Tipo entrada</th>
                                 <th class="text-end">Folios</th>
+                                <th class="text-end">Total</th>
                                 <th>Detalle folios</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
                     </table>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modal-recibir-buscar" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="ti tabler-search me-1"></i>Buscar artículos para recibir mercancía</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="inv-filter-bar">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label">Buscar</label>
+                            <input id="recibir-buscar-texto" type="text" class="form-control form-control-sm" placeholder="Código o producto base">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Marca</label>
+                            <select id="recibir-buscar-marca" class="form-select form-select-sm">
+                                <option value="">Todas</option>
+                                @foreach($opciones['marcas'] as $marca)
+                                    <option value="{{ $marca->mrc_id }}">{{ $marca->mrc_nombre }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Modelo</label>
+                            <select id="recibir-buscar-modelo" class="form-select form-select-sm">
+                                <option value="">Todos</option>
+                                @foreach($opciones['modelos'] as $modelo)
+                                    <option value="{{ $modelo->mdl_id }}">{{ $modelo->mdl_nombre }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Línea</label>
+                            <select id="recibir-buscar-linea" class="form-select form-select-sm">
+                                <option value="">Todas</option>
+                                @foreach($opciones['lineas'] as $linea)
+                                    <option value="{{ $linea->lna_id }}">{{ $linea->lna_nombre }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Categoría</label>
+                            <select id="recibir-buscar-categoria" class="form-select form-select-sm">
+                                <option value="">Todas</option>
+                                @foreach($opciones['categorias'] as $categoria)
+                                    <option value="{{ $categoria->ctg_id }}" data-lna="{{ $categoria->ctg_lna_id }}">{{ $categoria->ctg_nombre }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex gap-2">
+                            <button class="btn btn-primary btn-sm w-100" id="btn-recibir-filtrar-modal"><i class="ti tabler-filter me-1"></i>Buscar</button>
+                            <button class="btn btn-outline-secondary btn-sm" id="btn-recibir-limpiar-modal"><i class="ti tabler-x"></i></button>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table id="tbl-recibir-buscar-productos" class="table table-mini">
+                        <thead>
+                            <tr>
+                                <th style="width:42px;"></th>
+                                <th>Código</th>
+                                <th>Producto base</th>
+                                <th>Tipo</th>
+                                <th>Marca</th>
+                                <th>Línea</th>
+                                <th>SKU activos</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary" id="btn-recibir-agregar-seleccionados">
+                    <i class="ti tabler-check me-1"></i>Agregar seleccionados
+                </button>
             </div>
         </div>
     </div>
@@ -888,6 +1330,7 @@
         matrizProducto: (id) => '{{ url('/operacion/inventario-base/productos') }}/' + id + '/matriz',
         inicial: '{{ route('operacion.inventario_base.inicial.store') }}',
         inicialMasivo: '{{ route('operacion.inventario_base.inicial.masivo.store') }}',
+        entradaMasiva: '{{ route('operacion.inventario_base.entradas.masivo.store') }}',
         entrada: '{{ route('operacion.inventario_base.entradas.store') }}',
         salida: '{{ route('operacion.inventario_base.salidas.store') }}',
         minimo: '{{ route('operacion.inventario_base.minimos.store') }}',
@@ -899,6 +1342,9 @@
 
     const modalCancelar = new bootstrap.Modal(document.getElementById('modal-cancelar'));
     const modalCorregir = new bootstrap.Modal(document.getElementById('modal-corregir'));
+    const modalRecibirBuscar = new bootstrap.Modal(document.getElementById('modal-recibir-buscar'));
+    const storageKeyDensity = 'inventario.multiGridDensity';
+    let multiGridDensity = 'auto';
     const estadoInicial = {
         productoId: null,
         productoTipo: null,
@@ -907,9 +1353,22 @@
         colaProductos: [],
         colaIndex: 0,
         modoMasivo: false,
-        multiMeta: {}
+        multiMeta: {},
+        multiFiltrosAtributos: {}
     };
     const seleccionProductos = {};
+    const recibirState = {
+        modalSeleccion: {},
+        tablaModalInicializada: false,
+        productos: {},
+        meta: {},
+        filtrosAtributos: {},
+        cantidades: {},
+        costosFila: {},
+        costosFilaEditados: {},
+        filasExcluidas: {},
+        productosQuitados: {},
+    };
 
     function parseError(xhr) {
         if (xhr.responseJSON?.errors) {
@@ -930,6 +1389,46 @@
         return '<span class="ls-badge">' + (estatus || '-') + '</span>';
     }
 
+    function normalizeDensity(valor) {
+        if (valor === 'comfortable') return 'comfortable';
+        if (valor === 'compact') return 'compact';
+        return 'auto';
+    }
+
+    function resolveEffectiveDensity() {
+        if (multiGridDensity === 'auto') {
+            return window.matchMedia('(max-width: 992px)').matches ? 'compact' : 'comfortable';
+        }
+
+        return multiGridDensity;
+    }
+
+    function applyGridDensity(density, persist = false) {
+        multiGridDensity = normalizeDensity(density);
+        const effective = resolveEffectiveDensity();
+        const $shell = $('#multi-grid-shell');
+        $shell.removeClass('multi-density-compact multi-density-comfortable')
+            .addClass(effective === 'comfortable' ? 'multi-density-comfortable' : 'multi-density-compact');
+
+        $('#btn-density-auto').toggleClass('active', multiGridDensity === 'auto');
+        $('#btn-density-compact').toggleClass('active', multiGridDensity === 'compact');
+        $('#btn-density-comfortable').toggleClass('active', multiGridDensity === 'comfortable');
+        const modoSeleccionado = multiGridDensity === 'auto'
+            ? 'Auto'
+            : (multiGridDensity === 'comfortable' ? 'Amplia' : 'Compacta');
+        const modoEfectivo = effective === 'comfortable' ? 'Amplia' : 'Compacta';
+        const textoEstado = multiGridDensity === 'auto'
+            ? ('Auto -> ' + modoEfectivo)
+            : modoSeleccionado;
+        $('#density-state-chip').text(textoEstado);
+
+        if (persist) {
+            try {
+                localStorage.setItem(storageKeyDensity, multiGridDensity);
+            } catch (_) {}
+        }
+    }
+
     function escapeHtml(texto) {
         return String(texto ?? '')
             .replace(/&/g, '&amp;')
@@ -937,6 +1436,28 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
+    }
+
+    function toMoney(valor) {
+        const n = Number(valor || 0);
+        return '$' + n.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function normalizarTexto(valor) {
+        return String(valor || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-zA-Z0-9\s]/g, ' ')
+            .toLowerCase()
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    function costoBaseProducto(producto) {
+        const costo = Number(producto?.prd_costo ?? 0);
+        if (costo > 0) return costo;
+        const precioBase = Number(producto?.prd_precio_base ?? 0);
+        return precioBase > 0 ? precioBase : 0;
     }
 
     function renderProductoKardex(row) {
@@ -1095,10 +1616,20 @@
         $('#matriz-inicial-shell').html(htmlMatrizPlaceholder('Selecciona producto base para continuar.'));
         $('#form-inicial .js-dyn-inicial').remove();
         estadoInicial.multiMeta = {};
+        estadoInicial.multiFiltrosAtributos = {};
         $('#multi-dominante-global').html('<option value="">Selecciona dominante</option>');
         $('#multi-guardar-dominante-global').prop('checked', true);
+        $('#multi-productos-shell').html('<table class="table table-sm table-mini mb-0"><tbody><tr><td colspan="3" class="text-body-secondary">Selecciona productos para comenzar.</td></tr></tbody></table>');
+        $('#multi-atributos-shell').html('<div class="text-body-secondary small">Selecciona productos para habilitar filtros de atributos.</div>');
         $('#multi-grid-shell').html('<table class="table table-sm table-mini mb-0"><tbody><tr><td class="text-body-secondary">Selecciona productos para cargar líneas.</td></tr></tbody></table>');
         $('#multi-resumen-productos').text('0 productos seleccionados');
+        $('#multi-total-subtotal').text('$0.00');
+        $('#multi-total-descuento').text('$0.00');
+        $('#multi-total-flete').text('$0.00');
+        $('#multi-total-iva').text('$0.00');
+        $('#multi-total-piezas').text('0');
+        $('#multi-total-general').text('$0.00');
+        applyGridDensity(multiGridDensity, false);
         activarModoCapturaMasiva(false);
         actualizarIndicadorProductoEnCola();
     }
@@ -1163,6 +1694,7 @@
         }
         estadoInicial.colaProductos = productos;
         estadoInicial.colaIndex = 0;
+        estadoInicial.multiFiltrosAtributos = {};
         if (productos.length > 1) {
             activarModoCapturaMasiva(true);
             mostrarPasoCaptura();
@@ -1394,15 +1926,198 @@
     function actualizarUIReferenciaEntradaMulti() {
         const tipo = String($('#multi-tipo-entrada').val() || 'inventario_inicial');
         const $lbl = $('#lbl-multi-referencia');
+        const esCompra = tipo === 'compra_remision' || tipo === 'compra_factura';
+        const esFactura = tipo === 'compra_factura';
         if (tipo === 'compra_remision') {
             $lbl.text('Referencia remisión');
-            return;
-        }
-        if (tipo === 'compra_factura') {
+        } else if (tipo === 'compra_factura') {
             $lbl.text('Referencia factura');
+        } else {
+            $lbl.text('Referencia (opcional)');
+        }
+
+        $('#multi-prv-id').prop('required', esFactura);
+        $('#multi-fecha-emision').prop('required', esCompra);
+        $('#multi-iva-porcentaje').prop('disabled', !esFactura);
+        if (!esFactura) {
+            $('#multi-iva-porcentaje').val('0');
+        } else if (Number($('#multi-iva-porcentaje').val() || 0) <= 0) {
+            $('#multi-iva-porcentaje').val('16');
+        }
+
+        aplicarPresetUbicacionPorTipoEntrada();
+        actualizarReferenciaNa();
+        recalcularTotalesMulti();
+    }
+
+    function seleccionarOpcionPorCoincidencia($select, terminos = []) {
+        const lista = (terminos || []).map((x) => normalizarTexto(x)).filter(Boolean);
+        if (!$select || !$select.length || !lista.length) return false;
+
+        let elegido = '';
+        $select.find('option').each(function () {
+            const texto = normalizarTexto($(this).text());
+            const valor = String($(this).val() || '');
+            if (!valor || !texto) return;
+            if (lista.some((term) => texto.includes(term))) {
+                elegido = valor;
+                return false;
+            }
+        });
+
+        if (!elegido) return false;
+        $select.val(elegido);
+        return true;
+    }
+
+    function aplicarPresetUbicacionPorTipoEntrada() {
+        const tipo = String($('#multi-tipo-entrada').val() || '');
+        if (tipo !== 'compra_remision' && tipo !== 'compra_factura') return;
+
+        const $sucursal = $('#multi-scl-id');
+        const aplicadoSucursal = seleccionarOpcionPorCoincidencia($sucursal, ['matriz comitan', 'casa matriz']);
+        if (aplicadoSucursal) {
+            llenarAlmacenesPorSucursal('#multi-alm-id', $sucursal.val(), false);
+        }
+
+        const terminosAlmacen = tipo === 'compra_factura'
+            ? ['la i. suriana', 'productos con factura', 'factura']
+            : ['i. suriana', 'remision', 'no factura'];
+
+        seleccionarOpcionPorCoincidencia($('#multi-alm-id'), terminosAlmacen);
+    }
+
+    function actualizarReferenciaNa() {
+        const na = $('#multi-referencia-na').is(':checked');
+        const tipo = String($('#multi-tipo-entrada').val() || '');
+        const esCompra = tipo === 'compra_remision' || tipo === 'compra_factura';
+        if (!esCompra) {
+            $('#multi-referencia-na').prop('checked', false);
+            $('#multi-referencia').prop('readonly', false);
             return;
         }
-        $lbl.text('Referencia (opcional)');
+        $('#multi-referencia').prop('readonly', na);
+        if (na) {
+            $('#multi-referencia').val('N/A');
+        } else if (String($('#multi-referencia').val() || '').trim().toUpperCase() === 'N/A') {
+            $('#multi-referencia').val('');
+        }
+    }
+
+    function renderProductosSeleccionadosMulti() {
+        const productos = estadoInicial.colaProductos || [];
+        if (!productos.length) {
+            $('#multi-productos-shell').html('<table class="table table-sm table-mini mb-0"><tbody><tr><td colspan="3" class="text-body-secondary">Selecciona productos para comenzar.</td></tr></tbody></table>');
+            return;
+        }
+
+        const filas = productos.map(function (p) {
+            const meta = estadoInicial.multiMeta[String(p.prd_id)] || {};
+            const precio = Number(meta.precio_unitario || 0);
+            return '' +
+                '<tr>' +
+                    '<td><div class="fw-semibold">' + escapeHtml((p.prd_codigo || '-') + ' - ' + (p.prd_nombre || '-')) + '</div></td>' +
+                    '<td><input type="number" class="form-control form-control-sm js-multi-precio-producto" min="0" step="0.01" data-prd-id="' + p.prd_id + '" value="' + escapeHtml(precio.toFixed(2)) + '" aria-label="Precio unitario para ' + escapeHtml(p.prd_nombre || ('producto ' + p.prd_id)) + '"></td>' +
+                    '<td><button type="button" class="btn btn-sm btn-outline-danger js-multi-quitar-producto" data-prd-id="' + p.prd_id + '"><i class="ti tabler-trash"></i>Quitar</button></td>' +
+                '</tr>';
+        }).join('');
+
+        const html = '' +
+            '<table class="table table-sm table-mini mb-0">' +
+            '<thead><tr><th style="min-width:360px;">Producto</th><th style="width:220px;">Precio unitario</th><th style="width:120px;">Acción</th></tr></thead>' +
+            '<tbody>' + filas + '</tbody></table>';
+
+        $('#multi-productos-shell').html(html);
+    }
+
+    function construirCatalogoAtributosFiltros() {
+        const mapa = {};
+        Object.values(estadoInicial.multiMeta).forEach(function (meta) {
+            if (!meta || meta.error || meta.prd_tipo !== 'variable') return;
+            (meta.data?.lineas || []).forEach(function (linea) {
+                const attrs = linea?.atributos || {};
+                Object.keys(attrs).forEach(function (atrNombre) {
+                    const key = String(atrNombre || '').trim();
+                    if (!key) return;
+                    if (!mapa[key]) mapa[key] = new Set();
+                    const valor = String(attrs[atrNombre] || 'Sin valor').trim();
+                    mapa[key].add(valor || 'Sin valor');
+                });
+            });
+        });
+
+        return Object.entries(mapa)
+            .sort((a, b) => a[0].localeCompare(b[0], 'es', { sensitivity: 'base' }))
+            .map(([atrNombre, valores]) => ({
+                atrNombre,
+                valores: Array.from(valores).sort((a, b) => String(a).localeCompare(String(b), 'es', { sensitivity: 'base' }))
+            }));
+    }
+
+    function renderFiltrosAtributosMulti() {
+        const catalogo = construirCatalogoAtributosFiltros();
+        if (!catalogo.length) {
+            estadoInicial.multiFiltrosAtributos = {};
+            $('#multi-atributos-shell').html('<div class="text-body-secondary small">No hay atributos variables para filtrar en los productos seleccionados.</div>');
+            return;
+        }
+
+        const filtrosDepurados = {};
+        const html = catalogo.map(function (item) {
+            if (!estadoInicial.multiFiltrosAtributos[item.atrNombre]) {
+                estadoInicial.multiFiltrosAtributos[item.atrNombre] = new Set(item.valores);
+            }
+            const conjunto = new Set(
+                item.valores.filter((valor) => estadoInicial.multiFiltrosAtributos[item.atrNombre]?.has(valor))
+            );
+            if (conjunto.size === 0) {
+                item.valores.forEach((valor) => conjunto.add(valor));
+            }
+            filtrosDepurados[item.atrNombre] = conjunto;
+
+            const checks = item.valores.map(function (valor) {
+                const id = 'flt-atr-' + btoa(unescape(encodeURIComponent(item.atrNombre + '|' + valor))).replace(/[^a-zA-Z0-9]/g, '').slice(0, 20);
+                const key = escapeHtml(item.atrNombre + '||' + valor);
+                const marcado = conjunto.has(valor) ? 'checked' : '';
+                return '<label class="attr-chip" for="' + id + '"><input type="checkbox" class="form-check-input js-atr-filter-value" id="' + id + '" data-atr="' + escapeHtml(item.atrNombre) + '" data-val="' + escapeHtml(valor) + '" value="' + key + '" ' + marcado + '> ' + escapeHtml(valor) + '</label>';
+            }).join(' ');
+            return '' +
+                '<div class="mb-3">' +
+                    '<div class="fw-semibold mb-2">' + escapeHtml(item.atrNombre) + '</div>' +
+                    '<div class="d-flex flex-wrap gap-2">' + checks + '</div>' +
+                '</div>';
+        }).join('');
+
+        estadoInicial.multiFiltrosAtributos = filtrosDepurados;
+        $('#multi-atributos-shell').html(html);
+    }
+
+    function sincronizarFiltrosAtributosDesdeUI() {
+        const filtros = {};
+        $('#multi-atributos-shell .js-atr-filter-value').each(function () {
+            if (!$(this).is(':checked')) return;
+            const atr = String($(this).data('atr') || '').trim();
+            const val = String($(this).data('val') || '').trim();
+            if (!atr || !val) return;
+            if (!filtros[atr]) filtros[atr] = new Set();
+            filtros[atr].add(val);
+        });
+        estadoInicial.multiFiltrosAtributos = filtros;
+    }
+
+    function lineaCumpleFiltros(linea) {
+        const filtros = estadoInicial.multiFiltrosAtributos || {};
+        const attrs = linea?.atributos || {};
+        const claves = Object.keys(filtros);
+        if (!claves.length) return true;
+        for (let i = 0; i < claves.length; i += 1) {
+            const atr = claves[i];
+            const setValores = filtros[atr];
+            if (!setValores || setValores.size === 0) continue;
+            const valorLinea = String(attrs[atr] || 'Sin valor').trim();
+            if (!setValores.has(valorLinea)) return false;
+        }
+        return true;
     }
 
     function capturarCantidadesMultiGlobal() {
@@ -1414,6 +2129,571 @@
             if (!meta) return;
             meta.cantidades = meta.cantidades || {};
             meta.cantidades[pskId] = String($(this).val() || '');
+        });
+    }
+
+    function recalcularTotalesMulti() {
+        const descuentoTipo = String($('#multi-descuento-tipo').val() || 'ninguno');
+        const descuentoValor = Number($('#multi-descuento-valor').val() || 0);
+        const fleteTotal = Number($('#multi-flete-total').val() || 0);
+        const ivaPorcentaje = Number($('#multi-iva-porcentaje').val() || 0);
+        const tipoEntrada = String($('#multi-tipo-entrada').val() || 'inventario_inicial');
+        const aplicaIva = tipoEntrada === 'compra_factura';
+
+        let subtotal = 0;
+        let piezas = 0;
+        $('#multi-grid-shell .js-multi-cantidad').each(function () {
+            const cantidad = Number($(this).val() || 0);
+            if (!(cantidad > 0)) return;
+            const prdId = String($(this).data('prd-id') || '');
+            const meta = estadoInicial.multiMeta[prdId] || {};
+            const precio = Number(meta.precio_unitario || 0);
+            subtotal += cantidad * precio;
+            piezas += cantidad;
+        });
+
+        subtotal = Number(subtotal.toFixed(2));
+        let descuentoMonto = 0;
+        if (descuentoTipo === 'porcentaje') {
+            descuentoMonto = subtotal * (Math.min(100, Math.max(0, descuentoValor)) / 100);
+        } else if (descuentoTipo === 'importe') {
+            descuentoMonto = Math.min(subtotal, Math.max(0, descuentoValor));
+        }
+        descuentoMonto = Number(descuentoMonto.toFixed(2));
+        const base = Number(Math.max(0, subtotal - descuentoMonto + Math.max(0, fleteTotal)).toFixed(2));
+        const ivaMonto = aplicaIva ? Number((base * (Math.max(0, ivaPorcentaje) / 100)).toFixed(2)) : 0;
+        const total = Number((base + ivaMonto).toFixed(2));
+
+        $('#multi-total-subtotal').text(toMoney(subtotal));
+        $('#multi-total-descuento').text(toMoney(descuentoMonto));
+        $('#multi-total-flete').text(toMoney(Math.max(0, fleteTotal)));
+        $('#multi-total-iva').text(toMoney(ivaMonto));
+        $('#multi-total-piezas').text(Number(piezas).toLocaleString('es-MX'));
+        $('#multi-total-general').text(toMoney(total));
+
+        return { subtotal, descuentoMonto, fleteTotal: Math.max(0, fleteTotal), ivaPorcentaje: Math.max(0, ivaPorcentaje), ivaMonto, total, piezas };
+    }
+
+    function actualizarUIRecibirReferencia() {
+        const tipo = String($('#recibir-tipo-entrada').val() || 'compra_factura');
+        const esCompra = tipo === 'compra_remision' || tipo === 'compra_factura';
+        const esFactura = tipo === 'compra_factura';
+        const na = $('#recibir-referencia-na').is(':checked');
+
+        $('#recibir-referencia-na').prop('disabled', !esCompra);
+        $('#recibir-referencia').prop('readonly', esCompra && na);
+        if (!esCompra) {
+            $('#recibir-referencia-na').prop('checked', false);
+            $('#recibir-referencia').prop('readonly', false);
+        } else if (na) {
+            $('#recibir-referencia').val('N/A');
+        } else if (String($('#recibir-referencia').val() || '').trim().toUpperCase() === 'N/A') {
+            $('#recibir-referencia').val('');
+        }
+
+        $('#recibir-prv-id').prop('required', esFactura);
+        $('#recibir-fecha-emision').prop('required', esCompra);
+        $('#recibir-incluir-iva').prop('disabled', !esFactura);
+        if (!esFactura) {
+            $('#recibir-incluir-iva').prop('checked', false);
+            $('#recibir-iva-porcentaje').val('0').prop('disabled', true);
+        } else {
+            $('#recibir-incluir-iva').prop('checked', true);
+            $('#recibir-iva-porcentaje').prop('disabled', false);
+            if (Number($('#recibir-iva-porcentaje').val() || 0) <= 0) {
+                $('#recibir-iva-porcentaje').val('16');
+            }
+        }
+    }
+
+    function aplicarPresetRecibirMercancia() {
+        const tipo = String($('#recibir-tipo-entrada').val() || '');
+        if (tipo !== 'compra_remision' && tipo !== 'compra_factura') return;
+
+        const $sucursal = $('#recibir-scl-id');
+        const aplicadoSucursal = seleccionarOpcionPorCoincidencia($sucursal, ['matriz comitan', 'casa matriz']);
+        if (aplicadoSucursal) {
+            llenarAlmacenesPorSucursal('#recibir-alm-id', $sucursal.val(), false);
+        }
+
+        const terminosAlmacen = tipo === 'compra_factura'
+            ? ['la i. suriana', 'productos con factura', 'factura']
+            : ['i. suriana', 'remision', 'no factura'];
+        seleccionarOpcionPorCoincidencia($('#recibir-alm-id'), terminosAlmacen);
+    }
+
+    function lineaCumpleFiltrosRecibir(linea) {
+        const filtros = recibirState.filtrosAtributos || {};
+        const attrs = linea?.atributos || {};
+        const claves = Object.keys(filtros);
+        if (!claves.length) return true;
+        for (let i = 0; i < claves.length; i += 1) {
+            const atr = claves[i];
+            const setValores = filtros[atr];
+            if (!setValores || setValores.size === 0) continue;
+            const valorLinea = String(attrs[atr] || 'Sin valor').trim();
+            if (!setValores.has(valorLinea)) return false;
+        }
+        return true;
+    }
+
+    function construirMatrizRecibirParaDominante(meta, atrId) {
+        const lineas = meta.data?.lineas || [];
+        const atributos = meta.data?.atributos || [];
+        const atrDominanteNombre = nombreAtributoPorId(meta.data, atrId);
+        if (!atrDominanteNombre) return { filas: {}, ordenFilas: [], columnas: [] };
+
+        const attrsCol = atributos.filter((a) => a.atr_nombre !== atrDominanteNombre);
+        const filas = {};
+        const ordenFilas = [];
+        const columnas = [];
+        const columnasMap = {};
+
+        lineas.forEach((linea) => {
+            if (!lineaCumpleFiltrosRecibir(linea)) return;
+            const filaValor = String(linea.atributos?.[atrDominanteNombre] || 'Sin valor').trim();
+            if (!filas[filaValor]) {
+                filas[filaValor] = {};
+                ordenFilas.push(filaValor);
+            }
+
+            const pares = attrsCol
+                .map((a) => ({
+                    nombre: String(a.atr_nombre || 'Variable'),
+                    valor: String(linea.atributos?.[a.atr_nombre] || '-').trim(),
+                }))
+                .filter((p) => p.valor && p.valor !== '-');
+
+            const pivote = pares[0] || null;
+            const keyCol = pares.length ? pares.map((p) => p.nombre + ':' + p.valor).join('||') : '__base__';
+            const labelCol = pivote
+                ? pivote.valor + (pares.length > 1 ? ' (' + pares.slice(1).map((p) => p.valor).join(' / ') + ')' : '')
+                : 'Existencia';
+            const groupCol = pivote ? pivote.nombre : 'Existencia';
+
+            if (!columnasMap[keyCol]) {
+                columnasMap[keyCol] = true;
+                columnas.push({ key: keyCol, label: labelCol, group: groupCol });
+            }
+            filas[filaValor][keyCol] = linea;
+        });
+
+        return { filas, ordenFilas, columnas };
+    }
+
+    function renderProductosRecibirMercancia() {
+        const productos = Object.values(recibirState.productos || {});
+        if (!productos.length) {
+            $('#recibir-productos-shell').html('<table class="table table-sm table-mini mb-0"><tbody><tr><td colspan="2" class="text-body-secondary">Sin productos seleccionados.</td></tr></tbody></table>');
+            return;
+        }
+        const rows = productos.map((p) => {
+            const label = (p.prd_codigo || '-') + ' - ' + (p.prd_nombre || '-');
+            return '<tr>' +
+                '<td class="fw-semibold">' + escapeHtml(label) + '</td>' +
+                '<td><button type="button" class="btn btn-sm btn-outline-danger js-recibir-quitar-producto" data-prd-id="' + p.prd_id + '"><i class="ti tabler-trash"></i></button></td>' +
+                '</tr>';
+        }).join('');
+        $('#recibir-productos-shell').html('<table class="table table-sm table-mini mb-0"><thead><tr><th style="min-width:360px;">Producto</th><th style="width:120px;">Acción</th></tr></thead><tbody>' + rows + '</tbody></table>');
+    }
+
+    function renderFiltrosRecibirMercancia() {
+        const mapa = {};
+        Object.values(recibirState.meta || {}).forEach((meta) => {
+            if (!meta || meta.error || meta.prd_tipo !== 'variable') return;
+            (meta.data?.lineas || []).forEach((linea) => {
+                const attrs = linea?.atributos || {};
+                Object.keys(attrs).forEach((atrNombre) => {
+                    const key = String(atrNombre || '').trim();
+                    if (!key) return;
+                    if (!mapa[key]) mapa[key] = new Set();
+                    mapa[key].add(String(attrs[atrNombre] || 'Sin valor').trim() || 'Sin valor');
+                });
+            });
+        });
+        const catalogo = Object.entries(mapa)
+            .sort((a, b) => a[0].localeCompare(b[0], 'es', { sensitivity: 'base' }))
+            .map(([atrNombre, valores]) => ({
+                atrNombre,
+                valores: Array.from(valores).sort((a, b) => String(a).localeCompare(String(b), 'es', { sensitivity: 'base' })),
+            }));
+
+        if (!catalogo.length) {
+            recibirState.filtrosAtributos = {};
+            $('#recibir-atributos-shell').html('<div class="text-body-secondary small">No hay atributos variables para filtrar en los productos seleccionados.</div>');
+            return;
+        }
+
+        const filtrosDepurados = {};
+        const html = catalogo.map((item) => {
+            if (!recibirState.filtrosAtributos[item.atrNombre]) {
+                recibirState.filtrosAtributos[item.atrNombre] = new Set(item.valores);
+            }
+            const conjunto = new Set(item.valores.filter((v) => recibirState.filtrosAtributos[item.atrNombre]?.has(v)));
+            if (conjunto.size === 0) item.valores.forEach((v) => conjunto.add(v));
+            filtrosDepurados[item.atrNombre] = conjunto;
+            const chips = item.valores.map((valor) => {
+                const marcado = conjunto.has(valor) ? 'checked' : '';
+                return '<label class="attr-chip"><input type="checkbox" class="form-check-input js-recibir-atr-filter" data-atr="' + escapeHtml(item.atrNombre) + '" data-val="' + escapeHtml(valor) + '" ' + marcado + '> ' + escapeHtml(valor) + '</label>';
+            }).join(' ');
+            return '<div class="mb-3"><div class="fw-semibold mb-2">' + escapeHtml(item.atrNombre) + '</div><div class="d-flex flex-wrap gap-2">' + chips + '</div></div>';
+        }).join('');
+
+        recibirState.filtrosAtributos = filtrosDepurados;
+        $('#recibir-atributos-shell').html(html);
+    }
+
+    function cargarDominantesRecibirMercancia() {
+        const mapa = {};
+        Object.values(recibirState.meta || {}).forEach((meta) => {
+            if (!meta || meta.error || meta.prd_tipo !== 'variable') return;
+            (meta.data?.atributos || []).forEach((atr) => {
+                mapa[String(atr.atr_id)] = atr.atr_nombre;
+            });
+        });
+        const options = Object.entries(mapa)
+            .sort((a, b) => String(a[1]).localeCompare(String(b[1]), 'es', { sensitivity: 'base' }))
+            .map(([id, nombre]) => '<option value="' + id + '">' + escapeHtml(nombre) + '</option>');
+        const $sel = $('#recibir-dominante-global');
+        const previo = String($sel.val() || '');
+        $sel.html('<option value="">Selecciona dominante</option>' + options.join(''));
+        if (previo && mapa[previo]) {
+            $sel.val(previo);
+        } else if (options.length) {
+            $sel.val(Object.keys(mapa)[0]);
+        }
+    }
+
+    function actualizarBotonRestaurarRecibir() {
+        const totalExcluidas = Object.keys(recibirState.filasExcluidas || {}).length;
+        const totalProductosQuitados = Object.keys(recibirState.productosQuitados || {}).length;
+        const total = totalExcluidas + totalProductosQuitados;
+        $('#btn-recibir-restaurar-filas').prop('disabled', total === 0);
+    }
+
+    function renderMatrizRecibirMercancia() {
+        const productos = Object.values(recibirState.productos || {});
+        const atrId = Number($('#recibir-dominante-global').val() || 0);
+        if (!productos.length) {
+            $('#recibir-grid-shell').html('<table class="table table-sm table-mini mb-0"><tbody><tr><td class="text-body-secondary">Sin productos seleccionados. Usa "Buscar artículos".</td></tr></tbody></table>');
+            recalcularTotalesRecibirMercancia();
+            return;
+        }
+
+        const globalColsMap = {};
+        const globalCols = [];
+        const filas = [];
+        let nombreDominante = 'Dominante';
+
+        productos.forEach((p) => {
+            const meta = recibirState.meta[String(p.prd_id)];
+            if (!meta || meta.error) return;
+
+            if (meta.prd_tipo === 'simple') {
+                const linea = (meta.data?.lineas || [])[0] || null;
+                if (linea) {
+                    const rowKey = String(p.prd_id) + '||Estandar';
+                    if (recibirState.filasExcluidas[rowKey]) {
+                        return;
+                    }
+                    const costoDefault = costoBaseProducto(meta.data?.producto) || costoBaseProducto(p);
+                    filas.push({
+                        prd_id: p.prd_id,
+                        producto: (p.prd_codigo || '-') + ' - ' + (p.prd_nombre || '-'),
+                        dominante: 'Estándar',
+                        celdas: { '__simple__': linea },
+                        tipo: 'normal',
+                        row_key: rowKey,
+                        default_costo: costoDefault,
+                    });
+                    if (!globalColsMap['__simple__']) {
+                        globalColsMap['__simple__'] = true;
+                        globalCols.push({ key: '__simple__', label: 'Existencia', group: 'Existencia' });
+                    }
+                }
+                return;
+            }
+
+            if (!productoAdmiteDominante(meta, atrId)) {
+                filas.push({
+                    prd_id: p.prd_id,
+                    producto: (p.prd_codigo || '-') + ' - ' + (p.prd_nombre || '-'),
+                    dominante: '-',
+                    tipo: 'error',
+                    mensaje: 'No aplica al dominante seleccionado.',
+                });
+                return;
+            }
+
+            nombreDominante = nombreAtributoPorId(meta.data, atrId) || nombreDominante;
+            const matriz = construirMatrizRecibirParaDominante(meta, atrId);
+            matriz.columnas.forEach((c) => {
+                if (!globalColsMap[c.key]) {
+                    globalColsMap[c.key] = true;
+                    globalCols.push(c);
+                }
+            });
+            (matriz.ordenFilas || []).forEach((fv) => {
+                const rowKey = String(p.prd_id) + '||' + String(fv);
+                if (recibirState.filasExcluidas[rowKey]) return;
+                const costoDefault = costoBaseProducto(meta.data?.producto) || costoBaseProducto(p);
+                filas.push({
+                    prd_id: p.prd_id,
+                    producto: (p.prd_codigo || '-') + ' - ' + (p.prd_nombre || '-'),
+                    dominante: fv,
+                    celdas: matriz.filas[fv] || {},
+                    tipo: 'normal',
+                    row_key: rowKey,
+                    default_costo: costoDefault,
+                });
+            });
+        });
+
+        if (!globalCols.length) {
+            $('#recibir-grid-shell').html('<table class="table table-sm table-mini mb-0"><tbody><tr><td class="text-body-secondary">No hay columnas para el dominante seleccionado.</td></tr></tbody></table>');
+            recalcularTotalesRecibirMercancia();
+            return;
+        }
+
+        globalCols.sort((a, b) => {
+            const ga = String(a.group || 'Variable');
+            const gb = String(b.group || 'Variable');
+            const cmpG = ga.localeCompare(gb, 'es', { sensitivity: 'base' });
+            if (cmpG !== 0) return cmpG;
+            return String(a.label || '').localeCompare(String(b.label || ''), 'es', { sensitivity: 'base' });
+        });
+
+        const gruposHeader = [];
+        let actual = null;
+        globalCols.forEach((c) => {
+            const g = String(c.group || 'Variable');
+            if (!actual || actual.group !== g) {
+                actual = { group: g, count: 1 };
+                gruposHeader.push(actual);
+            } else {
+                actual.count += 1;
+            }
+        });
+
+        const mapaRowspan = {};
+        filas.forEach((r) => { mapaRowspan[r.prd_id] = (mapaRowspan[r.prd_id] || 0) + 1; });
+        const thGroups = gruposHeader.map((g) => '<th scope="colgroup" colspan="' + g.count + '">' + escapeHtml(g.group) + '</th>').join('');
+        const thCols = globalCols.map((c) => '<th scope="col" class="multi-col-head">' + escapeHtml(c.label) + '</th>').join('');
+
+        let html = '<table class="table table-sm table-mini mb-0 multi-grid-table" role="grid" aria-describedby="recibir-grid-help"><thead>' +
+            '<tr><th scope="col" rowspan="2" style="min-width:280px;">Producto</th><th scope="col" rowspan="2" style="min-width:160px;">' + escapeHtml(nombreDominante) + '</th>' + thGroups + '<th scope="col" rowspan="2" style="width:150px;">Costo unitario</th><th scope="col" rowspan="2" style="width:120px;">Acción</th></tr>' +
+            '<tr>' + thCols + '</tr></thead><tbody>';
+
+        const rendered = {};
+        let rowIndex = 0;
+        filas.forEach((f) => {
+            const first = !rendered[f.prd_id];
+            const tdProducto = first
+                ? '<th scope="rowgroup" rowspan="' + (mapaRowspan[f.prd_id] || 1) + '" class="fw-semibold align-top">' + escapeHtml(f.producto) + '</th>'
+                : '';
+            rendered[f.prd_id] = true;
+
+            if (f.tipo === 'error') {
+                html += '<tr>' + tdProducto + '<td class="text-body-secondary">-</td><td colspan="' + (globalCols.length + 2) + '" class="text-body-secondary">' + escapeHtml(f.mensaje || '-') + '</td></tr>';
+                return;
+            }
+
+            const skuIds = Object.values(f.celdas || {})
+                .map((linea) => Number(linea?.min_psk_id || 0))
+                .filter((id) => id > 0);
+
+            const celdas = globalCols.map((col, colIndex) => {
+                const linea = f.celdas?.[col.key] || null;
+                if (!linea) {
+                    return '<td class="multi-td-na"><input class="form-control form-control-sm multi-cell-na" type="text" value="N/A" readonly tabindex="-1"></td>';
+                }
+                const skuId = String(linea.min_psk_id || '');
+                const value = String(recibirState.cantidades[skuId] || '');
+                return '<td class="multi-td-ok"><input class="form-control form-control-sm multi-cell-ok js-recibir-grid-cantidad" type="number" min="0" step="0.01" data-prd-id="' + f.prd_id + '" data-row-key="' + escapeHtml(f.row_key || '') + '" data-min-psk-id="' + skuId + '" data-grid-r="' + rowIndex + '" data-grid-c="' + colIndex + '" value="' + escapeHtml(value) + '"></td>';
+            }).join('');
+            const rowKeyCosto = String(f.row_key || '');
+            const costoExistente = Number(recibirState.costosFila[rowKeyCosto] ?? 0);
+            const fueEditado = Boolean(recibirState.costosFilaEditados[rowKeyCosto]);
+            if (recibirState.costosFila[rowKeyCosto] === undefined || (!fueEditado && costoExistente <= 0 && Number(f.default_costo || 0) > 0)) {
+                recibirState.costosFila[rowKeyCosto] = Number(f.default_costo || 0);
+            }
+            const costoFila = Number(recibirState.costosFila[rowKeyCosto] || 0);
+            const inputCostoFila = '<input type="number" class="form-control form-control-sm text-end js-recibir-row-costo" min="0" step="0.01" data-row-key="' + escapeHtml(f.row_key || '') + '" value="' + escapeHtml(costoFila.toFixed(2)) + '">';
+            const btnFila = '<button type="button" class="btn btn-sm btn-outline-danger js-recibir-quitar-fila" data-prd-id="' + f.prd_id + '" data-row-key="' + escapeHtml(f.row_key || '') + '" data-skus="' + escapeHtml(skuIds.join(',')) + '" title="Quitar fila"><i class="ti tabler-trash"></i></button>';
+            const btnProducto = first
+                ? '<button type="button" class="btn btn-sm btn-outline-secondary js-recibir-quitar-producto-bloque ms-1" data-prd-id="' + f.prd_id + '" title="Quitar producto"><i class="ti tabler-package-off"></i></button>'
+                : '';
+            html += '<tr>' + tdProducto + '<th scope="row" class="fw-semibold">' + escapeHtml(f.dominante) + '</th>' + celdas + '<td>' + inputCostoFila + '</td><td class="text-nowrap">' + btnFila + btnProducto + '</td></tr>';
+            rowIndex += 1;
+        });
+
+        html += '</tbody></table>';
+        $('#recibir-grid-shell').html(html);
+        actualizarBotonRestaurarRecibir();
+        recalcularTotalesRecibirMercancia();
+    }
+
+    function recalcularTotalesRecibirMercancia() {
+        const descuentoTipo = String($('#recibir-descuento-tipo').val() || 'ninguno');
+        const descuentoValor = Number($('#recibir-descuento-valor').val() || 0);
+        const flete = Number($('#recibir-flete-total').val() || 0);
+        const incluirIva = $('#recibir-incluir-iva').is(':checked');
+        const ivaPorcentaje = incluirIva ? Number($('#recibir-iva-porcentaje').val() || 0) : 0;
+
+        $('#recibir-grid-shell .js-recibir-row-costo').each(function () {
+            const rowKey = String($(this).data('row-key') || '');
+            if (!rowKey) return;
+            recibirState.costosFila[rowKey] = Number($(this).val() || 0);
+        });
+
+        let piezas = 0;
+        let subtotal = 0;
+        $('#recibir-grid-shell .js-recibir-grid-cantidad').each(function () {
+            const qty = Number($(this).val() || 0);
+            const rowKey = String($(this).data('row-key') || '');
+            const sId = String($(this).data('min-psk-id') || '');
+            if (!sId) return;
+            recibirState.cantidades[sId] = String($(this).val() || '');
+            if (!(qty > 0)) return;
+            const costo = Number(recibirState.costosFila[rowKey] || 0);
+            piezas += qty;
+            subtotal += qty * costo;
+        });
+
+        subtotal = Number(subtotal.toFixed(2));
+        let descuento = 0;
+        if (descuentoTipo === 'porcentaje') descuento = subtotal * (Math.min(100, Math.max(0, descuentoValor)) / 100);
+        if (descuentoTipo === 'importe') descuento = Math.min(subtotal, Math.max(0, descuentoValor));
+        descuento = Number(descuento.toFixed(2));
+        const base = Number(Math.max(0, subtotal - descuento + Math.max(0, flete)).toFixed(2));
+        const iva = Number((base * (Math.max(0, ivaPorcentaje) / 100)).toFixed(2));
+        const total = Number((base + iva).toFixed(2));
+
+        $('#recibir-total-articulos').text(Number(piezas).toLocaleString('es-MX'));
+        $('#recibir-total-subtotal').text(toMoney(subtotal));
+        $('#recibir-total-descuento').text(toMoney(descuento));
+        $('#recibir-total-flete').text(toMoney(Math.max(0, flete)));
+        $('#recibir-total-iva').text(toMoney(iva));
+        $('#recibir-total-general').text(toMoney(total));
+        return { piezas, subtotal, descuento, flete: Math.max(0, flete), ivaPorcentaje: Math.max(0, ivaPorcentaje), iva, total };
+    }
+
+    function cargarTablaBuscarRecibir() {
+        if (recibirState.tablaModalInicializada) {
+            $('#tbl-recibir-buscar-productos').DataTable().ajax.reload();
+            return;
+        }
+
+        $('#tbl-recibir-buscar-productos').DataTable({
+            processing: true,
+            serverSide: true,
+            pageLength: 10,
+            searching: false,
+            lengthMenu: [10, 25, 50],
+            order: [[2, 'asc']],
+            ajax: {
+                url: rutas.productosBaseData,
+                data: function (d) {
+                    d.prd_mrc_id = $('#recibir-buscar-marca').val();
+                    d.prd_mdl_id = $('#recibir-buscar-modelo').val();
+                    d.prd_lna_id = $('#recibir-buscar-linea').val();
+                    d.prd_ctg_id = $('#recibir-buscar-categoria').val();
+                    if ($('#recibir-buscar-texto').val()) {
+                        d.search = d.search || {};
+                        d.search.value = $('#recibir-buscar-texto').val();
+                    }
+                }
+            },
+            drawCallback: function () {
+                $('#tbl-recibir-buscar-productos tbody input.js-recibir-modal-chk').each(function () {
+                    const id = String($(this).data('prd-id') || '');
+                    $(this).prop('checked', Boolean(recibirState.modalSeleccion[id]));
+                });
+            },
+            columns: [
+                {
+                    data: null,
+                    orderable: false,
+                    searchable: false,
+                    render: function (row) {
+                        const payload = encodeURIComponent(JSON.stringify({
+                            prd_id: row.prd_id,
+                            prd_tipo: row.prd_tipo,
+                            prd_codigo: row.prd_codigo,
+                            prd_nombre: row.prd_nombre,
+                            prd_costo: row.prd_costo ?? 0,
+                            prd_precio_base: row.prd_precio_base ?? 0
+                        }));
+                        return '<input type="checkbox" class="js-recibir-modal-chk" data-prd-id="' + row.prd_id + '" data-payload="' + payload + '">';
+                    }
+                },
+                { data: 'prd_codigo' },
+                { data: 'prd_nombre' },
+                { data: 'prd_tipo', render: (v) => (v === 'variable' ? 'Variable' : 'Simple') },
+                { data: 'marca_nombre', defaultContent: '-' },
+                { data: 'linea_nombre', defaultContent: '-' },
+                { data: 'skus_activos' }
+            ]
+        });
+
+        recibirState.tablaModalInicializada = true;
+    }
+
+    function sincronizarFiltrosRecibirDesdeUI() {
+        const filtros = {};
+        $('#recibir-atributos-shell .js-recibir-atr-filter').each(function () {
+            if (!$(this).is(':checked')) return;
+            const atr = String($(this).data('atr') || '').trim();
+            const val = String($(this).data('val') || '').trim();
+            if (!atr || !val) return;
+            if (!filtros[atr]) filtros[atr] = new Set();
+            filtros[atr].add(val);
+        });
+        recibirState.filtrosAtributos = filtros;
+    }
+
+    function cargarProductosRecibirSeleccionados() {
+        const productos = Object.values(recibirState.productos || {});
+        const sucursalId = Number($('#recibir-scl-id').val() || 0);
+        recibirState.meta = {};
+        if (!productos.length) {
+            renderProductosRecibirMercancia();
+            renderFiltrosRecibirMercancia();
+            renderMatrizRecibirMercancia();
+            return Promise.resolve();
+        }
+
+        return new Promise((resolve) => {
+            let pendientes = productos.length;
+            AppUI.showLoader();
+            productos.forEach((p) => {
+                $.getJSON(rutas.matrizProducto(p.prd_id), { min_scl_id: sucursalId || '' })
+                    .done((resp) => {
+                        const data = resp?.data || {};
+                        recibirState.meta[String(p.prd_id)] = {
+                            prd_id: p.prd_id,
+                            prd_tipo: data?.producto?.prd_tipo || p.prd_tipo || 'simple',
+                            data,
+                        };
+                    })
+                    .fail((xhr) => {
+                        recibirState.meta[String(p.prd_id)] = {
+                            prd_id: p.prd_id,
+                            prd_tipo: p.prd_tipo || 'simple',
+                            error: parseError(xhr),
+                        };
+                    })
+                    .always(() => {
+                        pendientes -= 1;
+                        if (pendientes > 0) return;
+                        AppUI.hideLoader();
+                        renderProductosRecibirMercancia();
+                        cargarDominantesRecibirMercancia();
+                        renderFiltrosRecibirMercancia();
+                        renderMatrizRecibirMercancia();
+                        resolve();
+                    });
+            });
         });
     }
 
@@ -1437,20 +2717,29 @@
         const columnas = [];
 
         lineas.forEach(function (linea) {
+            if (!lineaCumpleFiltros(linea)) return;
+
             const filaValor = String(linea.atributos?.[atrDominanteNombre] || 'Sin valor').trim();
             if (!filas[filaValor]) {
                 filas[filaValor] = {};
                 ordenFilas.push(filaValor);
             }
-            const keyCol = attrsCol.length
-                ? attrsCol.map((a) => a.atr_nombre + ':' + String(linea.atributos?.[a.atr_nombre] || '-')).join('||')
+
+            const pares = attrsCol
+                .map((a) => ({
+                    nombre: String(a.atr_nombre || 'Variable'),
+                    valor: String(linea.atributos?.[a.atr_nombre] || '-').trim(),
+                }))
+                .filter((p) => p.valor && p.valor !== '-');
+
+            const pivote = pares[0] || null;
+            const keyCol = pares.length
+                ? pares.map((p) => p.nombre + ':' + p.valor).join('||')
                 : '__base__';
-            const labelCol = attrsCol.length
-                ? attrsCol.map((a) => String(linea.atributos?.[a.atr_nombre] || '-')).join(' / ')
+            const labelCol = pivote
+                ? pivote.valor + (pares.length > 1 ? ' (' + pares.slice(1).map((p) => p.valor).join(' / ') + ')' : '')
                 : 'Existencia';
-            const groupCol = attrsCol.length
-                ? attrsCol.map((a) => String(a.atr_nombre || 'Variable')).join(' / ')
-                : 'Existencia';
+            const groupCol = pivote ? pivote.nombre : 'Existencia';
 
             if (!columnasMap[keyCol]) {
                 columnasMap[keyCol] = labelCol;
@@ -1577,7 +2866,23 @@
         });
 
         const thGroups = gruposHeader.map((g) => '<th scope="colgroup" colspan="' + g.count + '">' + escapeHtml(g.group) + '</th>').join('');
-        const thCols = globalColumnas.map((c) => '<th scope="col">' + escapeHtml(c.label) + '</th>').join('');
+        const conteoPorColumna = {};
+        globalColumnas.forEach((c) => { conteoPorColumna[c.key] = 0; });
+        filasRender.forEach(function (fila) {
+            if (fila.tipo !== 'normal') return;
+            globalColumnas.forEach(function (col) {
+                if (fila.celdas?.[col.key]) {
+                    conteoPorColumna[col.key] = (conteoPorColumna[col.key] || 0) + 1;
+                }
+            });
+        });
+
+        const thCols = globalColumnas.map((c, idx) => {
+            const aplica = Number(conteoPorColumna[c.key] || 0);
+            const clase = aplica > 0 ? 'multi-col-ok' : 'multi-col-na';
+            const detalle = aplica > 0 ? (aplica + ' filas aplicables') : 'Sin aplicación';
+            return '<th scope="col" class="multi-col-head ' + clase + ' col-head-' + idx + '">' + escapeHtml(c.label) + '<small>' + escapeHtml(detalle) + '</small></th>';
+        }).join('');
         let html = '' +
             '<table class="table table-sm table-mini mb-0 multi-grid-table" role="grid" aria-describedby="multi-grid-help">' +
             '<caption class="visually-hidden">Matriz global de captura de entradas por producto y ' + escapeHtml(nombreDominante) + '</caption>' +
@@ -1604,13 +2909,13 @@
                 const skuLinea = fila.celdas?.[col.key] || null;
                 if (!skuLinea) {
                     const ariaNa = 'No aplica. Producto ' + fila.producto + ', ' + nombreDominante + ' ' + fila.dominante + ', columna ' + col.label;
-                    return '<td class="multi-td-na"><input class="form-control form-control-sm multi-cell-na" type="text" value="N/A" readonly aria-readonly="true" tabindex="-1" title="No aplica para este producto" aria-label="' + escapeHtml(ariaNa) + '"></td>';
+                    return '<td class="multi-td-na col-cell-' + colIndex + '"><input class="form-control form-control-sm multi-cell-na" type="text" value="N/A" readonly aria-readonly="true" tabindex="-1" title="No aplica para este producto" aria-label="' + escapeHtml(ariaNa) + '"></td>';
                 }
                 const pskId = String(skuLinea.min_psk_id || '');
                 const meta = estadoInicial.multiMeta[String(fila.prd_id)] || {};
                 const valor = String(meta.cantidades?.[pskId] || '');
                 const ariaOk = 'Cantidad para producto ' + fila.producto + ', ' + nombreDominante + ' ' + fila.dominante + ', columna ' + col.label;
-                return '<td class="multi-td-ok"><input class="form-control form-control-sm js-multi-cantidad multi-cell-ok" type="number" min="0" step="0.01" data-prd-id="' + fila.prd_id + '" data-min-psk-id="' + pskId + '" data-grid-r="' + rowIndex + '" data-grid-c="' + colIndex + '" value="' + escapeHtml(valor) + '" title="Aplica para este producto" aria-label="' + escapeHtml(ariaOk) + '"></td>';
+                return '<td class="multi-td-ok col-cell-' + colIndex + '"><input class="form-control form-control-sm js-multi-cantidad multi-cell-ok" type="number" min="0" step="0.01" data-prd-id="' + fila.prd_id + '" data-min-psk-id="' + pskId + '" data-grid-r="' + rowIndex + '" data-grid-c="' + colIndex + '" value="' + escapeHtml(valor) + '" title="Aplica para este producto" aria-label="' + escapeHtml(ariaOk) + '"></td>';
             }).join('');
 
             html += '<tr>' + tdProducto + '<th scope="row" class="fw-semibold">' + escapeHtml(fila.dominante) + '</th>' + celdasHtml + '</tr>';
@@ -1619,8 +2924,10 @@
 
         html += '</tbody></table>';
         $('#multi-grid-shell').html(html);
+        applyGridDensity(multiGridDensity, false);
         const totalInputs = $('#multi-grid-shell .js-multi-cantidad').length;
         $('#multi-a11y-status').text('Matriz actualizada. ' + totalInputs + ' celdas editables disponibles.');
+        recalcularTotalesMulti();
     }
 
     function cargarOpcionesDominanteGlobal() {
@@ -1674,6 +2981,7 @@
                         dominante_fuente: data?.dominante_sugerido_fuente || 'sin_preferencia',
                         guardar_dominante: true,
                         cantidades: {},
+                        precio_unitario: Number(payload.prd_precio || 0),
                     };
                 })
                 .fail(function (xhr) {
@@ -1684,6 +2992,7 @@
                         error: parseError(xhr),
                         guardar_dominante: false,
                         cantidades: {},
+                        precio_unitario: Number(payload.prd_precio || 0),
                     };
                 })
                 .always(function () {
@@ -1691,7 +3000,9 @@
                     if (pendientes > 0) return;
 
                     AppUI.hideLoader();
+                    renderProductosSeleccionadosMulti();
                     cargarOpcionesDominanteGlobal();
+                    renderFiltrosAtributosMulti();
                     renderTablaMasivaMultiGlobal();
                 });
         });
@@ -1986,6 +3297,7 @@
                     { data: 'almacen_nombre', defaultContent: 'N/D' },
                     { data: 'tipo_entrada', render: (v) => tipoEntradaEtiqueta(v) },
                     { data: 'total_folios', className: 'text-end', render: (v) => Number(v || 0) },
+                    { data: 'total_documento', className: 'text-end', render: (v) => toMoney(v || 0) },
                     {
                         data: 'folios_texto',
                         render: (v) => {
@@ -2226,6 +3538,7 @@
         actualizarUIReferenciaEntradaMulti();
         resetFormDateTime('#form-inicial [name="min_fecha_movimiento"]');
         resetFormDateTime('#multi-fecha');
+        resetFormDateTime('#multi-fecha-emision');
         mostrarPasoProductoBase();
     });
     $('#btn-cambiar-producto-multi').on('click', function (e) {
@@ -2240,6 +3553,7 @@
     });
     $('#inicial-tipo-entrada').on('change', actualizarUIReferenciaEntrada);
     $('#multi-tipo-entrada').on('change', actualizarUIReferenciaEntradaMulti);
+    $('#multi-referencia-na').on('change', actualizarReferenciaNa);
     $('#multi-scl-id').on('change', function () {
         llenarAlmacenesPorSucursal('#multi-alm-id', $(this).val(), false);
         if (estadoInicial.modoMasivo && estadoInicial.colaProductos.length) {
@@ -2249,6 +3563,46 @@
     $('#multi-dominante-global').on('change', function () {
         capturarCantidadesMultiGlobal();
         renderTablaMasivaMultiGlobal();
+    });
+    $('.density-switch [data-density]').on('click', function () {
+        const density = String($(this).data('density') || 'compact');
+        applyGridDensity(density, true);
+    });
+    $(window).on('resize', function () {
+        if (multiGridDensity !== 'auto') return;
+        applyGridDensity('auto', false);
+    });
+    $(document).on('change', '#multi-atributos-shell .js-atr-filter-value', function () {
+        capturarCantidadesMultiGlobal();
+        sincronizarFiltrosAtributosDesdeUI();
+        renderTablaMasivaMultiGlobal();
+    });
+    $(document).on('input change', '#multi-productos-shell .js-multi-precio-producto', function () {
+        const prdId = String($(this).data('prd-id') || '');
+        const meta = estadoInicial.multiMeta[prdId];
+        if (meta) {
+            meta.precio_unitario = Number($(this).val() || 0);
+        }
+        recalcularTotalesMulti();
+    });
+    $(document).on('click', '#multi-productos-shell .js-multi-quitar-producto', function () {
+        const prdId = String($(this).data('prd-id') || '');
+        estadoInicial.colaProductos = (estadoInicial.colaProductos || []).filter((p) => String(p.prd_id) !== prdId);
+        delete estadoInicial.multiMeta[prdId];
+        delete seleccionProductos[prdId];
+        actualizarContadorSeleccionados();
+        renderProductosSeleccionadosMulti();
+        renderFiltrosAtributosMulti();
+        cargarOpcionesDominanteGlobal();
+        renderTablaMasivaMultiGlobal();
+        if (estadoInicial.colaProductos.length === 0) {
+            mostrarPasoProductoBase();
+            cargarProductosBase();
+        }
+    });
+    $(document).on('input change', '#multi-grid-shell .js-multi-cantidad,#multi-descuento-tipo,#multi-descuento-valor,#multi-flete-total,#multi-iva-porcentaje', function () {
+        capturarCantidadesMultiGlobal();
+        recalcularTotalesMulti();
     });
     $(document).on('keydown', '#multi-grid-shell .js-multi-cantidad', function (e) {
         const moveKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
@@ -2271,6 +3625,24 @@
 
         e.preventDefault();
         $next.trigger('focus').trigger('select');
+    });
+    $(document).on('focusin', '#multi-grid-shell .js-multi-cantidad', function () {
+        $('#multi-grid-shell .multi-focus-cell').removeClass('multi-focus-cell');
+        $('#multi-grid-shell .multi-focus-col').removeClass('multi-focus-col');
+        const $input = $(this);
+        const col = Number($input.data('grid-c'));
+        $input.closest('td').addClass('multi-focus-cell');
+        $('#multi-grid-shell .col-cell-' + col).addClass('multi-focus-col');
+        $('#multi-grid-shell .col-head-' + col).addClass('multi-focus-col');
+    });
+    $(document).on('focusout', '#multi-grid-shell .js-multi-cantidad', function () {
+        const $input = $(this);
+        setTimeout(function () {
+            if ($input.is(':focus')) return;
+            if ($('#multi-grid-shell .js-multi-cantidad:focus').length) return;
+            $('#multi-grid-shell .multi-focus-cell').removeClass('multi-focus-cell');
+            $('#multi-grid-shell .multi-focus-col').removeClass('multi-focus-col');
+        }, 0);
     });
     $('#inicial-dominante-atr-id').on('change', function () {
         if (estadoInicial.productoTipo !== 'variable' || !estadoInicial.matrizData) return;
@@ -2338,21 +3710,43 @@
         const sucursalId = Number($('#multi-scl-id').val() || 0);
         const almacenId = Number($('#multi-alm-id').val() || 0);
         const fecha = String($('#multi-fecha').val() || '');
+        const fechaEmision = String($('#multi-fecha-emision').val() || '');
+        const proveedorId = Number($('#multi-prv-id').val() || 0);
         const referencia = String($('#multi-referencia').val() || '');
         const motivo = String($('#multi-motivo').val() || '').trim();
+        const observaciones = String($('#multi-observaciones').val() || '').trim();
+        const descuentoTipo = String($('#multi-descuento-tipo').val() || 'ninguno');
+        const descuentoValor = Number($('#multi-descuento-valor').val() || 0);
+        const fleteTotal = Number($('#multi-flete-total').val() || 0);
+        const ivaPorcentaje = Number($('#multi-iva-porcentaje').val() || 0);
+        const esCompra = tipoEntrada === 'compra_remision' || tipoEntrada === 'compra_factura';
+        const esFactura = tipoEntrada === 'compra_factura';
 
         if (!sucursalId || !almacenId || !fecha || !motivo) {
             AppUI.showMessage('Validación', 'Completa sucursal, almacén, fecha y motivo para continuar.', 'warning');
             return;
         }
 
-        if ((tipoEntrada === 'compra_remision' || tipoEntrada === 'compra_factura') && !referencia.trim()) {
+        if (esCompra && !referencia.trim()) {
             AppUI.showMessage('Validación', 'La referencia es obligatoria para entradas por compra.', 'warning');
+            return;
+        }
+        if (esCompra && !fechaEmision) {
+            AppUI.showMessage('Validación', 'La fecha de emisión es obligatoria para compras con remisión o factura.', 'warning');
+            return;
+        }
+        if (esFactura && !proveedorId) {
+            AppUI.showMessage('Validación', 'Selecciona proveedor para compras con factura.', 'warning');
+            return;
+        }
+        if (descuentoTipo === 'porcentaje' && descuentoValor > 100) {
+            AppUI.showMessage('Validación', 'El descuento en porcentaje no puede ser mayor a 100.', 'warning');
             return;
         }
 
         const atrDominanteGlobal = Number($('#multi-dominante-global').val() || 0);
         const guardarDominanteGlobal = $('#multi-guardar-dominante-global').is(':checked');
+        const resumenTotales = recalcularTotalesMulti();
 
         const grupos = {};
         $('#multi-grid-shell .js-multi-cantidad').each(function () {
@@ -2366,9 +3760,12 @@
             if (!grupos[prdId]) {
                 grupos[prdId] = [];
             }
+            const meta = estadoInicial.multiMeta[String(prdId)] || {};
+            const precioUnitario = Number(meta.precio_unitario || 0);
             grupos[prdId].push({
                 min_psk_id: pskId,
-                min_cantidad: cantidad
+                min_cantidad: cantidad,
+                min_precio_unitario: Number(precioUnitario.toFixed(2))
             });
         });
 
@@ -2380,9 +3777,16 @@
                 min_scl_id: sucursalId,
                 min_alm_id: almacenId,
                 min_fecha_movimiento: fecha,
+                min_fecha_emision: fechaEmision || null,
                 min_documento_tipo: tipoEntrada,
                 min_documento_referencia: referencia,
                 min_motivo_texto: motivo,
+                min_observaciones: observaciones || null,
+                min_prv_id: proveedorId || null,
+                min_descuento_tipo: descuentoTipo,
+                min_descuento_valor: Number(descuentoValor.toFixed(2)),
+                min_flete_total: Number(fleteTotal.toFixed(2)),
+                min_iva_porcentaje: Number(ivaPorcentaje.toFixed(2)),
                 lineas: grupos[prdId]
             };
             if (meta.prd_tipo === 'variable' && atrDominanteGlobal && productoAdmiteDominante(meta, atrDominanteGlobal)) {
@@ -2428,7 +3832,15 @@
                         min_documento_tipo: tipoEntrada,
                         min_documento_referencia: referencia,
                         min_motivo_texto: motivo,
+                        min_observaciones: observaciones || null,
                         min_fecha_movimiento: fecha,
+                        min_fecha_emision: fechaEmision || null,
+                        min_prv_id: proveedorId || null,
+                        min_descuento_tipo: descuentoTipo,
+                        min_descuento_valor: Number(descuentoValor.toFixed(2)),
+                        min_flete_total: Number(fleteTotal.toFixed(2)),
+                        min_iva_porcentaje: Number(ivaPorcentaje.toFixed(2)),
+                        min_total_documento: resumenTotales.total,
                     });
                 }
 
@@ -2438,6 +3850,7 @@
                 $('#form-inicial-multi')[0].reset();
                 actualizarUIReferenciaEntradaMulti();
                 resetFormDateTime('#multi-fecha');
+                resetFormDateTime('#multi-fecha-emision');
                 mostrarPasoProductoBase();
                 cargarProductosBase();
                 return;
@@ -2465,6 +3878,363 @@
         };
 
         enviarSiguiente();
+    });
+
+    $('#recibir-tipo-entrada').on('change', function () {
+        actualizarUIRecibirReferencia();
+        aplicarPresetRecibirMercancia();
+        recalcularTotalesRecibirMercancia();
+    });
+    $('#recibir-referencia-na').on('change', actualizarUIRecibirReferencia);
+    $('#recibir-scl-id').on('change', function () {
+        llenarAlmacenesPorSucursal('#recibir-alm-id', $(this).val(), false);
+        if (Object.keys(recibirState.productos || {}).length) {
+            cargarProductosRecibirSeleccionados();
+        }
+    });
+    $('#recibir-incluir-iva,#recibir-iva-porcentaje,#recibir-descuento-tipo,#recibir-descuento-valor,#recibir-flete-total').on('input change', recalcularTotalesRecibirMercancia);
+    $('#recibir-dominante-global').on('change', function () {
+        renderMatrizRecibirMercancia();
+    });
+    $(document).on('change', '#recibir-atributos-shell .js-recibir-atr-filter', function () {
+        sincronizarFiltrosRecibirDesdeUI();
+        renderMatrizRecibirMercancia();
+    });
+    $(document).on('click', '#recibir-productos-shell .js-recibir-quitar-producto', function () {
+        const prdId = String($(this).data('prd-id') || '');
+        if (recibirState.productos[prdId]) {
+            recibirState.productosQuitados[prdId] = recibirState.productos[prdId];
+        }
+        delete recibirState.productos[prdId];
+        delete recibirState.meta[prdId];
+        Object.keys(recibirState.costosFila || {}).forEach((key) => {
+            if (key.startsWith(prdId + '||')) delete recibirState.costosFila[key];
+        });
+        Object.keys(recibirState.filasExcluidas || {}).forEach((key) => {
+            if (key.startsWith(prdId + '||')) delete recibirState.filasExcluidas[key];
+        });
+        cargarProductosRecibirSeleccionados();
+        actualizarBotonRestaurarRecibir();
+    });
+    $(document).on('click', '#recibir-grid-shell .js-recibir-quitar-fila', function () {
+        const rowKey = String($(this).data('row-key') || '');
+        const skuRaw = String($(this).data('skus') || '');
+        if (!rowKey) return;
+        recibirState.filasExcluidas[rowKey] = true;
+        skuRaw.split(',').map((x) => String(x).trim()).filter(Boolean).forEach((skuId) => {
+            delete recibirState.cantidades[skuId];
+        });
+        renderMatrizRecibirMercancia();
+    });
+    $(document).on('click', '#recibir-grid-shell .js-recibir-quitar-producto-bloque', function () {
+        const prdId = String($(this).data('prd-id') || '');
+        if (!prdId) return;
+        if (recibirState.productos[prdId]) {
+            recibirState.productosQuitados[prdId] = recibirState.productos[prdId];
+        }
+        delete recibirState.productos[prdId];
+        delete recibirState.meta[prdId];
+        Object.keys(recibirState.costosFila || {}).forEach((key) => {
+            if (key.startsWith(prdId + '||')) delete recibirState.costosFila[key];
+        });
+        Object.keys(recibirState.filasExcluidas || {}).forEach((key) => {
+            if (key.startsWith(prdId + '||')) delete recibirState.filasExcluidas[key];
+        });
+        cargarProductosRecibirSeleccionados();
+        actualizarBotonRestaurarRecibir();
+    });
+    $('#btn-recibir-restaurar-filas').on('click', function () {
+        const totalExcluidas = Object.keys(recibirState.filasExcluidas || {}).length;
+        const productosQuitados = Object.values(recibirState.productosQuitados || {});
+        const totalProductosQuitados = productosQuitados.length;
+        if (!totalExcluidas && !totalProductosQuitados) return;
+
+        productosQuitados.forEach((p) => {
+            recibirState.productos[String(p.prd_id)] = p;
+        });
+        recibirState.productosQuitados = {};
+        recibirState.filasExcluidas = {};
+        cargarProductosRecibirSeleccionados();
+        AppUI.showMessage('Éxito', 'Se restauraron ' + totalExcluidas + ' fila(s) y ' + totalProductosQuitados + ' producto(s).', 'success');
+    });
+    $(document).on('input change', '#recibir-grid-shell .js-recibir-grid-cantidad', recalcularTotalesRecibirMercancia);
+    $(document).on('input change', '#recibir-grid-shell .js-recibir-row-costo', recalcularTotalesRecibirMercancia);
+    $(document).on('input change', '#recibir-grid-shell .js-recibir-row-costo', function () {
+        const rowKey = String($(this).data('row-key') || '');
+        if (!rowKey) return;
+        recibirState.costosFilaEditados[rowKey] = true;
+    });
+    $(document).on('keydown', '#recibir-grid-shell .js-recibir-grid-cantidad', function (e) {
+        const moveKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+        if (!moveKeys.includes(e.key)) return;
+        const $actual = $(this);
+        const r = Number($actual.data('grid-r'));
+        const c = Number($actual.data('grid-c'));
+        if (Number.isNaN(r) || Number.isNaN(c)) return;
+        let nextR = r;
+        let nextC = c;
+        if (e.key === 'ArrowUp') nextR -= 1;
+        if (e.key === 'ArrowDown') nextR += 1;
+        if (e.key === 'ArrowLeft') nextC -= 1;
+        if (e.key === 'ArrowRight') nextC += 1;
+        const $next = $('#recibir-grid-shell .js-recibir-grid-cantidad[data-grid-r="' + nextR + '"][data-grid-c="' + nextC + '"]').first();
+        if (!$next.length) return;
+        e.preventDefault();
+        $next.trigger('focus').trigger('select');
+    });
+
+    $('#btn-recibir-buscar-articulos').on('click', function () {
+        cargarTablaBuscarRecibir();
+        modalRecibirBuscar.show();
+    });
+    $('#btn-recibir-filtrar-modal').on('click', function (e) {
+        e.preventDefault();
+        cargarTablaBuscarRecibir();
+    });
+    $('#btn-recibir-limpiar-modal').on('click', function (e) {
+        e.preventDefault();
+        $('#recibir-buscar-texto').val('');
+        $('#recibir-buscar-marca').val('');
+        $('#recibir-buscar-modelo').val('');
+        $('#recibir-buscar-linea').val('');
+        $('#recibir-buscar-categoria').val('');
+        if (recibirState.tablaModalInicializada) {
+            $('#tbl-recibir-buscar-productos').DataTable().ajax.reload();
+        }
+    });
+    $('#recibir-buscar-linea').on('change', function () {
+        const linea = String($(this).val() || '');
+        if (!linea) {
+            $('#recibir-buscar-categoria option').show();
+            return;
+        }
+        $('#recibir-buscar-categoria option').each(function () {
+            if (!$(this).val()) return;
+            $(this).toggle(String($(this).data('lna')) === linea);
+        });
+        if ($('#recibir-buscar-categoria option:selected').is(':hidden')) {
+            $('#recibir-buscar-categoria').val('');
+        }
+    });
+    $(document).on('change', '.js-recibir-modal-chk', function () {
+        const payloadRaw = String($(this).data('payload') || '');
+        let row = null;
+        try {
+            row = payloadRaw ? JSON.parse(decodeURIComponent(payloadRaw)) : null;
+        } catch (_) {
+            row = null;
+        }
+        if (!row || !row.prd_id) return;
+        const key = String(row.prd_id);
+        if ($(this).is(':checked')) {
+            recibirState.modalSeleccion[key] = row;
+        } else {
+            delete recibirState.modalSeleccion[key];
+        }
+    });
+    $('#btn-recibir-agregar-seleccionados').on('click', async function () {
+        const seleccionados = Object.values(recibirState.modalSeleccion || {});
+        if (!seleccionados.length) {
+            AppUI.showMessage('Validación', 'Selecciona al menos un producto del modal.', 'warning');
+            return;
+        }
+        seleccionados.forEach((p) => {
+            const prdKey = String(p.prd_id);
+            recibirState.productos[prdKey] = p;
+            delete recibirState.productosQuitados[prdKey];
+            Object.keys(recibirState.filasExcluidas || {}).forEach((key) => {
+                if (key.startsWith(prdKey + '||')) delete recibirState.filasExcluidas[key];
+            });
+        });
+
+        recibirState.modalSeleccion = {};
+        if (recibirState.tablaModalInicializada) {
+            $('#tbl-recibir-buscar-productos').DataTable().ajax.reload(null, false);
+        }
+        await cargarProductosRecibirSeleccionados();
+        AppUI.showMessage('Éxito', 'Se agregaron ' + seleccionados.length + ' producto(s) a la matriz de recepción.', 'success');
+        modalRecibirBuscar.hide();
+    });
+
+    $('#form-recibir-mercancia').on('submit', function (e) {
+        e.preventDefault();
+        const tipoEntrada = String($('#recibir-tipo-entrada').val() || 'compra_factura');
+        const sucursalId = Number($('#recibir-scl-id').val() || 0);
+        const almacenId = Number($('#recibir-alm-id').val() || 0);
+        const fechaCaptura = String($('#recibir-fecha-captura').val() || '');
+        const fechaEmision = String($('#recibir-fecha-emision').val() || '');
+        const proveedorId = Number($('#recibir-prv-id').val() || 0);
+        const referencia = String($('#recibir-referencia').val() || '').trim();
+        const observaciones = String($('#recibir-observaciones').val() || '').trim();
+        const descuentoTipo = String($('#recibir-descuento-tipo').val() || 'ninguno');
+        const descuentoValor = Number($('#recibir-descuento-valor').val() || 0);
+        const flete = Number($('#recibir-flete-total').val() || 0);
+        const iva = $('#recibir-incluir-iva').is(':checked') ? Number($('#recibir-iva-porcentaje').val() || 0) : 0;
+        const esCompra = tipoEntrada === 'compra_remision' || tipoEntrada === 'compra_factura';
+        const esFactura = tipoEntrada === 'compra_factura';
+
+        if (!sucursalId || !almacenId || !fechaCaptura) {
+            AppUI.showMessage('Validación', 'Completa tipo, sucursal, almacén y fecha de captura.', 'warning');
+            return;
+        }
+        if (esCompra && !referencia) {
+            AppUI.showMessage('Validación', 'La referencia es obligatoria para compras.', 'warning');
+            return;
+        }
+        if (esCompra && !fechaEmision) {
+            AppUI.showMessage('Validación', 'La fecha de factura/remisión es obligatoria para compras.', 'warning');
+            return;
+        }
+        if (esFactura && !proveedorId) {
+            AppUI.showMessage('Validación', 'Selecciona proveedor para compras con factura.', 'warning');
+            return;
+        }
+
+        const lineas = $('#recibir-grid-shell .js-recibir-grid-cantidad').toArray()
+            .map((el) => {
+                const $el = $(el);
+                const prdId = Number($el.data('prd-id') || 0);
+                const skuId = Number($el.data('min-psk-id') || 0);
+                const rowKey = String($el.data('row-key') || '');
+                const qty = Number($el.val() || 0);
+                const costo = Number(recibirState.costosFila[rowKey] || 0);
+                return {
+                    prd_id: prdId,
+                    min_psk_id: skuId,
+                    min_cantidad: qty,
+                    min_precio_unitario: costo,
+                };
+            })
+            .filter((linea) => linea.prd_id > 0 && linea.min_psk_id > 0 && linea.min_cantidad > 0);
+
+        if (!lineas.length) {
+            AppUI.showMessage('Validación', 'Captura al menos una cantidad recibida mayor a cero.', 'warning');
+            return;
+        }
+
+        const grupos = {};
+        lineas.forEach((linea) => {
+            if (!grupos[linea.prd_id]) grupos[linea.prd_id] = [];
+            grupos[linea.prd_id].push({
+                min_psk_id: linea.min_psk_id,
+                min_cantidad: linea.min_cantidad,
+                min_precio_unitario: linea.min_precio_unitario,
+            });
+        });
+
+        const atrDominanteGlobal = Number($('#recibir-dominante-global').val() || 0);
+        const lotes = Object.keys(grupos).map((prdIdRaw) => {
+            const prdId = Number(prdIdRaw);
+            const payload = {
+                prd_id: prdId,
+                min_scl_id: sucursalId,
+                min_alm_id: almacenId,
+                min_fecha_movimiento: fechaCaptura,
+                min_fecha_emision: fechaEmision || null,
+                min_documento_tipo: tipoEntrada,
+                min_documento_referencia: referencia,
+                min_motivo_texto: 'Recepción de mercancía manual',
+                min_observaciones: observaciones || null,
+                min_prv_id: proveedorId || null,
+                min_descuento_tipo: descuentoTipo,
+                min_descuento_valor: Number(descuentoValor.toFixed(2)),
+                min_flete_total: Number(flete.toFixed(2)),
+                min_iva_porcentaje: Number(iva.toFixed(2)),
+                lineas: grupos[prdIdRaw],
+            };
+            const meta = recibirState.meta[String(prdId)] || null;
+            if (meta && meta.prd_tipo === 'variable' && atrDominanteGlobal && productoAdmiteDominante(meta, atrDominanteGlobal)) {
+                payload.dominante_atr_id = atrDominanteGlobal;
+            }
+            return payload;
+        });
+
+        const resumen = recalcularTotalesRecibirMercancia();
+        AppUI.showLoader();
+        let idx = 0;
+        let ok = 0;
+        const errores = [];
+        const folios = [];
+
+        const siguiente = function () {
+            if (idx >= lotes.length) {
+                AppUI.hideLoader();
+                if (ok > 0) {
+                    cargarExistencias();
+                    cargarKardex();
+                    cargarReportesEntradas();
+                }
+
+                if (!errores.length) {
+                    AppUI.showMessage('Éxito', 'Recepción registrada correctamente.', 'success');
+                } else if (ok > 0) {
+                    AppUI.showMessage('Aviso', 'Se registró parcialmente. Primer error: ' + errores[0], 'warning');
+                } else {
+                    AppUI.showMessage('Error', errores[0] || 'No fue posible registrar la recepción.', 'error');
+                }
+
+                if (folios.length) {
+                    const atrDominanteGlobal = Number($('#recibir-dominante-global').val() || 0);
+                    descargarReporteEntradasSeleccionadas({
+                        folios,
+                        atr_dominante_id: atrDominanteGlobal || null,
+                        min_scl_id: sucursalId,
+                        min_alm_id: almacenId,
+                        min_documento_tipo: tipoEntrada,
+                        min_documento_referencia: referencia,
+                        min_motivo_texto: 'Recepción de mercancía manual',
+                        min_observaciones: observaciones || null,
+                        min_fecha_movimiento: fechaCaptura,
+                        min_fecha_emision: fechaEmision || null,
+                        min_prv_id: proveedorId || null,
+                        min_descuento_tipo: descuentoTipo,
+                        min_descuento_valor: Number(descuentoValor.toFixed(2)),
+                        min_flete_total: Number(flete.toFixed(2)),
+                        min_iva_porcentaje: Number(iva.toFixed(2)),
+                        min_total_documento: resumen.total,
+                    });
+                }
+
+                if (!errores.length) {
+                    recibirState.productos = {};
+                    recibirState.meta = {};
+                    recibirState.filtrosAtributos = {};
+                    recibirState.cantidades = {};
+                    recibirState.costosFila = {};
+                    recibirState.filasExcluidas = {};
+                    recibirState.productosQuitados = {};
+                    renderProductosRecibirMercancia();
+                    renderFiltrosRecibirMercancia();
+                    renderMatrizRecibirMercancia();
+                    actualizarBotonRestaurarRecibir();
+                    $('#form-recibir-mercancia')[0].reset();
+                    resetFormDateTime('#recibir-fecha-captura');
+                    resetFormDateTime('#recibir-fecha-emision');
+                    actualizarUIRecibirReferencia();
+                    aplicarPresetRecibirMercancia();
+                }
+                return;
+            }
+
+            $.ajax({
+                url: rutas.entradaMasiva,
+                method: 'POST',
+                dataType: 'json',
+                data: lotes[idx],
+            }).done(function (resp) {
+                ok += 1;
+                (resp?.data?.folios || []).forEach((f) => {
+                    if (f) folios.push(String(f));
+                });
+            }).fail(function (xhr) {
+                errores.push(parseError(xhr));
+            }).always(function () {
+                idx += 1;
+                siguiente();
+            });
+        };
+
+        siguiente();
     });
 
     $('#form-salida').on('submit', function (e) {
@@ -2568,15 +4338,32 @@
     llenarAlmacenesPorSucursal('#flt-kar-alm', '', true);
     llenarAlmacenesPorSucursal('#flt-min-alm', '', true);
     llenarAlmacenesPorSucursal('#multi-alm-id', '', false);
+    llenarAlmacenesPorSucursal('#recibir-alm-id', '', false);
+
+    try {
+        multiGridDensity = normalizeDensity(localStorage.getItem(storageKeyDensity) || 'auto');
+    } catch (_) {
+        multiGridDensity = 'auto';
+    }
+    applyGridDensity(multiGridDensity, false);
 
     mostrarPasoProductoBase();
     resetEstadoInicial();
     actualizarContadorSeleccionados();
     actualizarUIReferenciaEntrada();
     actualizarUIReferenciaEntradaMulti();
+    actualizarUIRecibirReferencia();
     resetFormDateTime('#form-inicial [name="min_fecha_movimiento"]');
     resetFormDateTime('#multi-fecha');
+    resetFormDateTime('#multi-fecha-emision');
+    resetFormDateTime('#recibir-fecha-captura');
+    resetFormDateTime('#recibir-fecha-emision');
     resetFormDateTime('#form-salida [name="min_fecha_movimiento"]');
+    aplicarPresetRecibirMercancia();
+    renderProductosRecibirMercancia();
+    renderFiltrosRecibirMercancia();
+    renderMatrizRecibirMercancia();
+    actualizarBotonRestaurarRecibir();
 
     cargarProductosBase();
     if (!soloEntradas) {
