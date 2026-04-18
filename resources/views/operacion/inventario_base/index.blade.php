@@ -1187,7 +1187,7 @@
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label">Categoría</label>
+                            <label class="form-label">Concepto</label>
                             <select id="recibir-buscar-categoria" class="form-select form-select-sm">
                                 <option value="">Todas</option>
                                 @foreach($opciones['categorias'] as $categoria)

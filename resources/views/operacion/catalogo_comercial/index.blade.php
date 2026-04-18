@@ -4,6 +4,7 @@
 
 @push('vendor-styles')
     <link rel="stylesheet" href="{{ asset('vendor-template/assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}" />
+    <link rel="stylesheet" href="{{ asset('vendor-template/assets/vendor/libs/select2/select2.css') }}" />
     <style>
         .cc-table td,
         .cc-table th {
@@ -329,6 +330,44 @@
             margin: 0;
         }
 
+        .cc-select2-tags + .select2-container {
+            width: 100% !important;
+        }
+
+        .cc-select2-tags + .select2-container .select2-selection--multiple {
+            min-height: 2.45rem;
+            border: 1px solid var(--ls-border);
+            border-radius: var(--ls-radius);
+            background: var(--ls-surface);
+            box-shadow: 0 1px 2px rgba(10,37,64,.04);
+            padding: 0.2rem 0.35rem;
+        }
+
+        .cc-select2-tags + .select2-container .select2-selection--multiple .select2-selection__choice {
+            background: rgba(115, 103, 240, 0.1);
+            border: 1px solid rgba(115, 103, 240, 0.22);
+            color: var(--ls-accent);
+            border-radius: 999px;
+            font-size: 0.74rem;
+            font-weight: 600;
+            padding: 0.2rem 0.58rem;
+            margin-top: 0.2rem;
+            margin-right: 0.35rem;
+        }
+
+        .cc-select2-tags + .select2-container .select2-selection--multiple .select2-selection__choice__remove {
+            color: var(--ls-accent);
+            margin-right: 0.25rem;
+        }
+
+        .cc-select2-tags + .select2-container .select2-search__field {
+            margin-top: 0.25rem;
+        }
+
+        .select2-dropdown {
+            border: 1px solid var(--ls-border);
+        }
+
         .cc-summary-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -550,7 +589,7 @@
                     <span class="cc-step"><span class="dot"></span>Paso 1: elige catálogo</span>
                     <span class="cc-step"><span class="dot"></span>Paso 2: crea el registro</span>
                     <div class="mt-2 text-body-secondary">
-                        Desde aquí das de alta <strong>Marca</strong>, <strong>Línea</strong>, <strong>Categoría</strong>, <strong>Unidad</strong>, <strong>Concepto</strong> y <strong>Motivo</strong>.
+                        Desde aquí das de alta <strong>Marca</strong>, <strong>Línea</strong>, <strong>Concepto</strong>, <strong>Unidad</strong> y <strong>Motivo</strong>.
                     </div>
                 </div>
 
@@ -560,9 +599,8 @@
                             <button type="button" class="btn btn-outline-primary btn-catalogo-target" data-catalogo-target="marcas">Marca</button>
                             <button type="button" class="btn btn-outline-primary btn-catalogo-target" data-catalogo-target="modelos">Modelo</button>
                             <button type="button" class="btn btn-outline-primary btn-catalogo-target" data-catalogo-target="lineas">Línea</button>
-                            <button type="button" class="btn btn-outline-primary btn-catalogo-target" data-catalogo-target="categorias">Categoría</button>
+                            <button type="button" class="btn btn-outline-primary btn-catalogo-target" data-catalogo-target="categorias">Concepto</button>
                             <button type="button" class="btn btn-outline-primary btn-catalogo-target" data-catalogo-target="unidades">Unidad</button>
-                            <button type="button" class="btn btn-outline-primary btn-catalogo-target" data-catalogo-target="conceptos">Concepto</button>
                             <button type="button" class="btn btn-outline-primary btn-catalogo-target" data-catalogo-target="motivos">Motivo</button>
                         </div>
                         <div class="cc-active-hint">
@@ -579,9 +617,8 @@
                     <option value="marcas">Marcas</option>
                     <option value="modelos">Modelos</option>
                     <option value="lineas">Líneas</option>
-                    <option value="categorias">Categorías</option>
+                    <option value="categorias">Conceptos</option>
                     <option value="unidades">Unidades de Medida</option>
-                    <option value="conceptos">Conceptos</option>
                     <option value="motivos">Motivos</option>
                 </select>
 
@@ -751,7 +788,7 @@
                                             </div>
                                             <div class="col-md-4"><label class="form-label">Proveedor</label><select class="form-select" name="prd_prv_id" id="prd_prv_id"><option value="">Sin proveedor asignado</option>@foreach($opciones['proveedores'] as $item)<option value="{{ $item->prv_id }}">{{ $item->prv_nombre_empresa }}</option>@endforeach</select></div>
                                             <div class="col-md-4"><label class="form-label">Línea</label><select class="form-select" name="prd_lna_id" id="prd_lna_id" required><option value="">Selecciona</option>@foreach($opciones['lineas'] as $item)<option value="{{ $item->lna_id }}">{{ $item->lna_nombre }}</option>@endforeach</select></div>
-                                            <div class="col-md-4"><label class="form-label">Categoría</label><select class="form-select" name="prd_ctg_id" id="prd_ctg_id" required><option value="">Selecciona</option>@foreach($opciones['categorias'] as $item)<option value="{{ $item->ctg_id }}">{{ $item->ctg_nombre }}</option>@endforeach</select></div>
+                                            <div class="col-md-4"><label class="form-label">Concepto</label><select class="form-select" name="prd_ctg_id" id="prd_ctg_id" required><option value="">Selecciona</option>@foreach($opciones['categorias'] as $item)<option value="{{ $item->ctg_id }}">{{ $item->ctg_nombre }}</option>@endforeach</select></div>
                                             <div class="col-md-4"><label class="form-label">Unidad</label><select class="form-select" name="prd_umd_id" id="prd_umd_id" required><option value="">Selecciona</option>@foreach($opciones['unidades'] as $item)<option value="{{ $item->umd_id }}"{{ $item->umd_es_predeterminada ? ' data-predeterminada="1"' : '' }}>{{ $item->umd_nombre }} ({{ $item->umd_codigo }}){{ $item->umd_es_predeterminada ? ' ★' : '' }}</option>@endforeach</select></div>
                                             <div class="col-md-2"><label class="form-label">Código de barras</label><input type="text" class="form-control" name="prd_codigo_barras" id="prd_codigo_barras" maxlength="80" placeholder="Opcional"></div>
                                             <div class="col-md-2"><label class="form-label">Clave SAT</label><input type="text" class="form-control" name="prd_clave_sat" id="prd_clave_sat" maxlength="20" placeholder="Opcional"></div>
@@ -759,17 +796,17 @@
                                                 <label class="form-label d-block">Tipo de producto</label>
                                                 <div class="cc-product-type">
                                                     <div class="form-check">
-                                                        <input class="form-check-input d-none" type="radio" name="prd_tipo" id="prd_tipo_simple" value="simple" checked>
-                                                        <label class="form-check-label" for="prd_tipo_simple">
-                                                            <span class="fw-semibold d-block">Simple</span>
-                                                            <small class="text-body-secondary">Genera un solo SKU automático.</small>
-                                                        </label>
-                                                    </div>
-                                                    <div class="form-check">
-                                                        <input class="form-check-input d-none" type="radio" name="prd_tipo" id="prd_tipo_variable" value="variable">
+                                                        <input class="form-check-input d-none" type="radio" name="prd_tipo" id="prd_tipo_variable" value="variable" checked>
                                                         <label class="form-check-label" for="prd_tipo_variable">
                                                             <span class="fw-semibold d-block">Variable</span>
                                                             <small class="text-body-secondary">Genera corridas automáticas con atributos y valores seleccionados.</small>
+                                                        </label>
+                                                    </div>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input d-none" type="radio" name="prd_tipo" id="prd_tipo_simple" value="simple">
+                                                        <label class="form-check-label" for="prd_tipo_simple">
+                                                            <span class="fw-semibold d-block">Simple</span>
+                                                            <small class="text-body-secondary">Genera un solo SKU automático.</small>
                                                         </label>
                                                     </div>
                                                 </div>
@@ -915,7 +952,7 @@
                                 <tr>
                                     <th>Empresa</th>
                                     <th>Asesor de ventas</th>
-                                    <th>Categoría</th>
+                                    <th>Concepto</th>
                                     <th>Contactos</th>
                                     <th>Razón social</th>
                                     <th>RFC</th>
@@ -1047,7 +1084,7 @@
                                 <option value="inactivo">Inactivo</option>
                             </select>
                         </div>
-                        {{-- Campo exclusivo para Categorías: línea a la que pertenece --}}
+                        {{-- Campo exclusivo para Conceptos (antes Categorías): línea a la que pertenece --}}
                         <div id="cat-categoria-linea-wrap" style="display:none;" class="col-md-5">
                             <label class="form-label">Línea <span class="text-danger">*</span></label>
                             <select class="form-select" name="lna_id" id="cat_lna_id">
@@ -1056,7 +1093,7 @@
                                     <option value="{{ $linea->lna_id }}">{{ $linea->lna_nombre }}</option>
                                 @endforeach
                             </select>
-                            <div class="form-text text-body-secondary">El mismo nombre de categoría puede usarse en distintas líneas.</div>
+                            <div class="form-text text-body-secondary">El mismo nombre de concepto puede usarse en distintas líneas.</div>
                         </div>
 
                         {{-- Campos exclusivos para Unidades de Medida --}}
@@ -1320,6 +1357,7 @@
 
 @push('vendor-scripts')
     <script src="{{ asset('vendor-template/assets/vendor/libs/datatables-bs5/datatables-bootstrap5.js') }}"></script>
+    <script src="{{ asset('vendor-template/assets/vendor/libs/select2/select2.js') }}"></script>
 @endpush
 
 @push('page-scripts')
@@ -1398,7 +1436,7 @@
         marcas: 'Marca',
         modelos: 'Modelo',
         lineas: 'Línea',
-        categorias: 'Categoría',
+        categorias: 'Concepto',
         unidades: 'Unidad',
         conceptos: 'Concepto',
         motivos: 'Motivo',
@@ -1407,7 +1445,7 @@
         marcas: 'Marcas',
         modelos: 'Modelos',
         lineas: 'Líneas',
-        categorias: 'Categorías',
+        categorias: 'Conceptos',
         unidades: 'Unidades',
         conceptos: 'Conceptos',
         motivos: 'Motivos',
@@ -1739,19 +1777,51 @@
     }
 
     function renderChecklistAtributosProducto() {
-        const html = catalogoState.atributos.map(function (atributo) {
-            const checked = catalogoState.productoAtributosSeleccionados.includes(Number(atributo.atr_id)) ? 'checked' : '';
-            const selectedClass = checked ? 'is-selected' : '';
+        if (!catalogoState.atributos.length) {
+            $('#producto-atributos-checklist').html('<div class="text-body-secondary">No hay atributos activos disponibles.</div>');
+            return;
+        }
 
-            return `
-                <label class="cc-attr-option ${selectedClass}">
-                    <input class="form-check-input producto-atributo-check me-2" type="checkbox" name="atributo_ids[]" value="${atributo.atr_id}" ${checked}>
-                    <span class="fw-semibold">${atributo.atr_nombre}</span>
-                </label>
-            `;
+        const options = catalogoState.atributos.map(function (atributo) {
+            const selected = catalogoState.productoAtributosSeleccionados.includes(Number(atributo.atr_id)) ? 'selected' : '';
+            return `<option value="${atributo.atr_id}" ${selected}>${atributo.atr_nombre}</option>`;
         }).join('');
 
-        $('#producto-atributos-checklist').html(html || '<div class="text-body-secondary">No hay atributos activos disponibles.</div>');
+        const html = `
+            <select id="producto-atributos-select" class="form-select cc-select2-tags" name="atributo_ids[]" multiple>
+                ${options}
+            </select>
+        `;
+
+        $('#producto-atributos-checklist').html(html);
+    }
+
+    function inicializarSelectTagsProducto() {
+        const $atributos = $('#producto-atributos-select');
+        if ($atributos.length) {
+            if ($atributos.hasClass('select2-hidden-accessible')) {
+                $atributos.select2('destroy');
+            }
+            $atributos.select2({
+                width: '100%',
+                placeholder: 'Selecciona atributos',
+                closeOnSelect: false,
+                allowClear: true,
+            });
+        }
+
+        $('.producto-valores-select').each(function () {
+            const $select = $(this);
+            if ($select.hasClass('select2-hidden-accessible')) {
+                $select.select2('destroy');
+            }
+            $select.select2({
+                width: '100%',
+                placeholder: 'Selecciona valores',
+                closeOnSelect: false,
+                allowClear: true,
+            });
+        });
     }
 
     function contarCorridasProducto() {
@@ -1809,6 +1879,7 @@
 
     function renderConfiguracionVariableProducto() {
         renderChecklistAtributosProducto();
+        inicializarSelectTagsProducto();
 
         if (obtenerTipoProductoActual() !== 'variable') {
             $('#producto-valores-config').html('');
@@ -1828,26 +1899,23 @@
             const seleccionados = (catalogoState.productoValoresSeleccionados[atributoId] || []).map(Number);
 
             const valoresHtml = valores.map(function (valor) {
-                const checked = seleccionados.includes(Number(valor.vat_id)) ? 'checked' : '';
-                return `
-                    <label class="cc-value-pill">
-                        <input class="form-check-input producto-valor-check" type="checkbox" name="atributo_valores[${atributoId}][]" data-atributo-id="${atributoId}" value="${valor.vat_id}" ${checked}>
-                        <span>${valor.vat_valor}</span>
-                    </label>
-                `;
+                const selected = seleccionados.includes(Number(valor.vat_id)) ? 'selected' : '';
+                return `<option value="${valor.vat_id}" ${selected}>${valor.vat_valor}</option>`;
             }).join('');
 
             return `
                 <div class="cc-value-card mb-3">
                     <div class="fw-semibold">${atributo ? atributo.atr_nombre : 'Atributo'}</div>
-                    <div class="cc-value-grid">
-                        ${valoresHtml || '<span class="text-body-secondary">Este atributo no tiene valores activos.</span>'}
-                    </div>
+                    ${valores.length
+                        ? `<select class="form-select cc-select2-tags producto-valores-select mt-2" name="atributo_valores[${atributoId}][]" data-atributo-id="${atributoId}" multiple>${valoresHtml}</select>`
+                        : '<span class="text-body-secondary d-block mt-2">Este atributo no tiene valores activos.</span>'
+                    }
                 </div>
             `;
         }).join('');
 
         $('#producto-valores-config').html(html);
+        inicializarSelectTagsProducto();
         renderResumenProducto();
     }
 
@@ -1900,14 +1968,14 @@
         $('#prd_imagen_reset').val('0');
         $('#prd_imagen_archivo').val('');
         $('#prd_imagen_url').val('');
-        $('#prd_tipo_simple').prop('checked', true);
-        $('#prd_tipo_variable').prop('checked', false);
+        $('#prd_tipo_variable').prop('checked', true);
+        $('#prd_tipo_simple').prop('checked', false);
         $('#prd_estatus').val('activo');
         $('input[name="prd_imagen_metodo"]').prop('checked', false);
         $('#producto-form-heading').text('Alta de producto base');
         $('#tab-producto-form-label').text('Nuevo producto');
 
-        // Limpiar modelo y categorías dependientes
+        // Limpiar modelo y conceptos dependientes
         $('#prd_mdl_id').html('<option value=\"\">Sin modelo</option>').val('');
         $('#prd-modelo-wrap').hide();
         $('#prd_ctg_id').html('<option value="">Selecciona una línea primero</option>').val('');
@@ -2255,7 +2323,7 @@
             llenarSelectSimple('#prd_lna_id', lineas, 'id', (x) => x.nombre, 'Selecciona');
             llenarSelectSimple('#prd_prv_id', proveedores, 'prv_id', (x) => x.prv_nombre_empresa, 'Sin proveedor asignado');
             catalogoState.categorias = categorias;
-            // El select de categorías arranca vacío; se llena al elegir una línea
+            // El select de conceptos arranca vacío; se llena al elegir una línea
             $('#prd_ctg_id').html('<option value="">Selecciona una línea primero</option>');
             llenarSelectUnidades('#prd_umd_id', unidades);
             catalogoState.unidades = unidades;
@@ -2339,33 +2407,23 @@
     });
     $('input[name="prd_tipo"]').on('change', actualizarUiTipoProducto);
 
-    $(document).on('change', '.producto-atributo-check', function () {
-        const atributoId = Number($(this).val());
+    $(document).on('change', '#producto-atributos-select', function () {
+        const seleccionados = ($(this).val() || []).map(Number);
+        catalogoState.productoAtributosSeleccionados = [...new Set(seleccionados)];
 
-        if ($(this).is(':checked')) {
-            if (!catalogoState.productoAtributosSeleccionados.includes(atributoId)) {
-                catalogoState.productoAtributosSeleccionados.push(atributoId);
+        Object.keys(catalogoState.productoValoresSeleccionados || {}).forEach(function (atributoId) {
+            if (!catalogoState.productoAtributosSeleccionados.includes(Number(atributoId))) {
+                delete catalogoState.productoValoresSeleccionados[atributoId];
             }
-        } else {
-            catalogoState.productoAtributosSeleccionados = catalogoState.productoAtributosSeleccionados.filter((item) => Number(item) !== atributoId);
-            delete catalogoState.productoValoresSeleccionados[atributoId];
-        }
+        });
 
         renderConfiguracionVariableProducto();
     });
 
-    $(document).on('change', '.producto-valor-check', function () {
+    $(document).on('change', '.producto-valores-select', function () {
         const atributoId = Number($(this).data('atributo-id'));
-        const valorId = Number($(this).val());
-        const seleccionados = new Set((catalogoState.productoValoresSeleccionados[atributoId] || []).map(Number));
-
-        if ($(this).is(':checked')) {
-            seleccionados.add(valorId);
-        } else {
-            seleccionados.delete(valorId);
-        }
-
-        catalogoState.productoValoresSeleccionados[atributoId] = Array.from(seleccionados);
+        const seleccionados = ($(this).val() || []).map(Number);
+        catalogoState.productoValoresSeleccionados[atributoId] = [...new Set(seleccionados)];
         renderResumenProducto();
     });
 
@@ -2468,7 +2526,7 @@
             return String(c.lna_id) === String(lnaId);
         });
         if (filtradas.length === 0) {
-            $('#prd_ctg_id').html('<option value="">Sin categorías para esta línea</option>').val('');
+            $('#prd_ctg_id').html('<option value="">Sin conceptos para esta línea</option>').val('');
         } else {
             const html = ['<option value="">Selecciona</option>'];
             filtradas.forEach(function (c) {
@@ -2479,7 +2537,7 @@
         }
     }
 
-    // Cuando cambia la línea en el form de producto → filtrar categorías
+    // Cuando cambia la línea en el form de producto → filtrar conceptos
     $('#prd_lna_id').on('change', function () {
         $('#prd_ctg_id').val('');
         actualizarSelectCategoria($(this).val());

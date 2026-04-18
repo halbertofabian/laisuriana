@@ -74,6 +74,11 @@
         /* --- Base body --- */
         body { background: var(--ls-surface-2); color: var(--ls-text-primary); }
 
+        /* Vista general en mayúsculas (excepto módulo de usuarios) */
+        body.ls-uppercase-ui .layout-wrapper {
+            text-transform: uppercase;
+        }
+
         /* --- Loader --- */
         #global-loader {
             background: rgba(10, 37, 64, 0.28);
@@ -583,7 +588,7 @@
         }
     </style>
 </head>
-<body>
+<body class="{{ request()->routeIs('seguridad.usuarios.*') ? '' : 'ls-uppercase-ui' }}">
     <div class="layout-wrapper layout-content-navbar">
         <div class="layout-container">
 
