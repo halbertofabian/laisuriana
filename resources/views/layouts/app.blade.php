@@ -893,6 +893,12 @@
                             </a>
                         </li>
                     @endif
+                    <li class="menu-item {{ request()->routeIs('mobile.descarga-apk') ? 'active' : '' }}">
+                        <a href="{{ route('mobile.descarga-apk') }}" class="menu-link">
+                            <i class="menu-icon icon-base ti tabler-qrcode"></i>
+                            <div>Descarga App (QR)</div>
+                        </a>
+                    </li>
                     <li class="menu-item {{ request()->routeIs('operacion.ventas.*') ? 'active' : '' }}">
                         <a href="{{ route('operacion.ventas.index') }}" class="menu-link">
                             <i class="menu-icon icon-base ti tabler-receipt-2"></i>

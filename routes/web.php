@@ -63,6 +63,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::view('/mobile/descarga-apk', 'mobile.descarga-apk')->name('mobile.descarga-apk');
 
     Route::get('/pos', [PuntoVentaController::class, 'index'])->name('pos.index');
     Route::get('/pos/caja/estado', [PuntoVentaController::class, 'estadoCaja'])->name('pos.caja.estado');
