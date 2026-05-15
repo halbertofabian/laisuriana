@@ -14,7 +14,7 @@ class PermisoController extends Controller
 
     public function index()
     {
-        return redirect()->route('seguridad.usuarios.index', ['tab' => 'permisos']);
+        return view('seguridad.permisos.index');
     }
 
     public function data(): JsonResponse

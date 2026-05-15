@@ -24,6 +24,8 @@ class StoreProductoSkuRequest extends FormRequest
                 Rule::unique('tbl_producto_skus_psk', 'psk_codigo_barras')->where(fn ($query) => $query->where('psk_deleted', false)),
             ],
             'psk_nombre' => ['nullable', 'string', 'max:180'],
+            'psk_costo' => ['nullable', 'numeric', 'min:0'],
+            'psk_precio' => ['nullable', 'numeric', 'min:0'],
             'psk_stock_minimo' => ['nullable', 'integer', 'min:0'],
             'psk_stock_maximo' => ['nullable', 'integer', 'gte:psk_stock_minimo'],
             'psk_estatus' => ['required', Rule::in(['activo', 'inactivo'])],

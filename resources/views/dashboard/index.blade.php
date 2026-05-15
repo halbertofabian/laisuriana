@@ -144,7 +144,7 @@
                     @endif
                     @if(auth()->user()?->tienePermiso('sucursal.ver'))
                     <div class="col-6 col-md-3">
-                        <a href="{{ route('operacion.sucursales_almacenes.index') }}" class="ls-quick-link">
+                        <a href="{{ route('operacion.sucursales_almacenes.sucursales.index') }}" class="ls-quick-link">
                             <i class="ti tabler-building-warehouse"></i>
                             <span>Sucursales</span>
                         </a>
@@ -152,7 +152,7 @@
                     @endif
                     @if(auth()->user()?->tienePermiso('catalogo_comercial.ver'))
                     <div class="col-6 col-md-3">
-                        <a href="{{ route('operacion.catalogo_comercial.index') }}" class="ls-quick-link">
+                        <a href="{{ route('operacion.catalogo_comercial.base.index') }}" class="ls-quick-link">
                             <i class="ti tabler-box-multiple"></i>
                             <span>Catálogo</span>
                         </a>

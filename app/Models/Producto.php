@@ -96,4 +96,9 @@ class Producto extends Model
     {
         return $this->hasMany(ProductoSku::class, 'psk_prd_id', 'prd_id');
     }
+
+    public function corridas()
+    {
+        return $this->hasMany(ProductoCorrida::class, 'prc_prd_id', 'prd_id');
+    }
 }

@@ -5,6 +5,8 @@ namespace App\Services\Operacion\Comercial;
 use App\Models\Atributo;
 use App\Models\Producto;
 use App\Models\ProductoAtributo;
+use App\Models\ProductoCorrida;
+use App\Models\ProductoCorridaValor;
 use App\Models\ProductoSku;
 use App\Models\SkuValorAtributo;
 use App\Models\ValorAtributo;
@@ -58,6 +60,14 @@ class ProductoService
         $producto = Producto::query()
             ->with([
                 'atributos:atr_id,atr_nombre',
+                'corridas' => fn ($query) => $query
+                    ->where('prc_deleted', false)
+                    ->whereNull('prc_deleted_at')
+                    ->with([
+                        'atributo:atr_id,atr_nombre',
+                        'valores:vat_id,vat_atr_id,vat_valor',
+                    ])
+                    ->orderBy('prc_orden'),
                 'skus' => fn ($query) => $query
                     ->where('psk_deleted', false)
                     ->whereNull('psk_deleted_at')
@@ -76,7 +86,8 @@ class ProductoService
             $configuracion = $this->normalizarConfiguracionProducto(
                 $datos['prd_tipo'],
                 $datos['atributo_ids'] ?? [],
-                $datos['atributo_valores'] ?? []
+                $datos['atributo_valores'] ?? [],
+                $datos['corridas'] ?? []
             );
 
             $codigoSolicitado = trim((string) Arr::get($datos, 'prd_codigo', ''));
@@ -99,7 +110,7 @@ class ProductoService
                 'prd_mdl_id' => $datos['prd_mdl_id'] ?? null,
                 'prd_prv_id' => $datos['prd_prv_id'] ?? null,
                 'prd_lna_id' => $datos['prd_lna_id'],
-                'prd_ctg_id' => $datos['prd_ctg_id'],
+                'prd_ctg_id' => Arr::get($datos, 'prd_ctg_id'),
                 'prd_umd_id' => $datos['prd_umd_id'],
                 'prd_tipo' => $datos['prd_tipo'],
                 'prd_estatus' => $datos['prd_estatus'],
@@ -115,6 +126,7 @@ class ProductoService
             }
 
             $this->sincronizarAtributosProducto($request, $producto->prd_id, $configuracion['atributo_ids']);
+            $this->sincronizarCorridasProducto($request, $producto->prd_id, $configuracion['corridas']);
             $resumenSkus = $this->sincronizarSkusGenerados($request, $producto, $configuracion);
 
             $this->auditoriaService->registrarAccion(
@@ -143,7 +155,8 @@ class ProductoService
             $configuracion = $this->normalizarConfiguracionProducto(
                 $datos['prd_tipo'],
                 $datos['atributo_ids'] ?? [],
-                $datos['atributo_valores'] ?? []
+                $datos['atributo_valores'] ?? [],
+                $datos['corridas'] ?? []
             );
 
             $codigoSolicitado = trim((string) Arr::get($datos, 'prd_codigo', ''));
@@ -167,7 +180,7 @@ class ProductoService
                 'prd_mdl_id' => $datos['prd_mdl_id'] ?? null,
                 'prd_prv_id' => $datos['prd_prv_id'] ?? null,
                 'prd_lna_id' => $datos['prd_lna_id'],
-                'prd_ctg_id' => $datos['prd_ctg_id'],
+                'prd_ctg_id' => Arr::get($datos, 'prd_ctg_id'),
                 'prd_umd_id' => $datos['prd_umd_id'],
                 'prd_tipo' => $datos['prd_tipo'],
                 'prd_estatus' => $datos['prd_estatus'],
@@ -175,6 +188,7 @@ class ProductoService
             ]);
 
             $this->sincronizarAtributosProducto($request, $producto->prd_id, $configuracion['atributo_ids']);
+            $this->sincronizarCorridasProducto($request, $producto->prd_id, $configuracion['corridas']);
             $resumenSkus = $this->sincronizarSkusGenerados($request, $producto->fresh(), $configuracion);
             $this->sincronizarEstatusSkusPorProducto($request, $producto->prd_id, $producto->prd_estatus);
 
@@ -237,6 +251,8 @@ class ProductoService
                     'pat_updated_by_usr_id' => optional($request->user())->usr_id,
                     'pat_updated_at' => now(),
                 ]);
+
+            $this->eliminarCorridasDelProducto($request, $producto->prd_id);
 
             $producto->forceFill([
                 'prd_estatus' => 'inactivo',
@@ -342,13 +358,14 @@ class ProductoService
         ];
     }
 
-    private function normalizarConfiguracionProducto(string $tipo, array $atributoIds, array $atributoValores): array
+    private function normalizarConfiguracionProducto(string $tipo, array $atributoIds, array $atributoValores, array $corridasRaw = []): array
     {
         if ($tipo !== 'variable') {
             return [
                 'tipo' => 'simple',
                 'atributo_ids' => [],
                 'atributo_valores' => [],
+                'corridas' => [],
             ];
         }
 
@@ -417,11 +434,90 @@ class ProductoService
             }
         }
 
+        $corridas = $this->normalizarCorridas($corridasRaw, $atributoIds, $mapaValores, $valoresActivos);
+        if (empty($corridas)) {
+            throw ValidationException::withMessages([
+                'corridas' => 'Debes configurar al menos una corrida para producto variable.',
+            ]);
+        }
+
         return [
             'tipo' => 'variable',
             'atributo_ids' => $atributoIds,
             'atributo_valores' => $mapaValores,
+            'corridas' => $corridas,
         ];
+    }
+
+    private function normalizarCorridas(array $corridasRaw, array $atributoIds, array $mapaValores, Collection $valoresActivos): array
+    {
+        $corridas = collect($corridasRaw)
+            ->filter(fn ($item) => is_array($item))
+            ->values()
+            ->map(function ($item) {
+                return [
+                    'atr_id' => (int) ($item['crc_atr_id'] ?? 0),
+                    'nombre' => trim((string) ($item['crc_nombre'] ?? '')),
+                    'valor_ids' => array_values(array_unique(array_map('intval', array_filter((array) ($item['crc_valor_ids'] ?? []))))),
+                    'precio_base' => (float) ($item['crc_precio_base'] ?? 0),
+                    'costo_base' => (float) ($item['crc_costo_base'] ?? 0),
+                    'stock_minimo' => (int) ($item['crc_stock_minimo'] ?? 0),
+                    'stock_maximo' => (int) ($item['crc_stock_maximo'] ?? 0),
+                ];
+            })
+            ->filter(fn ($item) => $item['atr_id'] > 0 && !empty($item['valor_ids']))
+            ->values();
+
+        if ($corridas->isEmpty()) {
+            return [];
+        }
+
+        $atributosPermitidos = array_flip($atributoIds);
+        $usadosPorAtributo = [];
+
+        foreach ($corridas as $idx => $corrida) {
+            if (!isset($atributosPermitidos[$corrida['atr_id']])) {
+                throw ValidationException::withMessages([
+                    "corridas.{$idx}.crc_atr_id" => 'El atributo de la corrida no está habilitado en el producto.',
+                ]);
+            }
+
+            if ($corrida['nombre'] === '') {
+                throw ValidationException::withMessages([
+                    "corridas.{$idx}.crc_nombre" => 'Cada corrida debe tener nombre.',
+                ]);
+            }
+
+            if ($corrida['stock_maximo'] < $corrida['stock_minimo']) {
+                throw ValidationException::withMessages([
+                    "corridas.{$idx}.crc_stock_maximo" => 'El stock máximo de la corrida debe ser mayor o igual al stock mínimo.',
+                ]);
+            }
+
+            $valoresPermitidos = $mapaValores[$corrida['atr_id']] ?? [];
+            $setPermitidos = array_flip($valoresPermitidos);
+
+            foreach ($corrida['valor_ids'] as $valorId) {
+                if (!isset($setPermitidos[$valorId]) || !$valoresActivos->has($valorId)) {
+                    throw ValidationException::withMessages([
+                        "corridas.{$idx}.crc_valor_ids" => 'La corrida contiene valores inválidos para el atributo seleccionado.',
+                    ]);
+                }
+
+                if (isset($usadosPorAtributo[$corrida['atr_id']][$valorId])) {
+                    throw ValidationException::withMessages([
+                        "corridas.{$idx}.crc_valor_ids" => 'Un mismo valor de atributo no puede repetirse en más de una corrida.',
+                    ]);
+                }
+
+                $usadosPorAtributo[$corrida['atr_id']][$valorId] = true;
+            }
+        }
+
+        return $corridas
+            ->values()
+            ->map(fn ($corrida, $idx) => array_merge($corrida, ['orden' => $idx + 1]))
+            ->all();
     }
 
     private function sincronizarAtributosProducto(Request $request, int $productoId, array $atributoIds): void
@@ -468,6 +564,68 @@ class ProductoService
         }
     }
 
+    private function sincronizarCorridasProducto(Request $request, int $productoId, array $corridas): void
+    {
+        $corridasActivas = ProductoCorrida::query()
+            ->where('prc_prd_id', $productoId)
+            ->where('prc_deleted', false)
+            ->whereNull('prc_deleted_at')
+            ->get(['prc_id']);
+
+        $corridaIds = $corridasActivas->pluck('prc_id')->map(fn ($id) => (int) $id)->all();
+        if (!empty($corridaIds)) {
+            ProductoCorridaValor::query()
+                ->whereIn('pcv_prc_id', $corridaIds)
+                ->where('pcv_deleted', false)
+                ->whereNull('pcv_deleted_at')
+                ->update([
+                    'pcv_deleted' => true,
+                    'pcv_deleted_at' => now(),
+                    'pcv_estatus' => 'inactivo',
+                    'pcv_updated_by_usr_id' => optional($request->user())->usr_id,
+                    'pcv_updated_at' => now(),
+                ]);
+        }
+
+        ProductoCorrida::query()
+            ->where('prc_prd_id', $productoId)
+            ->where('prc_deleted', false)
+            ->whereNull('prc_deleted_at')
+            ->update([
+                'prc_deleted' => true,
+                'prc_deleted_at' => now(),
+                'prc_estatus' => 'inactivo',
+                'prc_updated_by_usr_id' => optional($request->user())->usr_id,
+                'prc_updated_at' => now(),
+            ]);
+
+        foreach ($corridas as $corrida) {
+            $registro = ProductoCorrida::query()->create([
+                'prc_prd_id' => $productoId,
+                'prc_atr_id' => $corrida['atr_id'],
+                'prc_nombre' => $corrida['nombre'],
+                'prc_orden' => $corrida['orden'],
+                'prc_precio_base' => $corrida['precio_base'],
+                'prc_costo_base' => $corrida['costo_base'],
+                'prc_stock_minimo' => $corrida['stock_minimo'],
+                'prc_stock_maximo' => $corrida['stock_maximo'],
+                'prc_estatus' => 'activo',
+                'prc_created_by_usr_id' => optional($request->user())->usr_id,
+                'prc_updated_by_usr_id' => optional($request->user())->usr_id,
+            ]);
+
+            foreach ($corrida['valor_ids'] as $valorId) {
+                ProductoCorridaValor::query()->create([
+                    'pcv_prc_id' => $registro->prc_id,
+                    'pcv_vat_id' => $valorId,
+                    'pcv_estatus' => 'activo',
+                    'pcv_created_by_usr_id' => optional($request->user())->usr_id,
+                    'pcv_updated_by_usr_id' => optional($request->user())->usr_id,
+                ]);
+            }
+        }
+    }
+
     private function sincronizarSkusGenerados(Request $request, Producto $producto, array $configuracion): array
     {
         $combinacionesDeseadas = $configuracion['tipo'] === 'simple'
@@ -496,12 +654,18 @@ class ProductoService
             'actualizados' => [],
             'eliminados' => [],
         ];
+        $mapaCorridas = $this->construirMapaCorridasPorValor($configuracion['corridas'] ?? []);
 
         foreach ($combinacionesDeseadas as $combinacion) {
             $firma = $this->firmaCombinacion($combinacion);
             $valores = $this->obtenerValoresOrdenados($combinacion, $configuracion['atributo_ids']);
             $codigoSku = $this->generarCodigoSku($producto, $valores, $usados);
             $nombreSku = $this->generarNombreSku($producto, $valores);
+            $reglasCorrida = $this->resolverReglasCorridaPorCombinacion($combinacion, $mapaCorridas);
+            $precioSku = $reglasCorrida['precio_base'] ?? (float) $producto->prd_precio_base;
+            $costoSku = $reglasCorrida['costo_base'] ?? (float) $producto->prd_costo;
+            $stockMinSku = $reglasCorrida['stock_minimo'] ?? (int) $producto->prd_stock_minimo;
+            $stockMaxSku = $reglasCorrida['stock_maximo'] ?? (int) $producto->prd_stock_maximo;
 
             if (isset($skusPorFirma[$firma])) {
                 $sku = $skusPorFirma[$firma];
@@ -516,6 +680,10 @@ class ProductoService
                     'psk_codigo' => $codigoSku,
                     'psk_codigo_barras' => $barcodeSugerido,
                     'psk_nombre' => $nombreSku,
+                    'psk_precio' => $precioSku,
+                    'psk_costo' => $costoSku,
+                    'psk_stock_minimo' => $stockMinSku,
+                    'psk_stock_maximo' => $stockMaxSku,
                     'psk_estatus' => $producto->prd_estatus,
                     'psk_updated_by_usr_id' => optional($request->user())->usr_id,
                 ]);
@@ -530,9 +698,10 @@ class ProductoService
                 'psk_codigo' => $codigoSku,
                 'psk_codigo_barras' => $codigoSku,
                 'psk_nombre' => $nombreSku,
-                'psk_precio' => $producto->prd_precio_base,
-                'psk_stock_minimo' => $producto->prd_stock_minimo,
-                'psk_stock_maximo' => $producto->prd_stock_maximo,
+                'psk_precio' => $precioSku,
+                'psk_costo' => $costoSku,
+                'psk_stock_minimo' => $stockMinSku,
+                'psk_stock_maximo' => $stockMaxSku,
                 'psk_estatus' => $producto->prd_estatus,
                 'psk_created_by_usr_id' => optional($request->user())->usr_id,
                 'psk_updated_by_usr_id' => optional($request->user())->usr_id,
@@ -557,6 +726,73 @@ class ProductoService
         }
 
         return $resumen;
+    }
+
+    private function construirMapaCorridasPorValor(array $corridas): array
+    {
+        $mapa = [];
+
+        foreach ($corridas as $corrida) {
+            foreach ($corrida['valor_ids'] as $valorId) {
+                $mapa[(int) $valorId] = [
+                    'nombre' => $corrida['nombre'],
+                    'precio_base' => (float) $corrida['precio_base'],
+                    'costo_base' => (float) $corrida['costo_base'],
+                    'stock_minimo' => (int) $corrida['stock_minimo'],
+                    'stock_maximo' => (int) $corrida['stock_maximo'],
+                ];
+            }
+        }
+
+        return $mapa;
+    }
+
+    private function resolverReglasCorridaPorCombinacion(array $combinacion, array $mapaCorridas): ?array
+    {
+        foreach ($combinacion as $valorId) {
+            $valorId = (int) $valorId;
+            if (isset($mapaCorridas[$valorId])) {
+                return $mapaCorridas[$valorId];
+            }
+        }
+
+        return null;
+    }
+
+    private function eliminarCorridasDelProducto(Request $request, int $productoId): void
+    {
+        $corridasActivas = ProductoCorrida::query()
+            ->where('prc_prd_id', $productoId)
+            ->where('prc_deleted', false)
+            ->whereNull('prc_deleted_at')
+            ->get(['prc_id']);
+
+        $corridaIds = $corridasActivas->pluck('prc_id')->map(fn ($id) => (int) $id)->all();
+        if (!empty($corridaIds)) {
+            ProductoCorridaValor::query()
+                ->whereIn('pcv_prc_id', $corridaIds)
+                ->where('pcv_deleted', false)
+                ->whereNull('pcv_deleted_at')
+                ->update([
+                    'pcv_deleted' => true,
+                    'pcv_deleted_at' => now(),
+                    'pcv_estatus' => 'inactivo',
+                    'pcv_updated_by_usr_id' => optional($request->user())->usr_id,
+                    'pcv_updated_at' => now(),
+                ]);
+        }
+
+        ProductoCorrida::query()
+            ->where('prc_prd_id', $productoId)
+            ->where('prc_deleted', false)
+            ->whereNull('prc_deleted_at')
+            ->update([
+                'prc_deleted' => true,
+                'prc_deleted_at' => now(),
+                'prc_estatus' => 'inactivo',
+                'prc_updated_by_usr_id' => optional($request->user())->usr_id,
+                'prc_updated_at' => now(),
+            ]);
     }
 
     private function sincronizarValoresSku(Request $request, int $skuId, array $valorIds): void
@@ -814,6 +1050,28 @@ class ProductoService
         }
 
         return $mapa;
+    }
+
+    public function obtenerCorridasProducto(Producto $producto): array
+    {
+        return $producto->corridas
+            ->filter(fn (ProductoCorrida $corrida) => !$corrida->prc_deleted && $corrida->prc_deleted_at === null && $corrida->prc_estatus === 'activo')
+            ->map(function (ProductoCorrida $corrida): array {
+                return [
+                    'prc_id' => $corrida->prc_id,
+                    'prc_nombre' => $corrida->prc_nombre,
+                    'prc_orden' => $corrida->prc_orden,
+                    'prc_atr_id' => $corrida->prc_atr_id,
+                    'prc_atr_nombre' => $corrida->atributo?->atr_nombre,
+                    'prc_precio_base' => $corrida->prc_precio_base,
+                    'prc_costo_base' => $corrida->prc_costo_base,
+                    'prc_stock_minimo' => $corrida->prc_stock_minimo,
+                    'prc_stock_maximo' => $corrida->prc_stock_maximo,
+                    'prc_valor_ids' => $corrida->valores->pluck('vat_id')->map(fn ($id) => (int) $id)->values(),
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     private function registrarResumenSku(Request $request, Producto $producto, string $accion, array $resumen): void

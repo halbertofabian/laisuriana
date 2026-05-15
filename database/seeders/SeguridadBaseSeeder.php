@@ -60,6 +60,18 @@ class SeguridadBaseSeeder extends Seeder
             ['clave' => 'inventario_base.cancelar', 'descripcion' => 'Cancelar movimientos de inventario', 'modulo' => 'inventario'],
             ['clave' => 'inventario_base.corregir', 'descripcion' => 'Corregir movimientos de inventario', 'modulo' => 'inventario'],
             ['clave' => 'inventario_base.minimos', 'descripcion' => 'Gestionar mínimos de inventario', 'modulo' => 'inventario'],
+            ['clave' => 'caja.ver', 'descripcion' => 'Ver cajas', 'modulo' => 'pos'],
+            ['clave' => 'caja.crear', 'descripcion' => 'Crear cajas', 'modulo' => 'pos'],
+            ['clave' => 'caja.editar', 'descripcion' => 'Editar cajas', 'modulo' => 'pos'],
+            ['clave' => 'caja.inactivar', 'descripcion' => 'Activar/Inactivar cajas', 'modulo' => 'pos'],
+            ['clave' => 'caja.eliminar', 'descripcion' => 'Eliminar cajas (lógico)', 'modulo' => 'pos'],
+            ['clave' => 'pedido_piso.ver', 'descripcion' => 'Ver pedidos de piso', 'modulo' => 'pos'],
+            ['clave' => 'pedido_piso.crear', 'descripcion' => 'Crear pedidos de piso', 'modulo' => 'pos'],
+            ['clave' => 'cliente.ver', 'descripcion' => 'Ver clientes', 'modulo' => 'pos'],
+            ['clave' => 'cliente.crear', 'descripcion' => 'Crear clientes', 'modulo' => 'pos'],
+            ['clave' => 'cliente.editar', 'descripcion' => 'Editar clientes', 'modulo' => 'pos'],
+            ['clave' => 'cliente.inactivar', 'descripcion' => 'Activar/Inactivar clientes', 'modulo' => 'pos'],
+            ['clave' => 'cliente.eliminar', 'descripcion' => 'Eliminar clientes (lógico)', 'modulo' => 'pos'],
         ];
 
         foreach ($permisosBase as $permiso) {
@@ -115,6 +127,12 @@ class SeguridadBaseSeeder extends Seeder
                     'inventario_base.entrada',
                     'inventario_base.salida',
                     'inventario_base.minimos',
+                    'caja.ver',
+                    'pedido_piso.ver',
+                    'pedido_piso.crear',
+                    'cliente.ver',
+                    'cliente.crear',
+                    'cliente.editar',
                 ],
             ],
             'Cajero' => [
@@ -123,6 +141,9 @@ class SeguridadBaseSeeder extends Seeder
                     'catalogo_comercial.ver',
                     'escaneo_producto.ver',
                     'inventario_base.ver',
+                    'caja.ver',
+                    'pedido_piso.ver',
+                    'cliente.ver',
                 ],
             ],
             'Vendedor piso' => [
@@ -131,6 +152,11 @@ class SeguridadBaseSeeder extends Seeder
                     'catalogo_comercial.ver',
                     'escaneo_producto.ver',
                     'inventario_base.ver',
+                    'caja.ver',
+                    'pedido_piso.ver',
+                    'pedido_piso.crear',
+                    'cliente.ver',
+                    'cliente.crear',
                 ],
             ],
         ];

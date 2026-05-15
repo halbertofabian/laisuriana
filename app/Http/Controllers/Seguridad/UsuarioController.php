@@ -23,7 +23,6 @@ class UsuarioController extends Controller
     {
         return view('seguridad.usuarios.index', [
             'opciones' => $this->usuarioService->opcionesParaFormulario(),
-            'permisos' => $this->permisoService->listar(),
         ]);
     }
 

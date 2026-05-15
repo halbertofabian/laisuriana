@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "LaSuriana Pedidos",
+    "slug": "lasuriana-pedidos",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "android": {
+      "package": "com.lasuriana.pedidos"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ]
+  }
+}

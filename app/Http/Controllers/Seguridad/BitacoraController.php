@@ -15,7 +15,7 @@ class BitacoraController extends Controller
 
     public function index()
     {
-        return redirect()->route('seguridad.usuarios.index', ['tab' => 'bitacora']);
+        return view('seguridad.bitacora.index');
     }
 
     public function accesos(Request $request): JsonResponse

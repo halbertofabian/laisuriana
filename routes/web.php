@@ -4,14 +4,19 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Demo\DataTableDemoController;
 use App\Http\Controllers\Operacion\CatalogoComercialController;
+use App\Http\Controllers\Operacion\CajaController;
 use App\Http\Controllers\Operacion\ChecklistEntregableController;
+use App\Http\Controllers\Operacion\ClienteController;
 use App\Http\Controllers\Operacion\EscaneoProductoController;
 use App\Http\Controllers\Operacion\InventarioBaseController;
+use App\Http\Controllers\Operacion\PedidoPisoController;
+use App\Http\Controllers\Operacion\PuntoVentaController;
 use App\Http\Controllers\Operacion\SucursalAlmacenController;
 use App\Http\Controllers\Seguridad\BitacoraController;
 use App\Http\Controllers\Seguridad\PermisoController;
 use App\Http\Controllers\Seguridad\RolController;
 use App\Http\Controllers\Seguridad\UsuarioController;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Route;
 
 Route::pattern('tipo', 'marcas|lineas|categorias|unidades|conceptos|motivos');
@@ -26,6 +31,29 @@ Route::middleware('guest')->group(function () {
     Route::get('/login/buscar-usuarios', [AuthController::class, 'buscarUsuarios'])->name('login.buscar_usuarios');
 });
 
+Route::prefix('mobile')->name('mobile.')->group(function () {
+    Route::post('/login', [AuthController::class, 'loginMobile'])
+        ->name('login')
+        ->withoutMiddleware([VerifyCsrfToken::class]);
+    Route::get('/login/buscar-usuarios', [AuthController::class, 'buscarUsuariosMobile'])
+        ->name('login.buscar_usuarios')
+        ->withoutMiddleware([VerifyCsrfToken::class]);
+});
+
+Route::middleware('auth')->prefix('mobile')->name('mobile.')->group(function () {
+    Route::get('/sucursales', [SucursalAlmacenController::class, 'sucursalesMobile'])
+        ->name('sucursales');
+    Route::get('/almacenes', [SucursalAlmacenController::class, 'almacenesMobile'])
+        ->name('almacenes');
+    Route::get('/pedidos-piso/data', [PedidoPisoController::class, 'data'])
+        ->name('pedidos_piso.data');
+    Route::get('/pedidos-piso/productos/buscar', [PedidoPisoController::class, 'buscarProductos'])
+        ->name('pedidos_piso.productos.buscar');
+    Route::post('/pedidos-piso', [PedidoPisoController::class, 'store'])
+        ->name('pedidos_piso.store')
+        ->withoutMiddleware([VerifyCsrfToken::class]);
+});
+
 Route::get('/operacion/catalogo-comercial/productos/imagen-movil/{token}', [CatalogoComercialController::class, 'vistaCargaMovilProducto'])
     ->name('operacion.catalogo_comercial.productos.imagen_movil');
 Route::post('/operacion/catalogo-comercial/productos/imagen-movil/{token}', [CatalogoComercialController::class, 'subirImagenMovilProducto'])
@@ -36,14 +64,32 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    Route::get('/pos', [PuntoVentaController::class, 'index'])->name('pos.index');
+    Route::get('/pos/caja/estado', [PuntoVentaController::class, 'estadoCaja'])->name('pos.caja.estado');
+    Route::get('/pos/clientes/buscar', [PuntoVentaController::class, 'buscarClientes'])->name('pos.clientes.buscar');
+    Route::post('/pos/caja/abrir', [PuntoVentaController::class, 'abrirCaja'])->name('pos.caja.abrir');
+    Route::post('/pos/caja/tomar', [PuntoVentaController::class, 'tomarCaja'])->name('pos.caja.tomar');
+    Route::post('/pos/caja/abandonar', [PuntoVentaController::class, 'abandonarCaja'])->name('pos.caja.abandonar');
+    Route::post('/pos/ventas/cobrar', [PuntoVentaController::class, 'cobrar'])->name('pos.ventas.cobrar');
+    Route::get('/pos/ventas/dia', [PuntoVentaController::class, 'ventasDelDia'])->name('pos.ventas.dia');
+    Route::get('/pos/pedidos-pendientes', [PuntoVentaController::class, 'pedidosPendientesCobro'])->name('pos.pedidos.pendientes');
+    Route::get('/pos/ventas/{venta}/ticket', [PuntoVentaController::class, 'ticket'])->name('pos.ventas.ticket');
+
     Route::prefix('demo')->name('demo.')->group(function () {
         Route::get('/datatables', [DataTableDemoController::class, 'index'])->name('datatables');
         Route::get('/datatables/data', [DataTableDemoController::class, 'data'])->name('datatables.data');
     });
 
     Route::prefix('operacion')->name('operacion.')->group(function () {
+
         Route::prefix('catalogo-comercial')->name('catalogo_comercial.')->group(function () {
             Route::get('/', [CatalogoComercialController::class, 'index'])->name('index')->middleware('permiso:catalogo_comercial.ver');
+            Route::get('/base', [CatalogoComercialController::class, 'base'])->name('base.index')->middleware('permiso:catalogo_comercial.ver');
+            Route::get('/atributos', [CatalogoComercialController::class, 'atributos'])->name('atributos.index')->middleware('permiso:catalogo_comercial.ver');
+            Route::get('/productos', [CatalogoComercialController::class, 'productos'])->name('productos.index')->middleware('permiso:catalogo_comercial.ver');
+            Route::get('/skus', [CatalogoComercialController::class, 'skus'])->name('skus.index')->middleware('permiso:catalogo_comercial.ver');
+            Route::get('/proveedores', [CatalogoComercialController::class, 'proveedores'])->name('proveedores.index')->middleware('permiso:catalogo_comercial.ver');
+            Route::get('/etiquetado', [CatalogoComercialController::class, 'etiquetado'])->name('etiquetado.index')->middleware('permiso:catalogo_comercial.ver');
 
             Route::get('/catalogos/{tipo}/data', [CatalogoComercialController::class, 'dataCatalogoBase'])->name('catalogos.data')->middleware('permiso:catalogo_comercial.ver');
             Route::get('/catalogos/{tipo}/{id}', [CatalogoComercialController::class, 'showCatalogoBase'])->name('catalogos.show')->middleware('permiso:catalogo_comercial.ver');
@@ -101,11 +147,10 @@ Route::middleware('auth')->group(function () {
         });
 
         Route::prefix('sucursales-almacenes')->name('sucursales_almacenes.')->group(function () {
-            Route::get('/', [SucursalAlmacenController::class, 'index'])->name('index')->middleware([
-                'permiso:sucursal.ver',
-                'permiso:almacen.ver',
-                'permiso:tipo_almacen.ver',
-            ]);
+            Route::get('/', [SucursalAlmacenController::class, 'index'])->name('index')->middleware('permiso:sucursal.ver');
+            Route::get('/sucursales', [SucursalAlmacenController::class, 'sucursales'])->name('sucursales.index')->middleware('permiso:sucursal.ver');
+            Route::get('/almacenes', [SucursalAlmacenController::class, 'almacenes'])->name('almacenes.index')->middleware('permiso:almacen.ver');
+            Route::get('/tipos-almacen', [SucursalAlmacenController::class, 'tipos'])->name('tipos.index')->middleware('permiso:tipo_almacen.ver');
 
             Route::get('/sucursales/data', [SucursalAlmacenController::class, 'dataSucursales'])->name('sucursales.data')->middleware('permiso:sucursal.ver');
             Route::get('/sucursales/{sucursal}', [SucursalAlmacenController::class, 'showSucursal'])->name('sucursales.show')->middleware('permiso:sucursal.ver');
@@ -148,6 +193,14 @@ Route::middleware('auth')->group(function () {
 
         Route::prefix('inventario-base')->name('inventario_base.')->group(function () {
             Route::get('/', [InventarioBaseController::class, 'index'])->name('index')->middleware('permiso:inventario_base.ver');
+            Route::get('/existencias', [InventarioBaseController::class, 'existencias'])->name('existencias.index')->middleware('permiso:inventario_base.ver');
+            Route::get('/existencias-negativas', [InventarioBaseController::class, 'existenciasNegativas'])->name('existencias_negativas.index')->middleware('permiso:inventario_base.ver');
+            Route::get('/negativos-por-sesion', [InventarioBaseController::class, 'negativosPorSesion'])->name('negativos_sesion.index')->middleware('permiso:inventario_base.ver');
+            Route::get('/recibir', [InventarioBaseController::class, 'recibir'])->name('recibir.index')->middleware('permiso:inventario_base.ver');
+            Route::get('/salidas', [InventarioBaseController::class, 'salidas'])->name('salidas.index')->middleware('permiso:inventario_base.ver');
+            Route::get('/kardex', [InventarioBaseController::class, 'kardex'])->name('kardex.index')->middleware('permiso:inventario_base.ver');
+            Route::get('/minimos', [InventarioBaseController::class, 'minimos'])->name('minimos.index')->middleware('permiso:inventario_base.ver');
+            Route::get('/reportes', [InventarioBaseController::class, 'reportes'])->name('reportes.index')->middleware('permiso:inventario_base.ver');
             Route::get('/entradas-wizard', [InventarioBaseController::class, 'wizardEntradas'])->name('entradas_wizard')->middleware('permiso:inventario_base.ver');
 
             Route::get('/existencias/data', [InventarioBaseController::class, 'dataExistencias'])->name('existencias.data')->middleware('permiso:inventario_base.ver');
@@ -155,6 +208,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/productos-base/buscar', [InventarioBaseController::class, 'buscarProductosBase'])->name('productos.buscar')->middleware('permiso:inventario_base.ver');
             Route::get('/skus/buscar', [InventarioBaseController::class, 'buscarSkus'])->name('skus.buscar')->middleware('permiso:inventario_base.ver');
             Route::get('/kardex/data', [InventarioBaseController::class, 'dataKardex'])->name('kardex.data')->middleware('permiso:inventario_base.ver');
+            Route::get('/negativos-por-sesion/data', [InventarioBaseController::class, 'dataNegativosPorSesion'])->name('negativos_sesion.data')->middleware('permiso:inventario_base.ver');
             Route::get('/minimos/bajo/data', [InventarioBaseController::class, 'dataBajoMinimo'])->name('minimos.bajo.data')->middleware('permiso:inventario_base.ver');
             Route::get('/reportes/entradas/data', [InventarioBaseController::class, 'dataReportesEntradas'])->name('reportes.entradas.data')->middleware('permiso:inventario_base.ver');
             Route::get('/reportes/entradas/{reporte}/pdf', [InventarioBaseController::class, 'verReporteEntradasPdf'])->name('reportes.entradas.ver')->middleware('permiso:inventario_base.ver');
@@ -171,6 +225,41 @@ Route::middleware('auth')->group(function () {
 
             Route::post('/movimientos/{movimiento}/cancelar', [InventarioBaseController::class, 'cancelar'])->name('movimientos.cancelar')->middleware('permiso:inventario_base.cancelar');
             Route::post('/movimientos/{movimiento}/corregir', [InventarioBaseController::class, 'corregir'])->name('movimientos.corregir')->middleware('permiso:inventario_base.corregir');
+        });
+
+        Route::prefix('cajas')->name('cajas.')->group(function () {
+            Route::get('/', [CajaController::class, 'index'])->name('index')->middleware('permiso:caja.ver');
+            Route::get('/data', [CajaController::class, 'data'])->name('data')->middleware('permiso:caja.ver');
+            Route::get('/{caja}', [CajaController::class, 'show'])->name('show')->middleware('permiso:caja.ver');
+            Route::post('/', [CajaController::class, 'store'])->name('store')->middleware('permiso:caja.crear');
+            Route::put('/{caja}', [CajaController::class, 'update'])->name('update')->middleware('permiso:caja.editar');
+            Route::patch('/{caja}/estatus', [CajaController::class, 'cambiarEstatus'])->name('estatus')->middleware('permiso:caja.inactivar');
+            Route::delete('/{caja}', [CajaController::class, 'eliminar'])->name('destroy')->middleware('permiso:caja.eliminar');
+        });
+
+        Route::prefix('clientes')->name('clientes.')->group(function () {
+            Route::get('/', [ClienteController::class, 'index'])->name('index')->middleware('permiso:cliente.ver');
+            Route::get('/data', [ClienteController::class, 'data'])->name('data')->middleware('permiso:cliente.ver');
+            Route::get('/buscar-codigo-postal', [ClienteController::class, 'buscarCodigoPostal'])->name('cp.buscar')->middleware('permiso:cliente.ver');
+            Route::get('/{cliente}', [ClienteController::class, 'show'])->name('show')->middleware('permiso:cliente.ver');
+            Route::post('/', [ClienteController::class, 'store'])->name('store')->middleware('permiso:cliente.crear');
+            Route::put('/{cliente}', [ClienteController::class, 'update'])->name('update')->middleware('permiso:cliente.editar');
+            Route::patch('/{cliente}/estatus', [ClienteController::class, 'cambiarEstatus'])->name('estatus')->middleware('permiso:cliente.inactivar');
+            Route::delete('/{cliente}', [ClienteController::class, 'eliminar'])->name('destroy')->middleware('permiso:cliente.eliminar');
+        });
+
+        Route::prefix('pedidos-piso')->name('pedidos_piso.')->group(function () {
+            Route::get('/', [PedidoPisoController::class, 'index'])->name('index')->middleware('permiso:pedido_piso.ver');
+            Route::get('/data', [PedidoPisoController::class, 'data'])->name('data')->middleware('permiso:pedido_piso.ver');
+            Route::get('/productos/buscar', [PedidoPisoController::class, 'buscarProductos'])->name('productos.buscar')->middleware('permiso:pedido_piso.ver');
+            Route::get('/buscar-por-folio', [PedidoPisoController::class, 'buscarPorFolio'])->name('folio.buscar')->middleware('permiso:pedido_piso.ver');
+            Route::get('/{pedido}', [PedidoPisoController::class, 'show'])->name('show')->middleware('permiso:pedido_piso.ver');
+            Route::post('/', [PedidoPisoController::class, 'store'])->name('store')->middleware('permiso:pedido_piso.crear');
+        });
+
+        Route::prefix('ventas')->name('ventas.')->group(function () {
+            Route::get('/', [PuntoVentaController::class, 'ventasIndex'])->name('index');
+            Route::get('/data', [PuntoVentaController::class, 'ventasData'])->name('data');
         });
     });
 

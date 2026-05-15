@@ -34,6 +34,30 @@ class AuthController extends Controller
         ]);
     }
 
+    public function loginMobile(LoginRequest $request, AuthService $authService): JsonResponse
+    {
+        $ok = $authService->login(
+            $request,
+            $request->string('usuario')->toString(),
+            $request->string('password')->toString()
+        );
+
+        if (!$ok) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Credenciales inválidas o usuario inactivo.',
+            ], 422);
+        }
+
+        $request->session()->regenerate();
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'Inicio de sesión exitoso.',
+            'usuario' => $request->string('usuario')->toString(),
+        ]);
+    }
+
     public function buscarUsuarios(Request $request): JsonResponse
     {
         $q = trim((string) $request->query('q', ''));
@@ -54,6 +78,11 @@ class AuthController extends Controller
             ->get();
 
         return response()->json(['data' => $data]);
+    }
+
+    public function buscarUsuariosMobile(Request $request): JsonResponse
+    {
+        return $this->buscarUsuarios($request);
     }
 
     public function logout(Request $request, AuthService $authService)

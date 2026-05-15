@@ -518,6 +518,49 @@
             text-align: center;
             color: #76718f;
         }
+        .cc-products-hero {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            flex-wrap: wrap;
+            border: 1px solid #e5e9f7;
+            border-radius: 1rem;
+            background: linear-gradient(135deg, #f9faff 0%, #f3f6ff 100%);
+            padding: 1rem 1.1rem;
+            margin-bottom: 1rem;
+        }
+        .cc-products-hero h5 { margin: 0 0 0.25rem; font-size: 1.05rem; }
+        .cc-products-hero p { margin: 0; color: var(--ls-text-secondary); font-size: 0.9rem; }
+        .cc-products-kpis {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 0.65rem;
+            margin-bottom: 0.95rem;
+        }
+        .cc-products-kpi {
+            border: 1px solid #e7ebfa;
+            border-radius: 0.85rem;
+            background: #fff;
+            padding: 0.75rem 0.85rem;
+        }
+        .cc-products-kpi small {
+            display: block;
+            color: #7f7a9a;
+            font-size: 0.76rem;
+            margin-bottom: 0.1rem;
+        }
+        .cc-products-kpi strong { font-size: 1.05rem; color: #2f2b45; }
+        .cc-products-toolbar {
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            gap: 0.6rem;
+            align-items: center;
+            margin-bottom: 0.95rem;
+        }
+        @media (max-width: 991.98px) {
+            .cc-products-toolbar { grid-template-columns: 1fr; }
+        }
 
         .cc-editor-shell {
             border: 0;
@@ -525,6 +568,23 @@
             background: transparent;
             box-shadow: none;
             overflow: hidden;
+        }
+        .cc-form-actions {
+            position: sticky;
+            bottom: 0;
+            z-index: 10;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--ls-border);
+            background: linear-gradient(to top, #fff 70%, rgba(255, 255, 255, 0));
+        }
+        .cc-form-actions .btn {
+            min-width: 10.5rem;
         }
 
         .cc-editor-head {
@@ -563,6 +623,7 @@
 @endpush
 
 @section('content')
+@php($vistaActiva = $vistaActiva ?? 'base')
 <x-section-header
     eyebrow="Comercial"
     icon="tabler-box-multiple"
@@ -571,20 +632,20 @@
 />
 
 <div class="card app-tabs-shell mb-4">
-    <div class="app-tabs-shell__header">
+    <div class="app-tabs-shell__header d-none">
         <ul class="nav nav-tabs app-tabs-shell__tabs" role="tablist">
-            <li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#panel-base" type="button">Catálogos Base</button></li>
-            <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#panel-atributos" type="button">Atributos</button></li>
-            <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#panel-productos" type="button">Productos</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link {{ $vistaActiva === 'base' ? 'active' : '' }}" data-bs-toggle="tab" data-bs-target="#panel-base" type="button">Catálogos Base</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link {{ $vistaActiva === 'atributos' ? 'active' : '' }}" data-bs-toggle="tab" data-bs-target="#panel-atributos" type="button">Atributos</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link {{ $vistaActiva === 'productos' ? 'active' : '' }}" data-bs-toggle="tab" data-bs-target="#panel-productos" type="button">Productos</button></li>
             <li class="nav-item d-none" id="nav-producto-form-item" role="presentation"><button class="nav-link" id="tab-producto-form-btn" data-bs-toggle="tab" data-bs-target="#panel-producto-form" type="button"><span id="tab-producto-form-label">Nuevo producto</span></button></li>
-            <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#panel-skus" type="button">SKU / Variantes</button></li>
-            <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#panel-proveedores" type="button">Proveedores</button></li>
-            <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#panel-etiquetado" type="button">Etiquetado</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link {{ $vistaActiva === 'skus' ? 'active' : '' }}" data-bs-toggle="tab" data-bs-target="#panel-skus" type="button">SKU / Variantes</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link {{ $vistaActiva === 'proveedores' ? 'active' : '' }}" data-bs-toggle="tab" data-bs-target="#panel-proveedores" type="button">Proveedores</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link {{ $vistaActiva === 'etiquetado' ? 'active' : '' }}" data-bs-toggle="tab" data-bs-target="#panel-etiquetado" type="button">Etiquetado</button></li>
         </ul>
     </div>
     <div class="app-tabs-shell__body">
         <div class="tab-content">
-            <div class="tab-pane fade show active" id="panel-base">
+            <div class="tab-pane fade {{ $vistaActiva === 'base' ? 'show active' : '' }}" id="panel-base">
                 <div class="cc-onboarding mb-3">
                     <span class="cc-step"><span class="dot"></span>Paso 1: elige catálogo</span>
                     <span class="cc-step"><span class="dot"></span>Paso 2: crea el registro</span>
@@ -665,7 +726,7 @@
                 </div>
             </div>
 
-            <div class="tab-pane fade" id="panel-atributos">
+            <div class="tab-pane fade {{ $vistaActiva === 'atributos' ? 'show active' : '' }}" id="panel-atributos">
                 <div class="row g-3 mb-3">
                     <div class="col-md-6 d-flex justify-content-end">
                         @if($permisosUI['crear'])
@@ -719,15 +780,31 @@
                 </div>
             </div>
 
-            <div class="tab-pane fade" id="panel-productos">
-                <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-3">
+            <div class="tab-pane fade {{ $vistaActiva === 'productos' ? 'show active' : '' }}" id="panel-productos">
+                <div class="cc-products-hero">
+                    <div>
+                        <h5>Productos de tu catálogo</h5>
+                        <p>Consulta, organiza y actualiza tus productos en un solo lugar.</p>
+                    </div>
+                </div>
+                <div class="cc-products-kpis">
+                    <div class="cc-products-kpi"><small>Total de productos</small><strong id="kpi-productos-total">0</strong></div>
+                    <div class="cc-products-kpi"><small>Activos</small><strong id="kpi-productos-activos">0</strong></div>
+                    <div class="cc-products-kpi"><small>Con corridas</small><strong id="kpi-productos-variantes">0</strong></div>
+                    <div class="cc-products-kpi"><small>Sin proveedor</small><strong id="kpi-productos-sin-proveedor">0</strong></div>
+                </div>
+                <div class="cc-products-toolbar">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="ti tabler-search"></i></span>
+                        <input id="productos-busqueda-rapida" type="text" class="form-control" placeholder="Buscar por nombre, código, marca o proveedor">
+                    </div>
                     <div class="cc-view-toggle" role="group" aria-label="Vista de productos">
-                        <button type="button" class="btn btn-primary btn-sm" id="btn-productos-vista-grid">Cuadrícula</button>
-                        <button type="button" class="btn btn-outline-primary btn-sm" id="btn-productos-vista-list">Lista</button>
+                        <button type="button" class="btn btn-primary btn-sm" id="btn-productos-vista-grid">Tarjetas</button>
+                        <button type="button" class="btn btn-outline-primary btn-sm" id="btn-productos-vista-list">Tabla</button>
                     </div>
                     <div class="d-flex justify-content-end">
                         @if($permisosUI['crear'])
-                            <button class="btn btn-primary" id="btn-nuevo-producto">Nuevo producto</button>
+                            <button class="btn btn-primary" id="btn-nuevo-producto">Agregar producto</button>
                         @endif
                     </div>
                 </div>
@@ -740,11 +817,11 @@
                             <thead>
                                 <tr>
                                     <th>Código</th>
-                                    <th>Producto base</th>
-                                    <th>Tipo / Base</th>
-                                    <th>Clasificación</th>
+                                    <th>Producto</th>
+                                    <th>Detalles</th>
+                                    <th>Categoría</th>
                                     <th>Corridas</th>
-                                    <th>Estatus</th>
+                                    <th>Estado</th>
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
@@ -757,10 +834,10 @@
                 <div class="cc-editor-shell">
                     <div class="cc-editor-head">
                         <div>
-                            <h5 id="producto-form-heading">Alta de producto base</h5>
-                            <p>Completa los datos generales, la clasificación comercial y, si aplica, la configuración de corridas.</p>
+                            <h5 id="producto-form-heading">Agregar producto</h5>
+                            <p>Llena los datos principales, elige su categoría y configura sus corridas si las necesitas.</p>
                         </div>
-                        <button type="button" class="btn btn-outline-secondary btn-cancelar-producto-tab">Volver a productos</button>
+                        <button type="button" class="btn btn-outline-secondary btn-cancelar-producto-tab">Regresar al listado</button>
                     </div>
                     <div class="cc-product-form-body">
                         <form id="form-producto" enctype="multipart/form-data">
@@ -770,43 +847,46 @@
                             <div class="cc-product-shell">
                                 <div class="cc-product-layout">
                                     <div>
+                                        <div class="alert alert-primary mb-3" role="alert">
+                                            <strong>Guía rápida:</strong> Primero captura la información general y después, si aplica, configura las corridas.
+                                        </div>
                                         <div class="row cc-product-form-grid">
                                             <div class="col-md-8">
-                                                <label class="form-label">Nombre del producto</label>
+                                                <label class="form-label">Nombre del producto <span class="text-danger">*</span></label>
                                                 <input type="text" class="form-control" name="prd_nombre" id="prd_nombre" required maxlength="180">
                                             </div>
                                             <div class="col-md-4">
-                                                <label class="form-label">Código base generado</label>
-                                                <input type="text" class="form-control" name="prd_codigo" id="prd_codigo" maxlength="40" readonly placeholder="Se genera al guardar">
+                                                <label class="form-label">Código interno</label>
+                                                <input type="text" class="form-control" name="prd_codigo" id="prd_codigo" maxlength="40" readonly placeholder="Se crea automáticamente al guardar">
                                             </div>
-                                            <div class="col-md-4"><label class="form-label">Marca</label><select class="form-select" name="prd_mrc_id" id="prd_mrc_id" required><option value="">Selecciona</option>@foreach($opciones['marcas'] as $item)<option value="{{ $item->mrc_id }}">{{ $item->mrc_nombre }}</option>@endforeach</select></div>
+                                            <div class="col-md-4"><label class="form-label">Marca <span class="text-danger">*</span></label><select class="form-select" name="prd_mrc_id" id="prd_mrc_id" required><option value="">Selecciona una marca</option>@foreach($opciones['marcas'] as $item)<option value="{{ $item->mrc_id }}">{{ $item->mrc_nombre }}</option>@endforeach</select></div>
                                             <div class="col-md-4" id="prd-modelo-wrap" style="display:none;">
                                                 <label class="form-label">Modelo <small class="text-body-secondary">(opcional)</small></label>
                                                 <select class="form-select" name="prd_mdl_id" id="prd_mdl_id">
                                                     <option value="">Sin modelo</option>
                                                 </select>
                                             </div>
-                                            <div class="col-md-4"><label class="form-label">Proveedor</label><select class="form-select" name="prd_prv_id" id="prd_prv_id"><option value="">Sin proveedor asignado</option>@foreach($opciones['proveedores'] as $item)<option value="{{ $item->prv_id }}">{{ $item->prv_nombre_empresa }}</option>@endforeach</select></div>
-                                            <div class="col-md-4"><label class="form-label">Línea</label><select class="form-select" name="prd_lna_id" id="prd_lna_id" required><option value="">Selecciona</option>@foreach($opciones['lineas'] as $item)<option value="{{ $item->lna_id }}">{{ $item->lna_nombre }}</option>@endforeach</select></div>
-                                            <div class="col-md-4"><label class="form-label">Concepto</label><select class="form-select" name="prd_ctg_id" id="prd_ctg_id" required><option value="">Selecciona</option>@foreach($opciones['categorias'] as $item)<option value="{{ $item->ctg_id }}">{{ $item->ctg_nombre }}</option>@endforeach</select></div>
-                                            <div class="col-md-4"><label class="form-label">Unidad</label><select class="form-select" name="prd_umd_id" id="prd_umd_id" required><option value="">Selecciona</option>@foreach($opciones['unidades'] as $item)<option value="{{ $item->umd_id }}"{{ $item->umd_es_predeterminada ? ' data-predeterminada="1"' : '' }}>{{ $item->umd_nombre }} ({{ $item->umd_codigo }}){{ $item->umd_es_predeterminada ? ' ★' : '' }}</option>@endforeach</select></div>
+                                            <div class="col-md-4"><label class="form-label">Proveedor principal</label><select class="form-select" name="prd_prv_id" id="prd_prv_id"><option value="">Sin proveedor asignado</option>@foreach($opciones['proveedores'] as $item)<option value="{{ $item->prv_id }}">{{ $item->prv_nombre_empresa }}</option>@endforeach</select></div>
+                                            <div class="col-md-4"><label class="form-label">Línea <span class="text-danger">*</span></label><select class="form-select" name="prd_lna_id" id="prd_lna_id" required><option value="">Selecciona una línea</option>@foreach($opciones['lineas'] as $item)<option value="{{ $item->lna_id }}">{{ $item->lna_nombre }}</option>@endforeach</select></div>
+                                            <div class="col-md-4"><label class="form-label">Concepto</label><select class="form-select" name="prd_ctg_id" id="prd_ctg_id"><option value="">Selecciona un concepto</option>@foreach($opciones['categorias'] as $item)<option value="{{ $item->ctg_id }}">{{ $item->ctg_nombre }}</option>@endforeach</select></div>
+                                            <div class="col-md-4"><label class="form-label">Unidad de venta <span class="text-danger">*</span></label><select class="form-select" name="prd_umd_id" id="prd_umd_id" required><option value="">Selecciona una unidad</option>@foreach($opciones['unidades'] as $item)<option value="{{ $item->umd_id }}"{{ $item->umd_es_predeterminada ? ' data-predeterminada="1"' : '' }}>{{ $item->umd_nombre }} ({{ $item->umd_codigo }}){{ $item->umd_es_predeterminada ? ' ★' : '' }}</option>@endforeach</select></div>
                                             <div class="col-md-2"><label class="form-label">Código de barras</label><input type="text" class="form-control" name="prd_codigo_barras" id="prd_codigo_barras" maxlength="80" placeholder="Opcional"></div>
-                                            <div class="col-md-2"><label class="form-label">Clave SAT</label><input type="text" class="form-control" name="prd_clave_sat" id="prd_clave_sat" maxlength="20" placeholder="Opcional"></div>
+                                            <div class="col-md-2"><label class="form-label">Clave fiscal (SAT)</label><input type="text" class="form-control" name="prd_clave_sat" id="prd_clave_sat" maxlength="20" placeholder="Opcional"></div>
                                             <div class="col-12">
-                                                <label class="form-label d-block">Tipo de producto</label>
+                                                <label class="form-label d-block">¿Cómo quieres manejar este producto?</label>
                                                 <div class="cc-product-type">
                                                     <div class="form-check">
                                                         <input class="form-check-input d-none" type="radio" name="prd_tipo" id="prd_tipo_variable" value="variable" checked>
                                                         <label class="form-check-label" for="prd_tipo_variable">
                                                             <span class="fw-semibold d-block">Variable</span>
-                                                            <small class="text-body-secondary">Genera corridas automáticas con atributos y valores seleccionados.</small>
+                                                            <small class="text-body-secondary">Ideal cuando el producto cambia por talla, color u otra característica.</small>
                                                         </label>
                                                     </div>
                                                     <div class="form-check">
                                                         <input class="form-check-input d-none" type="radio" name="prd_tipo" id="prd_tipo_simple" value="simple">
                                                         <label class="form-check-label" for="prd_tipo_simple">
-                                                            <span class="fw-semibold d-block">Simple</span>
-                                                            <small class="text-body-secondary">Genera un solo SKU automático.</small>
+                                                            <span class="fw-semibold d-block">Producto simple</span>
+                                                            <small class="text-body-secondary">Se guarda como un solo producto, sin combinaciones.</small>
                                                         </label>
                                                     </div>
                                                 </div>
@@ -814,23 +894,23 @@
                                             <div class="col-12">
                                                 <div class="cc-summary-grid" id="producto-resumen-general"></div>
                                             </div>
-                                            <div class="col-md-4"><label class="form-label">Precio base</label><input type="number" class="form-control" name="prd_precio_base" id="prd_precio_base" min="0" step="0.01" value="0.00" required></div>
-                                            <div class="col-md-4"><label class="form-label">Costo base</label><input type="number" class="form-control" name="prd_costo" id="prd_costo" min="0" step="0.01" value="0.00"></div>
-                                            <div class="col-md-4"><label class="form-label">Estatus</label><select class="form-select" name="prd_estatus" id="prd_estatus"><option value="activo">Activo</option><option value="inactivo">Inactivo</option></select></div>
-                                            <div class="col-md-4"><label class="form-label">Stock mínimo base</label><input type="number" class="form-control" name="prd_stock_minimo" id="prd_stock_minimo" min="0" step="1" value="0" required></div>
-                                            <div class="col-md-4"><label class="form-label">Stock máximo base</label><input type="number" class="form-control" name="prd_stock_maximo" id="prd_stock_maximo" min="0" step="1" value="0" required></div>
-                                            <div class="col-12"><label class="form-label">Descripción general</label><textarea class="form-control" name="prd_descripcion" id="prd_descripcion" rows="3"></textarea></div>
+                                            <div class="col-md-4"><label class="form-label">Precio de venta <span class="text-danger">*</span></label><input type="number" class="form-control" name="prd_precio_base" id="prd_precio_base" min="0" step="0.01" value="0.00" required></div>
+                                            <div class="col-md-4"><label class="form-label">Costo</label><input type="number" class="form-control" name="prd_costo" id="prd_costo" min="0" step="0.01" value="0.00"></div>
+                                            <div class="col-md-4"><label class="form-label">Estado</label><select class="form-select" name="prd_estatus" id="prd_estatus"><option value="activo">Activo</option><option value="inactivo">Inactivo</option></select></div>
+                                            <div class="col-md-4"><label class="form-label">Stock mínimo base <span class="text-danger">*</span></label><input type="number" class="form-control" name="prd_stock_minimo" id="prd_stock_minimo" min="0" step="1" value="0" required></div>
+                                            <div class="col-md-4"><label class="form-label">Stock máximo base <span class="text-danger">*</span></label><input type="number" class="form-control" name="prd_stock_maximo" id="prd_stock_maximo" min="0" step="1" value="0" required></div>
+                                            <div class="col-12"><label class="form-label">Descripción para referencia</label><textarea class="form-control" name="prd_descripcion" id="prd_descripcion" rows="3" placeholder="Ejemplo: producto de temporada, material, detalles importantes..."></textarea></div>
                                             <div class="col-12" id="producto-variable-shell" style="display:none;">
                                                 <div class="cc-value-card">
                                                     <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
                                                         <div>
                                                             <h6 class="mb-1">Configuración de corridas</h6>
-                                                            <p class="mb-0 text-body-secondary">Selecciona los atributos y luego marca qué valores participan en la combinación.</p>
+                                                            <p class="mb-0 text-body-secondary">Elige los atributos y luego marca los valores para crear las corridas.</p>
                                                         </div>
-                                                        <span class="badge bg-label-info">SKU automático</span>
+                                                        <span class="badge bg-label-info">Códigos automáticos</span>
                                                     </div>
                                                     <div class="mb-3">
-                                                        <label class="form-label">Atributos que combinan</label>
+                                                        <label class="form-label">Atributos para corridas</label>
                                                         <div id="producto-atributos-checklist" class="cc-attr-grid"></div>
                                                     </div>
                                                     <div id="producto-valores-config"></div>
@@ -840,39 +920,39 @@
                                     </div>
                                     <aside class="cc-product-sidebar">
                                         <div class="cc-side-panel">
-                                            <h6>Imagen general</h6>
-                                            <p>Sube o vincula la foto principal del producto. También puedes cargarla desde el celular.</p>
+                                            <h6>Foto principal</h6>
+                                            <p>Agrega la imagen principal del producto. Puedes subirla aquí o desde tu celular.</p>
                                             <div class="cc-image-preview" id="producto-imagen-preview-wrap">
-                                                <div class="cc-image-placeholder">La imagen principal se mostrará aquí.</div>
+                                                <div class="cc-image-placeholder">Aquí verás la foto principal del producto.</div>
                                                 <img id="producto-imagen-preview" alt="Vista previa del producto">
                                             </div>
                                             <div class="cc-method-grid">
                                                 <label class="cc-method-option">
-                                                    <input type="radio" name="prd_imagen_metodo" value="archivo">
-                                                    <div>
-                                                        <strong>Desde este dispositivo</strong>
-                                                        <div class="small text-body-secondary">Selecciona una imagen local.</div>
-                                                    </div>
+                                                        <input type="radio" name="prd_imagen_metodo" value="archivo">
+                                                        <div>
+                                                        <strong>Subir desde esta computadora</strong>
+                                                        <div class="small text-body-secondary">Elige una imagen guardada en este equipo.</div>
+                                                        </div>
                                                 </label>
                                                 <label class="cc-method-option">
-                                                    <input type="radio" name="prd_imagen_metodo" value="url">
-                                                    <div>
-                                                        <strong>Link externo</strong>
-                                                        <div class="small text-body-secondary">Pega la URL pública de la imagen.</div>
-                                                    </div>
+                                                        <input type="radio" name="prd_imagen_metodo" value="url">
+                                                        <div>
+                                                        <strong>Usar enlace de imagen</strong>
+                                                        <div class="small text-body-secondary">Pega el enlace público de la imagen.</div>
+                                                        </div>
                                                 </label>
                                                 <label class="cc-method-option">
-                                                    <input type="radio" name="prd_imagen_metodo" value="qr">
-                                                    <div>
-                                                        <strong>QR desde celular</strong>
-                                                        <div class="small text-body-secondary">Escanea y sube la foto desde el teléfono.</div>
-                                                    </div>
+                                                        <input type="radio" name="prd_imagen_metodo" value="qr">
+                                                        <div>
+                                                        <strong>Subir desde celular con QR</strong>
+                                                        <div class="small text-body-secondary">Escanea el código y carga la foto desde tu teléfono.</div>
+                                                        </div>
                                                 </label>
                                             </div>
                                             <div class="cc-image-block is-active" data-image-method="archivo">
                                                 <label class="form-label">Archivo de imagen</label>
                                                 <input type="file" class="form-control" name="prd_imagen_archivo" id="prd_imagen_archivo" accept="image/*">
-                                                <div class="form-text">JPG, PNG o WEBP. Máximo 5 MB.</div>
+                                                <div class="form-text">Formatos sugeridos: JPG, PNG o WEBP. Tamaño máximo: 5 MB.</div>
                                             </div>
                                             <div class="cc-image-block" data-image-method="url">
                                                 <label class="form-label">URL externa</label>
@@ -883,28 +963,28 @@
                                                     <img id="producto-imagen-qr" alt="QR de carga móvil" style="display:none;">
                                                     <div id="producto-imagen-qr-placeholder" class="text-body-secondary">Generando sesión de carga móvil...</div>
                                                     <a href="#" target="_blank" rel="noopener" class="cc-qr-link" id="producto-imagen-mobile-link" style="display:none;"></a>
-                                                    <div class="cc-image-status" id="producto-imagen-mobile-status">Todavía no se ha cargado una imagen desde el celular.</div>
-                                                    <div class="cc-image-status">Para escanear desde el teléfono usa una IP LAN o dominio accesible. `localhost` y `0.0.0.0` no son válidos desde el celular.</div>
+                                                    <div class="cc-image-status" id="producto-imagen-mobile-status">Aún no se ha cargado una imagen desde el celular.</div>
+                                                    <div class="cc-image-status">Tip: usa una dirección de red local o dominio accesible desde tu teléfono.</div>
                                                 </div>
                                             </div>
                                             <div class="d-grid gap-2 mt-3">
-                                                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-regenerar-qr-producto">Regenerar QR</button>
-                                                <button type="button" class="btn btn-outline-danger btn-sm" id="btn-quitar-imagen-producto">Quitar imagen</button>
+                                                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-regenerar-qr-producto">Generar nuevo QR</button>
+                                                <button type="button" class="btn btn-outline-danger btn-sm" id="btn-quitar-imagen-producto">Quitar foto</button>
                                             </div>
                                         </div>
                                     </aside>
                                 </div>
                             </div>
-                            <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap mt-3">
-                                <button type="button" class="btn btn-outline-secondary btn-cancelar-producto-tab">Cancelar</button>
-                                <button type="submit" class="btn btn-primary">Guardar producto</button>
+                            <div class="cc-form-actions">
+                                <button type="button" class="btn btn-outline-secondary btn-cancelar-producto-tab">Descartar cambios</button>
+                                <button type="submit" class="btn btn-primary">Guardar y continuar</button>
                             </div>
                         </form>
                     </div>
                 </div>
             </div>
 
-            <div class="tab-pane fade" id="panel-skus">
+            <div class="tab-pane fade {{ $vistaActiva === 'skus' ? 'show active' : '' }}" id="panel-skus">
                 <div class="alert alert-info mb-3" role="alert">
                     Los SKU se generan automáticamente desde la configuración del producto base. Aquí puedes revisar las corridas creadas.
                 </div>
@@ -939,7 +1019,7 @@
                 </div>
             </div>
 
-            <div class="tab-pane fade" id="panel-proveedores">
+            <div class="tab-pane fade {{ $vistaActiva === 'proveedores' ? 'show active' : '' }}" id="panel-proveedores">
                 <div class="d-flex justify-content-end mb-3">
                     @if($permisosUI['crear'])
                         <button class="btn btn-primary" id="btn-nuevo-proveedor">Nuevo proveedor</button>
@@ -968,7 +1048,7 @@
                 </div>
             </div>
 
-            <div class="tab-pane fade" id="panel-etiquetado">
+            <div class="tab-pane fade {{ $vistaActiva === 'etiquetado' ? 'show active' : '' }}" id="panel-etiquetado">
                 <div class="alert alert-info mb-3" role="alert">
                     Genera una etiqueta PDF estándar para impresión térmica Zebra. Incluye código de barras del SKU, nombre del producto y precio.
                 </div>
@@ -1256,6 +1336,8 @@
                         <div class="col-md-3"><label class="form-label">Código SKU</label><input type="text" class="form-control" name="psk_codigo" id="psk_codigo" required maxlength="60"></div>
                         <div class="col-md-3"><label class="form-label">Código de barras SKU</label><input type="text" class="form-control" name="psk_codigo_barras" id="psk_codigo_barras" maxlength="80"></div>
                         <div class="col-md-6"><label class="form-label">Nombre SKU</label><input type="text" class="form-control" name="psk_nombre" id="psk_nombre" maxlength="180"></div>
+                        <div class="col-md-3"><label class="form-label">Costo</label><input type="number" class="form-control" name="psk_costo" id="psk_costo" min="0" step="0.01"></div>
+                        <div class="col-md-3"><label class="form-label">Precio venta</label><input type="number" class="form-control" name="psk_precio" id="psk_precio" min="0" step="0.01"></div>
                         <div class="col-md-3"><label class="form-label">Stock mínimo variante</label><input type="number" class="form-control" name="psk_stock_minimo" id="psk_stock_minimo" min="0" step="1"></div>
                         <div class="col-md-3"><label class="form-label">Stock máximo variante</label><input type="number" class="form-control" name="psk_stock_maximo" id="psk_stock_maximo" min="0" step="1"></div>
                         <div class="col-md-8" id="psk-valores-wrap">
@@ -1431,6 +1513,7 @@
     const tabProductosButton = document.querySelector('[data-bs-target="#panel-productos"]');
     let deleteAction = null;
     let productosCache = [];
+    let tablaProductos = null;
     let productosViewMode = 'cuadricula';
     const catalogoLabels = {
         marcas: 'Marca',
@@ -1458,6 +1541,8 @@
         proveedores: [],
         productoAtributosSeleccionados: [],
         productoValoresSeleccionados: {},
+        productoCorridas: [],
+        productoCorridaAtributoObjetivo: null,
         productoImagenActual: null,
         productoImagenSesion: null,
         productoImagenPollId: null,
@@ -1764,6 +1849,277 @@
         return $('input[name="prd_tipo"]:checked').val() || 'simple';
     }
 
+    function esAtributoTalla(nombre) {
+        const txt = String(nombre || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .trim();
+        return txt === 'talla' || txt === 'tallas' || txt === 'tamano' || txt === 'tamanio' || txt === 'medida';
+    }
+
+    function compararValorNaturalCatalogo(a, b, forzarNumerico = false) {
+        const aa = String(a || '').trim();
+        const bb = String(b || '').trim();
+        if (!aa && !bb) return 0;
+        if (!aa) return 1;
+        if (!bb) return -1;
+
+        const rx = /^-?\d+(\.\d+)?$/;
+        const na = rx.test(aa) ? Number(aa) : null;
+        const nb = rx.test(bb) ? Number(bb) : null;
+
+        if (na !== null && nb !== null) return na - nb;
+        if (forzarNumerico) {
+            if (na !== null) return -1;
+            if (nb !== null) return 1;
+        }
+
+        return aa.localeCompare(bb, 'es', { numeric: true, sensitivity: 'base' });
+    }
+
+    function obtenerIndiceAtributo(atrId) {
+        return catalogoState.productoAtributosSeleccionados.findIndex((id) => Number(id) === Number(atrId));
+    }
+
+    function normalizarCorridasProducto(corridas = []) {
+        return (corridas || [])
+            .filter((item) => item && typeof item === 'object')
+            .map((item) => {
+                const atrId = Number(item.crc_atr_id ?? item.prc_atr_id ?? 0);
+                const valorIdsRaw = item.crc_valor_ids ?? item.prc_valor_ids ?? [];
+                const valorIds = [...new Set((valorIdsRaw || []).map((x) => Number(x)).filter((x) => x > 0))];
+                return {
+                    uid: String(item.uid ?? item.crc_uid ?? item.prc_uid ?? (Date.now() + '-' + Math.random().toString(36).slice(2))),
+                    nombre: String(item.crc_nombre ?? item.prc_nombre ?? '').trim(),
+                    atr_id: atrId,
+                    valor_ids: valorIds,
+                    precio_base: Number(item.crc_precio_base ?? item.prc_precio_base ?? 0),
+                    costo_base: Number(item.crc_costo_base ?? item.prc_costo_base ?? 0),
+                    stock_minimo: Number(item.crc_stock_minimo ?? item.prc_stock_minimo ?? 0),
+                    stock_maximo: Number(item.crc_stock_maximo ?? item.prc_stock_maximo ?? 0),
+                };
+            })
+            .filter((item) => item.atr_id > 0 && item.valor_ids.length > 0);
+    }
+
+    function obtenerValoresAtributoDisponibles(atributoId) {
+        const atrId = Number(atributoId || 0);
+        const seleccionados = (catalogoState.productoValoresSeleccionados[atrId] || [])
+            .map((id) => Number(id))
+            .filter((id) => id > 0);
+
+        if (seleccionados.length) {
+            return [...new Set(seleccionados)];
+        }
+
+        const atributo = catalogoState.atributos.find((a) => Number(a.atr_id) === atrId);
+        const ordenarNumerico = esAtributoTalla(atributo?.atr_nombre || '');
+
+        return catalogoState.valores
+            .filter((item) => Number(item.vat_atr_id) === atrId)
+            .slice()
+            .sort((a, b) => compararValorNaturalCatalogo(a?.vat_valor, b?.vat_valor, ordenarNumerico))
+            .map((item) => Number(item.vat_id))
+            .filter((id) => id > 0);
+    }
+
+    function sanitizarCorridasProducto() {
+        const attrsPermitidos = new Set(catalogoState.productoAtributosSeleccionados.map((id) => Number(id)));
+        const limpio = [];
+        (catalogoState.productoCorridas || []).forEach((corrida) => {
+            const atrId = Number(corrida?.atr_id || 0);
+            if (!attrsPermitidos.has(atrId)) return;
+            const permitidos = new Set(obtenerValoresAtributoDisponibles(atrId));
+            const valorIds = [...new Set((corrida?.valor_ids || []).map((id) => Number(id)).filter((id) => permitidos.has(id)))];
+            limpio.push({
+                nombre: String(corrida?.nombre || '').trim(),
+                atr_id: atrId,
+                valor_ids: valorIds,
+                precio_base: Number(corrida?.precio_base || 0),
+                costo_base: Number(corrida?.costo_base || 0),
+                stock_minimo: Number(corrida?.stock_minimo || 0),
+                stock_maximo: Number(corrida?.stock_maximo || 0),
+            });
+        });
+        catalogoState.productoCorridas = limpio;
+    }
+
+    function sincronizarCorridasDesdeUI() {
+        const corridas = [];
+        $('#producto-corridas-list .card').each(function (idx) {
+            const $card = $(this);
+            const atrId = Number($card.data('atrId') || 0);
+            const valorIds = ($card.find('.js-prd-corrida-valores').val() || []).map((v) => Number(v)).filter((v) => v > 0);
+            corridas.push({
+                uid: String($card.data('corridaUid') || (Date.now() + '-' + Math.random().toString(36).slice(2))),
+                nombre: String($card.find('.js-prd-corrida-nombre').val() || '').trim(),
+                atr_id: atrId,
+                valor_ids: [...new Set(valorIds)],
+                precio_base: Number($card.find('.js-prd-corrida-precio').val() || 0),
+                costo_base: Number($card.find('.js-prd-corrida-costo').val() || 0),
+                stock_minimo: Number($card.find('.js-prd-corrida-stock-min').val() || 0),
+                stock_maximo: Number($card.find('.js-prd-corrida-stock-max').val() || 0),
+            });
+        });
+        if (corridas.length) {
+            catalogoState.productoCorridas = corridas;
+        }
+    }
+
+    function sincronizarCorridaPorIndice(idx) {
+        const $card = $('#producto-corridas-list .card').eq(idx);
+        if (!$card.length || !catalogoState.productoCorridas[idx]) return;
+        const atrId = Number($card.data('atrId') || 0);
+        const valorIds = ($card.find('.js-prd-corrida-valores').val() || []).map((v) => Number(v)).filter((v) => v > 0);
+        catalogoState.productoCorridas[idx] = {
+            ...catalogoState.productoCorridas[idx],
+            uid: String($card.data('corridaUid') || catalogoState.productoCorridas[idx].uid || (Date.now() + '-' + Math.random().toString(36).slice(2))),
+            nombre: String($card.find('.js-prd-corrida-nombre').val() || '').trim(),
+            atr_id: atrId,
+            valor_ids: [...new Set(valorIds)],
+            precio_base: Number($card.find('.js-prd-corrida-precio').val() || 0),
+            costo_base: Number($card.find('.js-prd-corrida-costo').val() || 0),
+            stock_minimo: Number($card.find('.js-prd-corrida-stock-min').val() || 0),
+            stock_maximo: Number($card.find('.js-prd-corrida-stock-max').val() || 0),
+        };
+    }
+
+    function reconstruirValoresCorridaEnSitio(idx) {
+        const corrida = catalogoState.productoCorridas[idx];
+        if (!corrida) return;
+
+        const atrId = Number(corrida.atr_id || 0);
+        const $card = $('#producto-corridas-list .card').eq(idx);
+        if (!$card.length) return;
+
+        const usados = {};
+        (catalogoState.productoCorridas || []).forEach((otra, oIdx) => {
+            if (oIdx === idx) return;
+            if (Number(otra?.atr_id || 0) !== atrId) return;
+            (otra?.valor_ids || []).forEach((v) => { usados[Number(v)] = true; });
+        });
+
+        const disponibles = obtenerValoresAtributoDisponibles(atrId)
+            .map((valorId) => catalogoState.valores.find((v) => Number(v.vat_id) === Number(valorId)))
+            .filter(Boolean);
+
+        const $select = $card.find('.js-prd-corrida-valores');
+        if (!$select.length) return;
+
+        if ($select.hasClass('select2-hidden-accessible')) {
+            $select.select2('destroy');
+        }
+
+        const optionsHtml = disponibles.map((v) => {
+            const valId = Number(v.vat_id);
+            const bloqueado = usados[valId] ? ' disabled' : '';
+            return '<option value="' + valId + '"' + bloqueado + '>' + escapeAttr(v.vat_valor || '') + '</option>';
+        }).join('');
+
+        $select.html(optionsHtml).val([]);
+        $select.select2({
+            width: '100%',
+            placeholder: 'Selecciona valores',
+            closeOnSelect: false,
+            allowClear: true,
+        });
+    }
+
+    function tituloCorridaSugerido(atrId) {
+        const atributo = catalogoState.atributos.find((a) => Number(a.atr_id) === Number(atrId));
+        const nombre = atributo?.atr_nombre || 'Grupo';
+        const idx = (catalogoState.productoCorridas || []).length + 1;
+        return nombre + ' ' + idx;
+    }
+
+    function renderConfiguracionCorridasProducto() {
+        const attrs = catalogoState.productoAtributosSeleccionados || [];
+        if (!attrs.length) {
+            return '<div class="text-body-secondary small mt-2">Selecciona atributos y valores para crear corridas.</div>';
+        }
+
+        const rows = (catalogoState.productoCorridas || []).map((corrida, idx) => {
+            const atrId = Number(corrida.atr_id || 0);
+            const atrActual = catalogoState.atributos.find((a) => Number(a.atr_id) === atrId);
+
+            const usados = {};
+            (catalogoState.productoCorridas || []).forEach((otra, oIdx) => {
+                if (oIdx === idx) return;
+                if (Number(otra.atr_id) !== atrId) return;
+                (otra.valor_ids || []).forEach((v) => { usados[Number(v)] = true; });
+            });
+            const disponibles = obtenerValoresAtributoDisponibles(atrId)
+                .map((valorId) => catalogoState.valores.find((v) => Number(v.vat_id) === Number(valorId)))
+                .filter(Boolean);
+            const optionsVals = disponibles.map((v) => {
+                const valId = Number(v.vat_id);
+                const sel = (corrida.valor_ids || []).includes(valId);
+                const bloqueado = !sel && usados[valId];
+                return '<option value="' + valId + '" ' + (sel ? 'selected' : '') + (bloqueado ? ' disabled' : '') + '>' + v.vat_valor + '</option>';
+            }).join('');
+
+            return '' +
+                '<div class="card mb-2" data-atr-id="' + atrId + '" data-corrida-uid="' + escapeAttr(corrida.uid || ('uid-' + idx)) + '">' +
+                    '<div class="card-body">' +
+                        '<div class="d-flex justify-content-between align-items-center mb-2">' +
+                            '<strong>Corrida ' + (idx + 1) + '</strong>' +
+                            '<button type="button" class="btn btn-sm btn-outline-danger js-prd-corrida-remove" data-corrida-uid="' + escapeAttr(corrida.uid || ('uid-' + idx)) + '">Quitar</button>' +
+                        '</div>' +
+                        '<div class="row g-2">' +
+                            '<div class="col-md-3"><label class="form-label">Nombre</label><input type="text" class="form-control form-control-sm js-prd-corrida-nombre" data-idx="' + idx + '" value="' + escapeAttr(corrida.nombre || '') + '" maxlength="120"></div>' +
+                            '<div class="col-md-3"><label class="form-label">Atributo objetivo</label><input type="text" class="form-control form-control-sm bg-light" value="' + escapeAttr(atrActual?.atr_nombre || ('Atributo ' + atrId)) + '" readonly></div>' +
+                            '<div class="col-md-6"><label class="form-label">Valores incluidos</label><select class="form-select form-select-sm cc-select2-tags js-prd-corrida-valores" data-idx="' + idx + '" multiple>' + optionsVals + '</select></div>' +
+                            '<div class="col-md-3"><label class="form-label">Costo</label><input type="number" class="form-control form-control-sm js-prd-corrida-costo" data-idx="' + idx + '" min="0" step="0.01" value="' + escapeAttr(Number(corrida.costo_base || 0).toFixed(2)) + '"></div>' +
+                            '<div class="col-md-3"><label class="form-label">Precio venta</label><input type="number" class="form-control form-control-sm js-prd-corrida-precio" data-idx="' + idx + '" min="0" step="0.01" value="' + escapeAttr(Number(corrida.precio_base || 0).toFixed(2)) + '"></div>' +
+                            '<div class="col-md-3"><label class="form-label">Stock mínimo base</label><input type="number" class="form-control form-control-sm js-prd-corrida-stock-min" data-idx="' + idx + '" min="0" step="1" value="' + escapeAttr(Number(corrida.stock_minimo || 0)) + '"></div>' +
+                            '<div class="col-md-3"><label class="form-label">Stock máximo base</label><input type="number" class="form-control form-control-sm js-prd-corrida-stock-max" data-idx="' + idx + '" min="0" step="1" value="' + escapeAttr(Number(corrida.stock_maximo || 0)) + '"></div>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+        }).join('');
+
+        return '' +
+            '<div class="mt-3 border-top pt-3">' +
+                '<div class="d-flex justify-content-between align-items-center mb-2">' +
+                    '<h6 class="mb-0">Agrupaciones de corridas</h6>' +
+                    '<div class="d-flex align-items-center gap-2">' +
+                        '<select class="form-select form-select-sm" id="prd-corrida-atr-objetivo" style="min-width:240px;">' +
+                            attrs.map((id) => {
+                                const atr = catalogoState.atributos.find((a) => Number(a.atr_id) === Number(id));
+                                const selected = Number(catalogoState.productoCorridaAtributoObjetivo || attrs[0]) === Number(id) ? ' selected' : '';
+                                return '<option value="' + id + '"' + selected + '>' + (atr?.atr_nombre || ('Atributo ' + id)) + '</option>';
+                            }).join('') +
+                        '</select>' +
+                        '<button type="button" class="btn btn-sm btn-outline-primary" id="btn-prd-corrida-add">+ Agregar corrida</button>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="small text-body-secondary mb-2">Cada corrida define precio, costo y stock por grupo de valores.</div>' +
+                '<div id="producto-corridas-list">' + (rows || '<div class="text-body-secondary small">Aún no hay corridas. Agrega al menos una.</div>') + '</div>' +
+            '</div>';
+    }
+
+    function actualizarUiCamposBaseProducto() {
+        const esVariable = obtenerTipoProductoActual() === 'variable';
+        const $precio = $('#prd_precio_base');
+        const $costo = $('#prd_costo');
+        const $min = $('#prd_stock_minimo');
+        const $max = $('#prd_stock_maximo');
+        const $labels = $precio.closest('.col-md-4').add($costo.closest('.col-md-4')).add($min.closest('.col-md-4')).add($max.closest('.col-md-4'));
+        $labels.toggleClass('opacity-50', esVariable);
+        if (esVariable) {
+            $precio.prop('readonly', true);
+            $costo.prop('readonly', true);
+            $min.prop('readonly', true);
+            $max.prop('readonly', true);
+        } else {
+            $precio.prop('readonly', false);
+            $costo.prop('readonly', false);
+            $min.prop('readonly', false);
+            $max.prop('readonly', false);
+        }
+    }
+
     function actualizarUiTipoProducto() {
         const esVariable = obtenerTipoProductoActual() === 'variable';
         $('#producto-variable-shell').toggle(esVariable);
@@ -1771,8 +2127,10 @@
         if (!esVariable) {
             catalogoState.productoAtributosSeleccionados = [];
             catalogoState.productoValoresSeleccionados = {};
+            catalogoState.productoCorridas = [];
         }
 
+        actualizarUiCamposBaseProducto();
         renderConfiguracionVariableProducto();
     }
 
@@ -1893,9 +2251,13 @@
             return;
         }
 
-        const html = catalogoState.productoAtributosSeleccionados.map(function (atributoId) {
+        const htmlValores = catalogoState.productoAtributosSeleccionados.map(function (atributoId) {
             const atributo = catalogoState.atributos.find((item) => Number(item.atr_id) === Number(atributoId));
-            const valores = catalogoState.valores.filter((item) => Number(item.vat_atr_id) === Number(atributoId));
+            const ordenarNumerico = esAtributoTalla(atributo?.atr_nombre || '');
+            const valores = catalogoState.valores
+                .filter((item) => Number(item.vat_atr_id) === Number(atributoId))
+                .slice()
+                .sort((a, b) => compararValorNaturalCatalogo(a?.vat_valor, b?.vat_valor, ordenarNumerico));
             const seleccionados = (catalogoState.productoValoresSeleccionados[atributoId] || []).map(Number);
 
             const valoresHtml = valores.map(function (valor) {
@@ -1914,8 +2276,21 @@
             `;
         }).join('');
 
+        sanitizarCorridasProducto();
+        const html = htmlValores + renderConfiguracionCorridasProducto();
         $('#producto-valores-config').html(html);
         inicializarSelectTagsProducto();
+        $('#producto-valores-config .js-prd-corrida-valores').each(function () {
+            if ($(this).hasClass('select2-hidden-accessible')) {
+                $(this).select2('destroy');
+            }
+            $(this).select2({
+                width: '100%',
+                placeholder: 'Selecciona valores',
+                closeOnSelect: false,
+                allowClear: true,
+            });
+        });
         renderResumenProducto();
     }
 
@@ -1988,6 +2363,7 @@
 
         catalogoState.productoAtributosSeleccionados = [];
         catalogoState.productoValoresSeleccionados = {};
+        catalogoState.productoCorridas = [];
         catalogoState.productoImagenSesion = null;
         limpiarPollingImagenProducto();
         establecerPreviewImagenProducto(null);
@@ -2090,8 +2466,8 @@
             const clasificacion = [producto.marca, producto.linea, producto.categoria, producto.unidad]
                 .filter(Boolean)
                 .join(' / ') || 'Sin clasificación';
-            const barcode = producto.prd_codigo_barras ? 'Barcode: ' + producto.prd_codigo_barras : 'Sin barcode';
-            const claveSat = producto.prd_clave_sat ? 'Clave SAT: ' + producto.prd_clave_sat : 'Sin clave SAT';
+            const barcode = producto.prd_codigo_barras ? 'Código de barras: ' + producto.prd_codigo_barras : 'Código de barras: no capturado';
+            const claveSat = producto.prd_clave_sat ? 'Clave fiscal (SAT): ' + producto.prd_clave_sat : 'Clave fiscal (SAT): no capturada';
             const proveedor = producto.proveedor ? '<br><small>Proveedor: ' + producto.proveedor + '</small>' : '';
 
             return `
@@ -2131,22 +2507,57 @@
             `;
         }).join('');
 
-        $('#productos-grid').html(html || '<div class="cc-product-card__empty">Todavía no hay productos registrados. Cuando des de alta uno, aparecerá aquí en cuadrícula.</div>');
+        $('#productos-grid').html(html || '<div class="cc-product-card__empty">Aún no hay productos para mostrar con esta búsqueda. Prueba con otro texto o agrega un producto nuevo.</div>');
+    }
+
+    function actualizarResumenProductos(productos) {
+        const total = productos.length;
+        const activos = productos.filter((p) => p.prd_estatus === 'activo').length;
+        const variantes = productos.filter((p) => Number(p.skus_total || 0) > 0).length;
+        const sinProveedor = productos.filter((p) => !p.proveedor).length;
+        $('#kpi-productos-total').text(total);
+        $('#kpi-productos-activos').text(activos);
+        $('#kpi-productos-variantes').text(variantes);
+        $('#kpi-productos-sin-proveedor').text(sinProveedor);
+    }
+
+    function aplicarFiltroProductosLocal() {
+        const term = String($('#productos-busqueda-rapida').val() || '').trim().toLowerCase();
+        const filtrados = term
+            ? productosCache.filter((p) => {
+                const bolsa = [
+                    p.prd_codigo,
+                    p.prd_nombre,
+                    p.marca,
+                    p.linea,
+                    p.categoria,
+                    p.proveedor,
+                    p.unidad,
+                ].filter(Boolean).join(' ').toLowerCase();
+                return bolsa.includes(term);
+            })
+            : productosCache;
+
+        actualizarResumenProductos(filtrados);
+        renderProductosGrid(filtrados);
+
+        if (tablaProductos) {
+            tablaProductos.clear().rows.add(filtrados).draw();
+        }
     }
 
     function recargarProductos() {
         $.getJSON(rutas.productosData).done(function (resp) {
             productosCache = resp.data || [];
-            renderProductosGrid(productosCache);
 
             if ($.fn.DataTable.isDataTable('#productos-table')) $('#productos-table').DataTable().clear().destroy();
-            $('#productos-table').DataTable({
+            tablaProductos = $('#productos-table').DataTable({
                 data: productosCache,
                 order: [[1, 'asc']],
                 columns: [
                     { data: 'prd_codigo' },
                     { data: 'prd_nombre' },
-                    { data: null, render: (r) => '<span class="badge bg-label-' + (r.prd_tipo === 'variable' ? 'info' : 'primary') + ' mb-1">' + (r.prd_tipo === 'variable' ? 'Variable' : 'Simple') + '</span><div class="small text-body-secondary">Precio base: $' + Number(r.prd_precio_base || 0).toFixed(2) + ' | Costo: $' + Number(r.prd_costo || 0).toFixed(2) + '</div><div class="small text-body-secondary">Stock min/max: ' + (r.prd_stock_minimo ?? 0) + ' / ' + (r.prd_stock_maximo ?? 0) + '</div><div class="small text-body-secondary">Barcode: ' + (r.prd_codigo_barras || '-') + '</div><div class="small text-body-secondary">Clave SAT: ' + (r.prd_clave_sat || '-') + '</div>' },
+                    { data: null, render: (r) => '<span class="badge bg-label-' + (r.prd_tipo === 'variable' ? 'info' : 'primary') + ' mb-1">' + (r.prd_tipo === 'variable' ? 'Con corridas' : 'Sencillo') + '</span><div class="small text-body-secondary">Precio: $' + Number(r.prd_precio_base || 0).toFixed(2) + ' | Costo: $' + Number(r.prd_costo || 0).toFixed(2) + '</div><div class="small text-body-secondary">Stock mínimo/máximo: ' + (r.prd_stock_minimo ?? 0) + ' / ' + (r.prd_stock_maximo ?? 0) + '</div><div class="small text-body-secondary">Código de barras: ' + (r.prd_codigo_barras || '-') + '</div><div class="small text-body-secondary">Clave fiscal (SAT): ' + (r.prd_clave_sat || '-') + '</div>' },
                     { data: null, render: (r) => {
                         const principal = [r.marca, r.linea, r.categoria, r.unidad].filter(Boolean).join(' / ') || '-';
                         const proveedor = r.proveedor ? '<div class="small text-body-secondary">Proveedor: ' + r.proveedor + '</div>' : '';
@@ -2156,13 +2567,14 @@
                         const atributos = (r.atributos || []).length ? (r.atributos || []).join(', ') : 'Sin atributos';
                         const total = Number(r.skus_total || 0);
                         const activos = Number(r.skus_activos || 0);
-                        return '<div class="fw-semibold">' + total + ' corridas</div><div class="small text-body-secondary">Activos: ' + activos + '</div><div class="small text-body-secondary">' + atributos + '</div>';
+                        return '<div class="fw-semibold">' + total + ' corridas</div><div class="small text-body-secondary">Activas: ' + activos + '</div><div class="small text-body-secondary">' + atributos + '</div>';
                     }},
                     { data: 'prd_estatus', render: (v) => estatusBadge(v) },
                     { data: null, orderable: false, searchable: false, render: (row) => buildActions('producto', row.prd_id, row.prd_nombre, row.prd_estatus === 'activo') },
                 ],
             });
 
+            aplicarFiltroProductosLocal();
             aplicarVistaProductos(obtenerVistaProductos());
         });
     }
@@ -2365,6 +2777,7 @@
     });
     $('#btn-productos-vista-grid').on('click', function () { aplicarVistaProductos('cuadricula'); });
     $('#btn-productos-vista-list').on('click', function () { aplicarVistaProductos('lista'); });
+    $('#productos-busqueda-rapida').on('input', aplicarFiltroProductosLocal);
 
     $('#btn-nuevo-catalogo').on('click', function () {
         const tipo = obtenerTipoCatalogoActual();
@@ -2418,6 +2831,12 @@
         });
 
         renderConfiguracionVariableProducto();
+        setTimeout(function () {
+            const $select = $('#producto-atributos-select');
+            if ($select.length && $select.hasClass('select2-hidden-accessible')) {
+                $select.select2('open');
+            }
+        }, 0);
     });
 
     $(document).on('change', '.producto-valores-select', function () {
@@ -2425,6 +2844,87 @@
         const seleccionados = ($(this).val() || []).map(Number);
         catalogoState.productoValoresSeleccionados[atributoId] = [...new Set(seleccionados)];
         renderResumenProducto();
+        renderConfiguracionVariableProducto();
+        const selector = '.producto-valores-select[data-atributo-id="' + atributoId + '"]';
+        setTimeout(function () {
+            const $select = $(selector);
+            if ($select.length && $select.hasClass('select2-hidden-accessible')) {
+                $select.select2('open');
+            }
+        }, 0);
+    });
+
+    $(document).on('click', '#btn-prd-corrida-add', function () {
+        sincronizarCorridasDesdeUI();
+        const atrRapido = Number($('#prd-corrida-atr-objetivo').val() || catalogoState.productoCorridaAtributoObjetivo || catalogoState.productoAtributosSeleccionados[0] || 0);
+        catalogoState.productoCorridaAtributoObjetivo = atrRapido;
+        if (!atrRapido) {
+            AppUI.showMessage('Validación', 'Selecciona el atributo objetivo de la corrida.', 'warning');
+            return;
+        }
+        const valoresDisponibles = obtenerValoresAtributoDisponibles(atrRapido);
+        if (!valoresDisponibles.length) {
+            AppUI.showMessage('Validación', 'Primero selecciona valores para ese atributo.', 'warning');
+            return;
+        }
+        const usados = {};
+        (catalogoState.productoCorridas || []).forEach((c) => {
+            if (Number(c.atr_id) !== atrRapido) return;
+            (c.valor_ids || []).forEach((v) => { usados[Number(v)] = true; });
+        });
+        const primerDisponible = valoresDisponibles.find((v) => !usados[Number(v)]) || valoresDisponibles[0];
+        catalogoState.productoCorridas.push({
+            uid: Date.now() + '-' + Math.random().toString(36).slice(2),
+            nombre: tituloCorridaSugerido(atrRapido),
+            atr_id: atrRapido,
+            valor_ids: primerDisponible ? [Number(primerDisponible)] : [],
+            precio_base: Number($('#prd_precio_base').val() || 0),
+            costo_base: Number($('#prd_costo').val() || 0),
+            stock_minimo: Number($('#prd_stock_minimo').val() || 0),
+            stock_maximo: Number($('#prd_stock_maximo').val() || 0),
+        });
+        renderConfiguracionVariableProducto();
+    });
+
+    $(document).on('change', '#prd-corrida-atr-objetivo', function () {
+        catalogoState.productoCorridaAtributoObjetivo = Number($(this).val() || 0);
+    });
+
+    $(document).on('click', '.js-prd-corrida-remove', function () {
+        const uid = String($(this).data('corridaUid') || '');
+        if (!uid) return;
+        if ((catalogoState.productoCorridas || []).length <= 1) {
+            catalogoState.productoCorridas = [];
+            renderConfiguracionVariableProducto();
+            return;
+        }
+        sincronizarCorridasDesdeUI();
+        catalogoState.productoCorridas = (catalogoState.productoCorridas || []).filter((corrida) => String(corrida.uid || '') !== uid);
+        renderConfiguracionVariableProducto();
+    });
+
+
+    $(document).on('change', '.js-prd-corrida-valores', function () {
+        const idx = Number($(this).data('idx') || -1);
+        if (idx < 0 || !catalogoState.productoCorridas[idx]) return;
+        const seleccion = ($(this).val() || []).map((v) => Number(v)).filter((v) => v > 0);
+        catalogoState.productoCorridas[idx].valor_ids = [...new Set(seleccion)];
+    });
+
+    $(document).on('input', '.js-prd-corrida-nombre', function () {
+        const idx = Number($(this).data('idx') || -1);
+        if (idx < 0 || !catalogoState.productoCorridas[idx]) return;
+        catalogoState.productoCorridas[idx].nombre = String($(this).val() || '').trim();
+    });
+
+    $(document).on('input', '.js-prd-corrida-precio,.js-prd-corrida-costo,.js-prd-corrida-stock-min,.js-prd-corrida-stock-max', function () {
+        const idx = Number($(this).data('idx') || -1);
+        if (idx < 0 || !catalogoState.productoCorridas[idx]) return;
+        const corrida = catalogoState.productoCorridas[idx];
+        if ($(this).hasClass('js-prd-corrida-precio')) corrida.precio_base = Number($(this).val() || 0);
+        if ($(this).hasClass('js-prd-corrida-costo')) corrida.costo_base = Number($(this).val() || 0);
+        if ($(this).hasClass('js-prd-corrida-stock-min')) corrida.stock_minimo = Number($(this).val() || 0);
+        if ($(this).hasClass('js-prd-corrida-stock-max')) corrida.stock_maximo = Number($(this).val() || 0);
     });
 
     $('#form-catalogo').on('submit', function (e) {
@@ -2464,6 +2964,32 @@
         e.preventDefault();
         const id = $('#prd_id').val();
         const formData = new FormData(this);
+        const esVariable = obtenerTipoProductoActual() === 'variable';
+        if (esVariable) {
+            sincronizarCorridasDesdeUI();
+            sanitizarCorridasProducto();
+            if (!(catalogoState.productoCorridas || []).length) {
+                AppUI.showMessage('Validación', 'Debes agregar al menos una corrida para producto variable.', 'warning');
+                return;
+            }
+            formData.delete('corridas');
+            (catalogoState.productoCorridas || []).forEach((corrida, idx) => {
+                formData.append('corridas[' + idx + '][crc_nombre]', String(corrida.nombre || '').trim());
+                formData.append('corridas[' + idx + '][crc_atr_id]', String(Number(corrida.atr_id || 0)));
+                (corrida.valor_ids || []).forEach((valorId) => {
+                    formData.append('corridas[' + idx + '][crc_valor_ids][]', String(Number(valorId || 0)));
+                });
+                formData.append('corridas[' + idx + '][crc_precio_base]', String(Number(corrida.precio_base || 0).toFixed(2)));
+                formData.append('corridas[' + idx + '][crc_costo_base]', String(Number(corrida.costo_base || 0).toFixed(2)));
+                formData.append('corridas[' + idx + '][crc_stock_minimo]', String(Math.max(0, Math.trunc(Number(corrida.stock_minimo || 0)))));
+                formData.append('corridas[' + idx + '][crc_stock_maximo]', String(Math.max(0, Math.trunc(Number(corrida.stock_maximo || 0)))));
+            });
+            const primera = catalogoState.productoCorridas[0];
+            formData.set('prd_precio_base', String(Number(primera?.precio_base || 0).toFixed(2)));
+            formData.set('prd_costo', String(Number(primera?.costo_base || 0).toFixed(2)));
+            formData.set('prd_stock_minimo', String(Math.max(0, Math.trunc(Number(primera?.stock_minimo || 0)))));
+            formData.set('prd_stock_maximo', String(Math.max(0, Math.trunc(Number(primera?.stock_maximo || 0)))));
+        }
         if (id) {
             formData.append('_method', 'PUT');
         }
@@ -2720,6 +3246,7 @@
             }
             catalogoState.productoAtributosSeleccionados = (d.atributo_ids || []).map(Number);
             catalogoState.productoValoresSeleccionados = normalizarMapaValoresProducto(d.atributo_valores || {});
+            catalogoState.productoCorridas = normalizarCorridasProducto(d.corridas || []);
             $('#producto-form-heading').text('Editar producto base');
             $('#tab-producto-form-label').text('Editar producto');
             actualizarUiTipoProducto();
@@ -2737,6 +3264,8 @@
             $('#psk_codigo').val(d.psk_codigo || '');
             $('#psk_codigo_barras').val(d.psk_codigo_barras || '');
             $('#psk_nombre').val(d.psk_nombre || '');
+            $('#psk_costo').val(Number(d.psk_costo ?? 0).toFixed(2));
+            $('#psk_precio').val(Number(d.psk_precio ?? 0).toFixed(2));
             $('#psk_stock_minimo').val(d.psk_stock_minimo ?? 0);
             $('#psk_stock_maximo').val(d.psk_stock_maximo ?? 0);
             $('#psk_estatus').val(d.psk_estatus || 'activo');
@@ -2807,6 +3336,8 @@
         $('#psk-valores-wrap').show();
         $('#psk_stock_minimo').val('');
         $('#psk_stock_maximo').val('');
+        $('#psk_costo').val('');
+        $('#psk_precio').val('');
         $('#modal-sku-title').text('SKU / Variante');
     });
 
@@ -2908,13 +3439,21 @@
     cargarConfiguracionZebraBase();
     $('#etq-config-manual-wrap').addClass('d-none');
     aplicarVistaProductos('cuadricula');
-    recargarCatalogo();
-    recargarAtributos();
-    recargarValores();
-    recargarProductos();
-    recargarSkus();
-    recargarProveedores();
-    recargarEtiquetado();
+    const vistaActiva = @json($vistaActiva ?? 'base');
+    if (vistaActiva === 'base') {
+        recargarCatalogo();
+    } else if (vistaActiva === 'atributos') {
+        recargarAtributos();
+        recargarValores();
+    } else if (vistaActiva === 'productos') {
+        recargarProductos();
+    } else if (vistaActiva === 'skus') {
+        recargarSkus();
+    } else if (vistaActiva === 'proveedores') {
+        recargarProveedores();
+    } else if (vistaActiva === 'etiquetado') {
+        recargarEtiquetado();
+    }
     recargarOpcionesDependientes();
 })();
 </script>

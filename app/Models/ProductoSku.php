@@ -25,6 +25,7 @@ class ProductoSku extends Model
         'psk_codigo_barras',
         'psk_nombre',
         'psk_precio',
+        'psk_costo',
         'psk_stock_minimo',
         'psk_stock_maximo',
         'psk_estatus',
@@ -36,6 +37,7 @@ class ProductoSku extends Model
     {
         return [
             'psk_precio' => 'decimal:2',
+            'psk_costo' => 'decimal:2',
             'psk_stock_minimo' => 'integer',
             'psk_stock_maximo' => 'integer',
         ];

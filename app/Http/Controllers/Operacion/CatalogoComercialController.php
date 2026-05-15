@@ -45,9 +45,45 @@ class CatalogoComercialController extends Controller
 
     public function index()
     {
+        return redirect()->route('operacion.catalogo_comercial.base.index');
+    }
+
+    public function base()
+    {
+        return $this->renderVista('base');
+    }
+
+    public function atributos()
+    {
+        return $this->renderVista('atributos');
+    }
+
+    public function productos()
+    {
+        return $this->renderVista('productos');
+    }
+
+    public function skus()
+    {
+        return $this->renderVista('skus');
+    }
+
+    public function proveedores()
+    {
+        return $this->renderVista('proveedores');
+    }
+
+    public function etiquetado()
+    {
+        return $this->renderVista('etiquetado');
+    }
+
+    private function renderVista(string $vistaActiva)
+    {
         $opcionesProducto = $this->productoService->opcionesParaFormulario();
 
         return view('operacion.catalogo_comercial.index', [
+            'vistaActiva' => $vistaActiva,
             'opciones' => [
                 'marcas' => $this->catalogoBaseService->opcionesActivas('marcas'),
                 'lineas' => $this->catalogoBaseService->opcionesActivas('lineas'),
@@ -399,6 +435,7 @@ class CatalogoComercialController extends Controller
             'prd_imagen_preview_url' => $this->resolverUrlImagenProducto($item->prd_imagen_tipo, $item->prd_imagen_path, $item->prd_imagen_url),
             'atributo_ids' => $item->atributos->pluck('atr_id')->values(),
             'atributo_valores' => $item->getAttribute('atributo_valores'),
+            'corridas' => $this->productoService->obtenerCorridasProducto($item),
         ]]);
     }
 
@@ -511,6 +548,7 @@ class CatalogoComercialController extends Controller
                 'psk_codigo_barras' => $item->psk_codigo_barras,
                 'psk_nombre' => $item->psk_nombre,
                 'psk_precio' => $item->psk_precio,
+                'psk_costo' => $item->psk_costo,
                 'psk_stock_minimo' => $item->psk_stock_minimo,
                 'psk_stock_maximo' => $item->psk_stock_maximo,
                 'psk_estatus' => $item->psk_estatus,
@@ -535,6 +573,7 @@ class CatalogoComercialController extends Controller
             'psk_codigo_barras' => $item->psk_codigo_barras,
             'psk_nombre' => $item->psk_nombre,
             'psk_precio' => $item->psk_precio,
+            'psk_costo' => $item->psk_costo,
             'psk_stock_minimo' => $item->psk_stock_minimo,
             'psk_stock_maximo' => $item->psk_stock_maximo,
             'psk_estatus' => $item->psk_estatus,

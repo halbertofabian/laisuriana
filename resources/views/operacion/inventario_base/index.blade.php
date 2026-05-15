@@ -22,6 +22,7 @@
         .multi-td-na { background:#f4f5f7; }
         .multi-cell-ok { background:#e9f8ef !important;border-color:#8dd8aa !important; }
         .multi-cell-na { background:#eef1f5 !important;color:#8a93a2 !important;border-color:#d7deea !important; cursor:not-allowed; }
+        .multi-cost-fallback { background:#fff8e6 !important; border-color:#f2d084 !important; }
         .multi-grid-wrap {
             max-height: 62vh;
             overflow: auto;
@@ -113,8 +114,37 @@
             padding:.2rem .55rem;font-size:.78rem;background:#fff;
         }
         .attr-chip input { margin-top:0; }
+        .attr-tag-select + .select2 .select2-selection--multiple {
+            min-height: 2.35rem;
+            border-color: var(--ls-border);
+            border-radius: var(--ls-radius-sm);
+            padding: .1rem .2rem;
+        }
+        .attr-tag-select + .select2 .select2-selection__choice {
+            background: #eef2ff;
+            border: 1px solid #ccd6ff;
+            color: #42507a;
+            border-radius: 999px;
+            padding: .08rem .45rem;
+            margin-top: .22rem;
+        }
+        .attr-tag-select + .select2 .select2-selection__choice__remove {
+            color: #6474a8;
+            margin-right: .3rem;
+        }
         .multi-col-na { opacity:.55; }
         .multi-col-ok { background:rgba(34,197,94,.09); }
+        #recibir-grid-shell .multi-grid-table thead th[scope="col"] {
+            min-width: 78px;
+        }
+        #recibir-grid-shell .js-recibir-grid-cantidad,
+        #recibir-grid-shell .js-recibir-costo,
+        #recibir-grid-shell .multi-cell-na {
+            min-width: 86px;
+            min-height: 2.35rem;
+            padding: .38rem .5rem;
+            font-size: .92rem;
+        }
 
         @media (max-width: 992px) {
             .multi-grid-wrap { max-height: 54vh; }
@@ -224,6 +254,8 @@
 
 @section('content')
 @php($soloEntradas = (bool) ($soloEntradas ?? false))
+@php($vistaActiva = $vistaActiva ?? ($soloEntradas ? 'entradas' : 'existencias'))
+@php($esVistaExistencias = in_array($vistaActiva, ['existencias', 'existencias_negativas'], true))
 <x-section-header
     eyebrow="Operación"
     icon="tabler-packages"
@@ -232,22 +264,22 @@
 />
 
 <div class="card app-tabs-shell mb-4">
-    <div class="app-tabs-shell__header {{ $soloEntradas ? 'd-none' : '' }}">
+    <div class="app-tabs-shell__header d-none">
         <ul class="nav nav-tabs app-tabs-shell__tabs" role="tablist">
-            <li class="nav-item"><button class="nav-link {{ $soloEntradas ? '' : 'active' }}" data-bs-toggle="tab" data-bs-target="#tab-existencias" type="button"><i class="ti tabler-layout-grid"></i>Existencias</button></li>
-            <li class="nav-item"><button class="nav-link {{ $soloEntradas ? 'active' : '' }}" data-bs-toggle="tab" data-bs-target="#tab-inicial" type="button"><i class="ti tabler-package-import"></i>Entradas</button></li>
-            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-recibir-mercancia" type="button"><i class="ti tabler-truck-delivery"></i>Recibir mercancía</button></li>
-            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-salidas" type="button"><i class="ti tabler-package-export"></i>Salidas</button></li>
+            <li class="nav-item"><button class="nav-link {{ $esVistaExistencias ? 'active' : '' }}" data-bs-toggle="tab" data-bs-target="#tab-existencias" type="button"><i class="ti tabler-layout-grid"></i>Existencias</button></li>
+            <li class="nav-item"><button class="nav-link {{ $vistaActiva === 'entradas' ? 'active' : '' }}" data-bs-toggle="tab" data-bs-target="#tab-inicial" type="button"><i class="ti tabler-package-import"></i>Entradas</button></li>
+            <li class="nav-item"><button class="nav-link {{ $vistaActiva === 'recibir' ? 'active' : '' }}" data-bs-toggle="tab" data-bs-target="#tab-recibir-mercancia" type="button"><i class="ti tabler-truck-delivery"></i>Recibir mercancía</button></li>
+            <li class="nav-item"><button class="nav-link {{ $vistaActiva === 'salidas' ? 'active' : '' }}" data-bs-toggle="tab" data-bs-target="#tab-salidas" type="button"><i class="ti tabler-package-export"></i>Salidas</button></li>
             <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-correcciones" type="button"><i class="ti tabler-pencil"></i>Corrección/Cancelación</button></li>
-            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-kardex" type="button"><i class="ti tabler-list-details"></i>Kardex</button></li>
-            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-minimos" type="button"><i class="ti tabler-alert-triangle"></i>Bajo mínimo</button></li>
-            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-reportes-entradas" type="button"><i class="ti tabler-file-type-pdf"></i>Reportes PDF</button></li>
+            <li class="nav-item"><button class="nav-link {{ $vistaActiva === 'kardex' ? 'active' : '' }}" data-bs-toggle="tab" data-bs-target="#tab-kardex" type="button"><i class="ti tabler-list-details"></i>Kardex</button></li>
+            <li class="nav-item"><button class="nav-link {{ $vistaActiva === 'minimos' ? 'active' : '' }}" data-bs-toggle="tab" data-bs-target="#tab-minimos" type="button"><i class="ti tabler-alert-triangle"></i>Bajo mínimo</button></li>
+            <li class="nav-item"><button class="nav-link {{ $vistaActiva === 'reportes' ? 'active' : '' }}" data-bs-toggle="tab" data-bs-target="#tab-reportes-entradas" type="button"><i class="ti tabler-file-type-pdf"></i>Reportes PDF</button></li>
         </ul>
     </div>
 
     <div class="app-tabs-shell__body">
         <div class="tab-content">
-            <div class="tab-pane fade {{ $soloEntradas ? '' : 'show active' }}" id="tab-existencias" role="tabpanel">
+            <div class="tab-pane fade {{ $esVistaExistencias ? 'show active' : '' }}" id="tab-existencias" role="tabpanel">
 
                 {{-- Stats summary --}}
                 <div class="row g-2 mb-3" id="inv-stats-existencias">
@@ -330,7 +362,7 @@
                 </div>
             </div>
 
-            <div class="tab-pane fade {{ $soloEntradas ? 'show active' : '' }}" id="tab-inicial" role="tabpanel">
+            <div class="tab-pane fade {{ $vistaActiva === 'entradas' ? 'show active' : '' }}" id="tab-inicial" role="tabpanel">
 
                 {{-- Wizard step indicator --}}
                 <div class="inv-wizard-steps">
@@ -345,7 +377,7 @@
                     </div>
                     <div class="ms-auto">
                         @if($soloEntradas)
-                            <a href="{{ route('operacion.inventario_base.index') }}" class="btn btn-outline-secondary btn-sm"><i class="ti tabler-arrow-left me-1"></i>Vista completa</a>
+                            <a href="{{ route('operacion.inventario_base.entradas.index') }}" class="btn btn-outline-secondary btn-sm"><i class="ti tabler-arrow-left me-1"></i>Vista completa</a>
                         @else
                             <a href="{{ route('operacion.inventario_base.entradas_wizard') }}" class="btn btn-outline-primary btn-sm"><i class="ti tabler-external-link me-1"></i>Pantalla completa</a>
                         @endif
@@ -653,7 +685,7 @@
                         </div>
                         <div class="col-md-3 d-none" id="inicial-simple-cantidad-shell">
                             <label class="form-label">Cantidad</label>
-                            <input type="number" step="0.01" min="0.01" class="form-control" id="inicial-cantidad-simple" name="min_cantidad_simple">
+                            <input type="number" step="1" min="1" class="form-control" id="inicial-cantidad-simple" name="min_cantidad_simple" inputmode="numeric">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label" id="lbl-inicial-referencia">Referencia (opcional)</label>
@@ -697,7 +729,7 @@
                 </div>
             </div>
 
-            <div class="tab-pane fade" id="tab-recibir-mercancia" role="tabpanel">
+            <div class="tab-pane fade {{ $vistaActiva === 'recibir' ? 'show active' : '' }}" id="tab-recibir-mercancia" role="tabpanel">
                 <div class="inv-section-label"><i class="ti tabler-truck-delivery me-1"></i>Recibir mercancía (manual)</div>
                 <form id="form-recibir-mercancia" class="row g-3">
                     @csrf
@@ -759,7 +791,11 @@
                         <label class="form-label">Comentario</label>
                         <input type="text" class="form-control" id="recibir-observaciones" maxlength="1500" placeholder="Defectos, faltantes o notas de recepción">
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Marcas</label>
+                        <input type="text" class="form-control" id="recibir-marcas" placeholder="Se autocompleta según productos seleccionados" readonly>
+                    </div>
+                    <div class="col-md-4">
                         <label class="form-label">Descuento</label>
                         <div class="input-group">
                             <select class="form-select" id="recibir-descuento-tipo" style="max-width:150px;">
@@ -785,17 +821,23 @@
                         </div>
                     </div>
 
-                    <div class="col-12 d-flex justify-content-between align-items-center">
+                    <div class="col-md-8">
+                        <label class="form-label">Buscar producto base (catálogo)</label>
                         <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-outline-primary" id="btn-recibir-buscar-articulos">
+                            <select
+                                class="form-select js-remote-select"
+                                id="recibir-producto-catalogo"
+                                data-url="{{ route('operacion.inventario_base.productos.buscar') }}"
+                                data-placeholder="Busca por código o nombre y selecciónalo"
+                                data-min-input="2"
+                            >
+                                <option value="">Selecciona producto base</option>
+                            </select>
+                            <button type="button" class="btn btn-outline-primary text-nowrap" id="btn-recibir-buscar-articulos">
                                 <i class="ti tabler-search me-1"></i>Buscar artículos
                             </button>
                         </div>
-                        <button type="submit" class="btn btn-primary" {{ ($permisosUI['inicial'] || $permisosUI['entrada']) ? '' : 'disabled' }}>
-                            <i class="ti tabler-device-floppy me-1"></i>Guardar entrada
-                        </button>
                     </div>
-
                     <div class="col-md-4">
                         <label class="form-label">Dominante global</label>
                         <select class="form-select" id="recibir-dominante-global">
@@ -845,6 +887,10 @@
                                     <span class="multi-dot multi-dot-na"></span>
                                     <span>No aplica (solo lectura)</span>
                                 </span>
+                                <span class="d-inline-flex align-items-center gap-1">
+                                    <span class="multi-dot" style="background:#f2c66d;"></span>
+                                    <span>Costo fallback (producto base)</span>
+                                </span>
                             </div>
                             <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-recibir-restaurar-filas" disabled>
                                 <i class="ti tabler-restore me-1"></i>Restaurar quitados
@@ -870,10 +916,15 @@
                             <div class="col-md-2"><div class="inv-stat-card"><div><div class="inv-stat-card__lbl">Total</div><div class="inv-stat-card__val" id="recibir-total-general">$0.00</div></div></div></div>
                         </div>
                     </div>
+                    <div class="col-12 d-flex justify-content-end pt-1">
+                        <button type="submit" class="btn btn-primary" {{ ($permisosUI['inicial'] || $permisosUI['entrada']) ? '' : 'disabled' }}>
+                            <i class="ti tabler-device-floppy me-1"></i>Guardar entrada
+                        </button>
+                    </div>
                 </form>
             </div>
 
-            <div class="tab-pane fade" id="tab-salidas" role="tabpanel">
+            <div class="tab-pane fade {{ $vistaActiva === 'salidas' ? 'show active' : '' }}" id="tab-salidas" role="tabpanel">
                 <form id="form-salida" class="row g-3">
                     @csrf
                     <div class="col-md-4">
@@ -917,7 +968,7 @@
 
                     <div class="col-md-3">
                         <label class="form-label">Cantidad a retirar</label>
-                        <input type="number" step="0.01" min="0.01" class="form-control" name="min_cantidad" required>
+                        <input type="number" step="1" min="1" class="form-control" name="min_cantidad" required inputmode="numeric">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Tipo salida</label>
@@ -978,7 +1029,7 @@
                 </div>
             </div>
 
-            <div class="tab-pane fade" id="tab-kardex" role="tabpanel">
+            <div class="tab-pane fade {{ $vistaActiva === 'kardex' ? 'show active' : '' }}" id="tab-kardex" role="tabpanel">
                 <div class="inv-filter-bar">
                     <div class="row g-2 align-items-end">
                         <div class="col-md-3">
@@ -1030,7 +1081,7 @@
                 </div>
             </div>
 
-            <div class="tab-pane fade" id="tab-minimos" role="tabpanel">
+            <div class="tab-pane fade {{ $vistaActiva === 'minimos' ? 'show active' : '' }}" id="tab-minimos" role="tabpanel">
                 <div class="inv-section-label"><i class="ti tabler-settings me-1"></i>Configurar stock mínimo</div>
                 <form id="form-minimo" class="row g-3 mb-4">
                     @csrf
@@ -1106,7 +1157,7 @@
                 </div>
             </div>
 
-            <div class="tab-pane fade" id="tab-reportes-entradas" role="tabpanel">
+            <div class="tab-pane fade {{ $vistaActiva === 'reportes' ? 'show active' : '' }}" id="tab-reportes-entradas" role="tabpanel">
                 <div class="inv-filter-bar mb-3">
                     <div class="row g-2 align-items-end">
                         <div class="col-md-3">
@@ -1281,7 +1332,7 @@
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label">Nueva cantidad <span class="text-danger">*</span></label>
-                            <input type="number" step="0.01" min="0.01" class="form-control" id="corregir-cantidad" required>
+                            <input type="number" step="1" min="1" class="form-control" id="corregir-cantidad" required inputmode="numeric">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Nueva fecha <span class="text-danger">*</span></label>
@@ -1316,12 +1367,14 @@
 <script>
 (function () {
     const soloEntradas = @json($soloEntradas);
+    const soloExistenciasNegativas = @json(($vistaActiva ?? '') === 'existencias_negativas');
     const permisosUI = @json($permisosUI);
     const almacenesBase = @json($opciones['almacenes']->map(fn($a) => ['alm_id' => $a->alm_id, 'alm_scl_id' => $a->alm_scl_id, 'nombre' => ($a->sucursal?->scl_nombre . ' - ' . $a->alm_nombre)])->values());
 
     const rutas = {
         existencias: '{{ route('operacion.inventario_base.existencias.data') }}',
         productosBaseData: '{{ route('operacion.inventario_base.productos.data') }}',
+        productosBuscar: '{{ route('operacion.inventario_base.productos.buscar') }}',
         skusBuscar: '{{ route('operacion.inventario_base.skus.buscar') }}',
         kardex: '{{ route('operacion.inventario_base.kardex.data') }}',
         bajoMinimo: '{{ route('operacion.inventario_base.minimos.bajo.data') }}',
@@ -1364,8 +1417,9 @@
         meta: {},
         filtrosAtributos: {},
         cantidades: {},
-        costosFila: {},
-        costosFilaEditados: {},
+        costosColumna: {},
+        costosColumnaEditados: {},
+        costosColumnaOrigen: {},
         filasExcluidas: {},
         productosQuitados: {},
     };
@@ -1453,11 +1507,74 @@
             .trim();
     }
 
+    function valorEnteroNoNegativo(valor) {
+        const limpio = String(valor ?? '').replace(/[^\d]/g, '');
+        if (!limpio) return 0;
+        const numero = Number.parseInt(limpio, 10);
+        return Number.isFinite(numero) && numero > 0 ? numero : 0;
+    }
+
+    function normalizarInputEntero($input) {
+        const valor = valorEnteroNoNegativo($input.val());
+        const texto = valor > 0 ? String(valor) : '';
+        if (String($input.val() ?? '') !== texto) {
+            $input.val(texto);
+        }
+        return valor;
+    }
+
+    function esTeclaDecimalBloqueada(evento) {
+        const tecla = String(evento.key || '');
+        const codigo = String(evento.code || '');
+        return tecla === '.' || tecla === ',' || tecla === 'Decimal' || codigo === 'NumpadDecimal';
+    }
+
+    function esNombreTalla(valor) {
+        const t = normalizarTexto(valor);
+        return t === 'talla' || t === 'tamano' || t === 'tamanio' || t === 'medida';
+    }
+
+    function compararValorNatural(a, b, forzarNumerico = false) {
+        const ta = String(a || '').trim();
+        const tb = String(b || '').trim();
+        if (!ta && !tb) return 0;
+        if (!ta) return 1;
+        if (!tb) return -1;
+
+        const rx = /^-?\d+(\.\d+)?$/;
+        const na = rx.test(ta) ? Number(ta) : null;
+        const nb = rx.test(tb) ? Number(tb) : null;
+
+        if (na !== null && nb !== null) return na - nb;
+        if (forzarNumerico) {
+            if (na !== null) return -1;
+            if (nb !== null) return 1;
+        }
+
+        return ta.localeCompare(tb, 'es', { numeric: true, sensitivity: 'base' });
+    }
+
     function costoBaseProducto(producto) {
         const costo = Number(producto?.prd_costo ?? 0);
         if (costo > 0) return costo;
         const precioBase = Number(producto?.prd_precio_base ?? 0);
         return precioBase > 0 ? precioBase : 0;
+    }
+
+    function costoPreferidoSku(linea) {
+        const costoSku = Number(linea?.psk_costo ?? 0);
+        if (costoSku > 0) return { valor: costoSku, origen: 'sku' };
+        const precioSku = Number(linea?.psk_precio ?? 0);
+        if (precioSku > 0) return { valor: precioSku, origen: 'sku_precio' };
+        return { valor: 0, origen: 'sin_costo' };
+    }
+
+    function resolverCostoDefaultLinea(linea, costoProducto) {
+        const costoLinea = costoPreferidoSku(linea);
+        if (costoLinea.valor > 0) return costoLinea;
+        const costoFallback = Number(costoProducto || 0);
+        if (costoFallback > 0) return { valor: costoFallback, origen: 'producto' };
+        return { valor: 0, origen: 'sin_costo' };
     }
 
     function renderProductoKardex(row) {
@@ -1779,7 +1896,7 @@
 
                     const html = '' +
                         '<input type="hidden" name="lineas[' + indexLinea + '][min_psk_id]" value="' + celda.min_psk_id + '">' +
-                        '<input class="form-control form-control-sm js-matriz-cantidad" type="number" min="0" step="0.01" name="lineas[' + indexLinea + '][min_cantidad]" value="">';
+                        '<input class="form-control form-control-sm js-matriz-cantidad" type="number" min="0" step="1" inputmode="numeric" name="lineas[' + indexLinea + '][min_cantidad]" value="">';
                     indexLinea += 1;
                     return '<td>' + html + '</td>';
                 }).join('');
@@ -1809,7 +1926,7 @@
                     '</td>' +
                     colsAttr +
                     '<td>' + (linea.combinacion || linea.psk_nombre || '-') + '</td>' +
-                    '<td><input class="form-control form-control-sm js-matriz-cantidad" type="number" min="0" step="0.01" name="lineas[' + idx + '][min_cantidad]" value=""></td>' +
+                    '<td><input class="form-control form-control-sm js-matriz-cantidad" type="number" min="0" step="1" inputmode="numeric" name="lineas[' + idx + '][min_cantidad]" value=""></td>' +
                 '</tr>';
         }).join('');
 
@@ -2004,6 +2121,24 @@
         }
     }
 
+    function actualizarUIDescuento($tipo, $valor) {
+        const tipo = String($tipo.val() || 'ninguno');
+        const bloquear = tipo === 'ninguno';
+        if (bloquear) {
+            $valor.val('0');
+        }
+        $valor.prop('readonly', bloquear);
+        $valor.attr('aria-readonly', bloquear ? 'true' : 'false');
+    }
+
+    function actualizarUIDescuentoMulti() {
+        actualizarUIDescuento($('#multi-descuento-tipo'), $('#multi-descuento-valor'));
+    }
+
+    function actualizarUIDescuentoRecibir() {
+        actualizarUIDescuento($('#recibir-descuento-tipo'), $('#recibir-descuento-valor'));
+    }
+
     function renderProductosSeleccionadosMulti() {
         const productos = estadoInicial.colaProductos || [];
         if (!productos.length) {
@@ -2128,11 +2263,12 @@
             const meta = estadoInicial.multiMeta[prdId];
             if (!meta) return;
             meta.cantidades = meta.cantidades || {};
-            meta.cantidades[pskId] = String($(this).val() || '');
+            meta.cantidades[pskId] = String(normalizarInputEntero($(this)) || '');
         });
     }
 
     function recalcularTotalesMulti() {
+        actualizarUIDescuentoMulti();
         const descuentoTipo = String($('#multi-descuento-tipo').val() || 'ninguno');
         const descuentoValor = Number($('#multi-descuento-valor').val() || 0);
         const fleteTotal = Number($('#multi-flete-total').val() || 0);
@@ -2143,7 +2279,7 @@
         let subtotal = 0;
         let piezas = 0;
         $('#multi-grid-shell .js-multi-cantidad').each(function () {
-            const cantidad = Number($(this).val() || 0);
+            const cantidad = normalizarInputEntero($(this));
             if (!(cantidad > 0)) return;
             const prdId = String($(this).data('prd-id') || '');
             const meta = estadoInicial.multiMeta[prdId] || {};
@@ -2230,7 +2366,7 @@
         for (let i = 0; i < claves.length; i += 1) {
             const atr = claves[i];
             const setValores = filtros[atr];
-            if (!setValores || setValores.size === 0) continue;
+            if (!setValores || setValores.size === 0) return false;
             const valorLinea = String(attrs[atr] || 'Sin valor').trim();
             if (!setValores.has(valorLinea)) return false;
         }
@@ -2285,16 +2421,24 @@
         const productos = Object.values(recibirState.productos || {});
         if (!productos.length) {
             $('#recibir-productos-shell').html('<table class="table table-sm table-mini mb-0"><tbody><tr><td colspan="2" class="text-body-secondary">Sin productos seleccionados.</td></tr></tbody></table>');
+            $('#recibir-marcas').val('');
             return;
         }
         const rows = productos.map((p) => {
             const label = (p.prd_codigo || '-') + ' - ' + (p.prd_nombre || '-');
-            return '<tr>' +
+            return '<tr data-prd-id="' + p.prd_id + '">' +
                 '<td class="fw-semibold">' + escapeHtml(label) + '</td>' +
                 '<td><button type="button" class="btn btn-sm btn-outline-danger js-recibir-quitar-producto" data-prd-id="' + p.prd_id + '"><i class="ti tabler-trash"></i></button></td>' +
                 '</tr>';
         }).join('');
         $('#recibir-productos-shell').html('<table class="table table-sm table-mini mb-0"><thead><tr><th style="min-width:360px;">Producto</th><th style="width:120px;">Acción</th></tr></thead><tbody>' + rows + '</tbody></table>');
+
+        const marcas = Array.from(new Set(
+            productos
+                .map((p) => String(p?.marca_nombre || '').trim())
+                .filter((m) => m && m !== '-')
+        )).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+        $('#recibir-marcas').val(marcas.join(', '));
     }
 
     function renderFiltrosRecibirMercancia() {
@@ -2315,7 +2459,7 @@
             .sort((a, b) => a[0].localeCompare(b[0], 'es', { sensitivity: 'base' }))
             .map(([atrNombre, valores]) => ({
                 atrNombre,
-                valores: Array.from(valores).sort((a, b) => String(a).localeCompare(String(b), 'es', { sensitivity: 'base' })),
+                valores: Array.from(valores).sort((a, b) => compararValorNatural(a, b, esNombreTalla(atrNombre))),
             }));
 
         if (!catalogo.length) {
@@ -2327,20 +2471,42 @@
         const filtrosDepurados = {};
         const html = catalogo.map((item) => {
             if (!recibirState.filtrosAtributos[item.atrNombre]) {
-                recibirState.filtrosAtributos[item.atrNombre] = new Set(item.valores);
+                recibirState.filtrosAtributos[item.atrNombre] = new Set();
             }
             const conjunto = new Set(item.valores.filter((v) => recibirState.filtrosAtributos[item.atrNombre]?.has(v)));
-            if (conjunto.size === 0) item.valores.forEach((v) => conjunto.add(v));
             filtrosDepurados[item.atrNombre] = conjunto;
-            const chips = item.valores.map((valor) => {
-                const marcado = conjunto.has(valor) ? 'checked' : '';
-                return '<label class="attr-chip"><input type="checkbox" class="form-check-input js-recibir-atr-filter" data-atr="' + escapeHtml(item.atrNombre) + '" data-val="' + escapeHtml(valor) + '" ' + marcado + '> ' + escapeHtml(valor) + '</label>';
-            }).join(' ');
-            return '<div class="mb-3"><div class="fw-semibold mb-2">' + escapeHtml(item.atrNombre) + '</div><div class="d-flex flex-wrap gap-2">' + chips + '</div></div>';
+            const options = item.valores.map((valor) => {
+                const marcado = conjunto.has(valor) ? ' selected' : '';
+                return '<option value="' + escapeHtml(valor) + '"' + marcado + '>' + escapeHtml(valor) + '</option>';
+            }).join('');
+            return '' +
+                '<div class="mb-3">' +
+                    '<label class="fw-semibold mb-2 d-block">' + escapeHtml(item.atrNombre) + '</label>' +
+                    '<select class="form-select attr-tag-select js-recibir-atr-filter-tags" multiple data-atr="' + escapeHtml(item.atrNombre) + '" data-placeholder="Selecciona uno o más valores">' +
+                        options +
+                    '</select>' +
+                '</div>';
         }).join('');
 
         recibirState.filtrosAtributos = filtrosDepurados;
         $('#recibir-atributos-shell').html(html);
+        inicializarFiltrosTagsRecibir();
+    }
+
+    function inicializarFiltrosTagsRecibir() {
+        $('#recibir-atributos-shell .js-recibir-atr-filter-tags').each(function () {
+            const $select = $(this);
+            const placeholder = String($select.data('placeholder') || 'Selecciona valores');
+            if ($select.hasClass('select2-hidden-accessible')) {
+                $select.select2('destroy');
+            }
+            $select.select2({
+                width: '100%',
+                closeOnSelect: false,
+                allowClear: true,
+                placeholder
+            });
+        });
     }
 
     function cargarDominantesRecibirMercancia() {
@@ -2396,7 +2562,6 @@
                     if (recibirState.filasExcluidas[rowKey]) {
                         return;
                     }
-                    const costoDefault = costoBaseProducto(meta.data?.producto) || costoBaseProducto(p);
                     filas.push({
                         prd_id: p.prd_id,
                         producto: (p.prd_codigo || '-') + ' - ' + (p.prd_nombre || '-'),
@@ -2404,7 +2569,7 @@
                         celdas: { '__simple__': linea },
                         tipo: 'normal',
                         row_key: rowKey,
-                        default_costo: costoDefault,
+                        producto_costo_base: costoBaseProducto(meta.data?.producto) || costoBaseProducto(p),
                     });
                     if (!globalColsMap['__simple__']) {
                         globalColsMap['__simple__'] = true;
@@ -2436,7 +2601,6 @@
             (matriz.ordenFilas || []).forEach((fv) => {
                 const rowKey = String(p.prd_id) + '||' + String(fv);
                 if (recibirState.filasExcluidas[rowKey]) return;
-                const costoDefault = costoBaseProducto(meta.data?.producto) || costoBaseProducto(p);
                 filas.push({
                     prd_id: p.prd_id,
                     producto: (p.prd_codigo || '-') + ' - ' + (p.prd_nombre || '-'),
@@ -2444,7 +2608,7 @@
                     celdas: matriz.filas[fv] || {},
                     tipo: 'normal',
                     row_key: rowKey,
-                    default_costo: costoDefault,
+                    producto_costo_base: costoBaseProducto(meta.data?.producto) || costoBaseProducto(p),
                 });
             });
         });
@@ -2455,12 +2619,34 @@
             return;
         }
 
+        const defaultCostoPorProductoCol = {};
+        const defaultOrigenPorProductoCol = {};
+        const defaultCostoPorFila = {};
+        const defaultOrigenPorFila = {};
+        filas.forEach((f) => {
+            if (f.tipo === 'error') return;
+            const costoProducto = Number(f.producto_costo_base || 0);
+            const rowKey = String(f.prd_id) + '||ROW||' + String(f.row_key || '');
+            const lineaFila = Object.values(f.celdas || {}).find((linea) => Boolean(linea && linea.min_psk_id));
+            const costoFila = resolverCostoDefaultLinea(lineaFila, costoProducto);
+            defaultCostoPorFila[rowKey] = Number(costoFila.valor || 0);
+            defaultOrigenPorFila[rowKey] = String(costoFila.origen || 'sin_costo');
+
+            Object.entries(f.celdas || {}).forEach(([colKey, linea]) => {
+                const k = String(f.prd_id) + '||COL||' + String(colKey || '');
+                if (defaultCostoPorProductoCol[k] !== undefined) return;
+                const costoCol = resolverCostoDefaultLinea(linea, costoProducto);
+                defaultCostoPorProductoCol[k] = Number(costoCol.valor || 0);
+                defaultOrigenPorProductoCol[k] = String(costoCol.origen || 'sin_costo');
+            });
+        });
+
         globalCols.sort((a, b) => {
             const ga = String(a.group || 'Variable');
             const gb = String(b.group || 'Variable');
-            const cmpG = ga.localeCompare(gb, 'es', { sensitivity: 'base' });
+            const cmpG = compararValorNatural(ga, gb, esNombreTalla(nombreDominante));
             if (cmpG !== 0) return cmpG;
-            return String(a.label || '').localeCompare(String(b.label || ''), 'es', { sensitivity: 'base' });
+            return compararValorNatural(a.label || '', b.label || '', esNombreTalla(nombreDominante));
         });
 
         const gruposHeader = [];
@@ -2475,26 +2661,73 @@
             }
         });
 
+        const tallaVertical = esNombreTalla(nombreDominante);
         const mapaRowspan = {};
-        filas.forEach((r) => { mapaRowspan[r.prd_id] = (mapaRowspan[r.prd_id] || 0) + 1; });
+        const productosConFila = new Set();
+        const productosConFilaCapturable = new Set();
+        filas.forEach((r) => {
+            mapaRowspan[r.prd_id] = (mapaRowspan[r.prd_id] || 0) + 1;
+            productosConFila.add(String(r.prd_id));
+            if (r.tipo !== 'error') productosConFilaCapturable.add(String(r.prd_id));
+        });
+        if (!tallaVertical) {
+            productosConFilaCapturable.forEach((prdId) => {
+                mapaRowspan[prdId] = (mapaRowspan[prdId] || 0) + 1; // fila adicional: costo horizontal por talla
+            });
+        }
         const thGroups = gruposHeader.map((g) => '<th scope="colgroup" colspan="' + g.count + '">' + escapeHtml(g.group) + '</th>').join('');
         const thCols = globalCols.map((c) => '<th scope="col" class="multi-col-head">' + escapeHtml(c.label) + '</th>').join('');
 
-        let html = '<table class="table table-sm table-mini mb-0 multi-grid-table" role="grid" aria-describedby="recibir-grid-help"><thead>' +
-            '<tr><th scope="col" rowspan="2" style="min-width:280px;">Producto</th><th scope="col" rowspan="2" style="min-width:160px;">' + escapeHtml(nombreDominante) + '</th>' + thGroups + '<th scope="col" rowspan="2" style="width:150px;">Costo unitario</th><th scope="col" rowspan="2" style="width:120px;">Acción</th></tr>' +
-            '<tr>' + thCols + '</tr></thead><tbody>';
+        let html = '<table class="table table-sm table-mini mb-0 multi-grid-table" role="grid" aria-describedby="recibir-grid-help"><thead>';
+        if (tallaVertical) {
+            html += '<tr><th scope="col" rowspan="2" style="min-width:280px;">Producto</th><th scope="col" rowspan="2" style="min-width:160px;">' + escapeHtml(nombreDominante) + '</th>' + thGroups + '<th scope="col" rowspan="2" style="width:150px;">Costo unitario</th><th scope="col" rowspan="2" style="width:120px;">Acción</th></tr>';
+        } else {
+            html += '<tr><th scope="col" rowspan="2" style="min-width:280px;">Producto</th><th scope="col" rowspan="2" style="min-width:160px;">' + escapeHtml(nombreDominante) + '</th>' + thGroups + '<th scope="col" rowspan="2" style="width:120px;">Acción</th></tr>';
+        }
+        html += '<tr>' + thCols + '</tr></thead><tbody>';
 
         const rendered = {};
         let rowIndex = 0;
         filas.forEach((f) => {
             const first = !rendered[f.prd_id];
-            const tdProducto = first
+
+            if (first && !tallaVertical && f.tipo !== 'error') {
+                const tdProductoCosto = '<th scope="rowgroup" rowspan="' + (mapaRowspan[f.prd_id] || 1) + '" class="fw-semibold align-top">' + escapeHtml(f.producto) + '</th>';
+                const celdasCosto = globalCols.map((col) => {
+                    const colKey = String(col.key || '');
+                    const aplicaCol = filas.some((fr) => String(fr.prd_id) === String(f.prd_id) && fr.tipo !== 'error' && Boolean(fr.celdas?.[colKey]));
+                    if (!aplicaCol) {
+                        return '<td class="multi-td-na"><input class="form-control form-control-sm multi-cell-na" type="text" value="N/A" readonly tabindex="-1"></td>';
+                    }
+                    const costoKey = String(f.prd_id) + '||COL||' + colKey;
+                    const costoExistente = Number(recibirState.costosColumna[costoKey] ?? 0);
+                    const fueEditado = Boolean(recibirState.costosColumnaEditados[costoKey]);
+                    const costoDefault = Number(defaultCostoPorProductoCol[costoKey] || 0);
+                    const origenCosto = String(defaultOrigenPorProductoCol[costoKey] || 'sin_costo');
+                    if (recibirState.costosColumna[costoKey] === undefined || (!fueEditado && costoExistente <= 0 && costoDefault > 0)) {
+                        recibirState.costosColumna[costoKey] = costoDefault;
+                    }
+                    if (!recibirState.costosColumnaOrigen[costoKey]) {
+                        recibirState.costosColumnaOrigen[costoKey] = origenCosto;
+                    }
+                    const costoCol = Number(recibirState.costosColumna[costoKey] || 0);
+                    const esFallback = String(recibirState.costosColumnaOrigen[costoKey] || '') === 'producto';
+                    const classFallback = esFallback ? ' multi-cost-fallback' : '';
+                    const titleFallback = esFallback ? ' title="Costo por defecto tomado del producto base (sin costo por talla/SKU)." ' : '';
+                    return '<td class="multi-td-ok"><input type="number" class="form-control form-control-sm text-end js-recibir-costo' + classFallback + '" min="0" step="0.01" data-cost-key="' + escapeHtml(costoKey) + '"' + titleFallback + ' value="' + escapeHtml(costoCol.toFixed(2)) + '"></td>';
+                }).join('');
+                html += '<tr data-prd-id="' + f.prd_id + '" class="table-light">' + tdProductoCosto + '<th scope="row" class="fw-semibold text-body-secondary">Costo por talla</th>' + celdasCosto + '<td class="text-body-secondary text-center">—</td></tr>';
+            }
+
+            const hayFilaCapturable = productosConFilaCapturable.has(String(f.prd_id));
+            const tdProducto = (first && (tallaVertical || !hayFilaCapturable))
                 ? '<th scope="rowgroup" rowspan="' + (mapaRowspan[f.prd_id] || 1) + '" class="fw-semibold align-top">' + escapeHtml(f.producto) + '</th>'
                 : '';
             rendered[f.prd_id] = true;
 
             if (f.tipo === 'error') {
-                html += '<tr>' + tdProducto + '<td class="text-body-secondary">-</td><td colspan="' + (globalCols.length + 2) + '" class="text-body-secondary">' + escapeHtml(f.mensaje || '-') + '</td></tr>';
+                const extraCols = tallaVertical ? 2 : 1;
+                html += '<tr data-prd-id="' + f.prd_id + '">' + tdProducto + '<td class="text-body-secondary">-</td><td colspan="' + (globalCols.length + extraCols) + '" class="text-body-secondary">' + escapeHtml(f.mensaje || '-') + '</td></tr>';
                 return;
             }
 
@@ -2509,21 +2742,35 @@
                 }
                 const skuId = String(linea.min_psk_id || '');
                 const value = String(recibirState.cantidades[skuId] || '');
-                return '<td class="multi-td-ok"><input class="form-control form-control-sm multi-cell-ok js-recibir-grid-cantidad" type="number" min="0" step="0.01" data-prd-id="' + f.prd_id + '" data-row-key="' + escapeHtml(f.row_key || '') + '" data-min-psk-id="' + skuId + '" data-grid-r="' + rowIndex + '" data-grid-c="' + colIndex + '" value="' + escapeHtml(value) + '"></td>';
+                const costoKeyCelda = tallaVertical
+                    ? (String(f.prd_id) + '||ROW||' + String(f.row_key || ''))
+                    : (String(f.prd_id) + '||COL||' + String(col.key || ''));
+                return '<td class="multi-td-ok"><input class="form-control form-control-sm multi-cell-ok js-recibir-grid-cantidad" type="number" min="0" step="1" inputmode="numeric" data-prd-id="' + f.prd_id + '" data-cost-key="' + escapeHtml(costoKeyCelda) + '" data-col-key="' + escapeHtml(col.key || '') + '" data-row-key="' + escapeHtml(f.row_key || '') + '" data-min-psk-id="' + skuId + '" data-grid-r="' + rowIndex + '" data-grid-c="' + colIndex + '" value="' + escapeHtml(value) + '"></td>';
             }).join('');
-            const rowKeyCosto = String(f.row_key || '');
-            const costoExistente = Number(recibirState.costosFila[rowKeyCosto] ?? 0);
-            const fueEditado = Boolean(recibirState.costosFilaEditados[rowKeyCosto]);
-            if (recibirState.costosFila[rowKeyCosto] === undefined || (!fueEditado && costoExistente <= 0 && Number(f.default_costo || 0) > 0)) {
-                recibirState.costosFila[rowKeyCosto] = Number(f.default_costo || 0);
+            let tdCostoVertical = '';
+            if (tallaVertical) {
+                const costoKeyFila = String(f.prd_id) + '||ROW||' + String(f.row_key || '');
+                const costoExistenteFila = Number(recibirState.costosColumna[costoKeyFila] ?? 0);
+                const fueEditadoFila = Boolean(recibirState.costosColumnaEditados[costoKeyFila]);
+                const costoDefaultFila = Number(defaultCostoPorFila[costoKeyFila] || 0);
+                const origenCostoFila = String(defaultOrigenPorFila[costoKeyFila] || 'sin_costo');
+                if (recibirState.costosColumna[costoKeyFila] === undefined || (!fueEditadoFila && costoExistenteFila <= 0 && costoDefaultFila > 0)) {
+                    recibirState.costosColumna[costoKeyFila] = costoDefaultFila;
+                }
+                if (!recibirState.costosColumnaOrigen[costoKeyFila]) {
+                    recibirState.costosColumnaOrigen[costoKeyFila] = origenCostoFila;
+                }
+                const costoFila = Number(recibirState.costosColumna[costoKeyFila] || 0);
+                const esFallbackFila = String(recibirState.costosColumnaOrigen[costoKeyFila] || '') === 'producto';
+                const classFallbackFila = esFallbackFila ? ' multi-cost-fallback' : '';
+                const titleFallbackFila = esFallbackFila ? ' title="Costo por defecto tomado del producto base (sin costo por talla/SKU)." ' : '';
+                tdCostoVertical = '<td><input type="number" class="form-control form-control-sm text-end js-recibir-costo' + classFallbackFila + '" min="0" step="0.01" data-cost-key="' + escapeHtml(costoKeyFila) + '"' + titleFallbackFila + ' value="' + escapeHtml(costoFila.toFixed(2)) + '"></td>';
             }
-            const costoFila = Number(recibirState.costosFila[rowKeyCosto] || 0);
-            const inputCostoFila = '<input type="number" class="form-control form-control-sm text-end js-recibir-row-costo" min="0" step="0.01" data-row-key="' + escapeHtml(f.row_key || '') + '" value="' + escapeHtml(costoFila.toFixed(2)) + '">';
             const btnFila = '<button type="button" class="btn btn-sm btn-outline-danger js-recibir-quitar-fila" data-prd-id="' + f.prd_id + '" data-row-key="' + escapeHtml(f.row_key || '') + '" data-skus="' + escapeHtml(skuIds.join(',')) + '" title="Quitar fila"><i class="ti tabler-trash"></i></button>';
             const btnProducto = first
                 ? '<button type="button" class="btn btn-sm btn-outline-secondary js-recibir-quitar-producto-bloque ms-1" data-prd-id="' + f.prd_id + '" title="Quitar producto"><i class="ti tabler-package-off"></i></button>'
                 : '';
-            html += '<tr>' + tdProducto + '<th scope="row" class="fw-semibold">' + escapeHtml(f.dominante) + '</th>' + celdas + '<td>' + inputCostoFila + '</td><td class="text-nowrap">' + btnFila + btnProducto + '</td></tr>';
+            html += '<tr data-prd-id="' + f.prd_id + '">' + tdProducto + '<th scope="row" class="fw-semibold">' + escapeHtml(f.dominante) + '</th>' + celdas + tdCostoVertical + '<td class="text-nowrap">' + btnFila + btnProducto + '</td></tr>';
             rowIndex += 1;
         });
 
@@ -2534,28 +2781,29 @@
     }
 
     function recalcularTotalesRecibirMercancia() {
+        actualizarUIDescuentoRecibir();
         const descuentoTipo = String($('#recibir-descuento-tipo').val() || 'ninguno');
         const descuentoValor = Number($('#recibir-descuento-valor').val() || 0);
         const flete = Number($('#recibir-flete-total').val() || 0);
         const incluirIva = $('#recibir-incluir-iva').is(':checked');
         const ivaPorcentaje = incluirIva ? Number($('#recibir-iva-porcentaje').val() || 0) : 0;
 
-        $('#recibir-grid-shell .js-recibir-row-costo').each(function () {
-            const rowKey = String($(this).data('row-key') || '');
-            if (!rowKey) return;
-            recibirState.costosFila[rowKey] = Number($(this).val() || 0);
+        $('#recibir-grid-shell .js-recibir-costo').each(function () {
+            const costoKey = String($(this).data('cost-key') || '');
+            if (!costoKey) return;
+            recibirState.costosColumna[costoKey] = Number($(this).val() || 0);
         });
 
         let piezas = 0;
         let subtotal = 0;
         $('#recibir-grid-shell .js-recibir-grid-cantidad').each(function () {
-            const qty = Number($(this).val() || 0);
-            const rowKey = String($(this).data('row-key') || '');
+            const qty = normalizarInputEntero($(this));
+            const costoKey = String($(this).data('cost-key') || '');
             const sId = String($(this).data('min-psk-id') || '');
             if (!sId) return;
             recibirState.cantidades[sId] = String($(this).val() || '');
             if (!(qty > 0)) return;
-            const costo = Number(recibirState.costosFila[rowKey] || 0);
+            const costo = Number(recibirState.costosColumna[costoKey] || 0);
             piezas += qty;
             subtotal += qty * costo;
         });
@@ -2621,6 +2869,7 @@
                             prd_tipo: row.prd_tipo,
                             prd_codigo: row.prd_codigo,
                             prd_nombre: row.prd_nombre,
+                            marca_nombre: row.marca_nombre || '',
                             prd_costo: row.prd_costo ?? 0,
                             prd_precio_base: row.prd_precio_base ?? 0
                         }));
@@ -2641,13 +2890,14 @@
 
     function sincronizarFiltrosRecibirDesdeUI() {
         const filtros = {};
-        $('#recibir-atributos-shell .js-recibir-atr-filter').each(function () {
-            if (!$(this).is(':checked')) return;
+        $('#recibir-atributos-shell .js-recibir-atr-filter-tags').each(function () {
             const atr = String($(this).data('atr') || '').trim();
-            const val = String($(this).data('val') || '').trim();
-            if (!atr || !val) return;
-            if (!filtros[atr]) filtros[atr] = new Set();
-            filtros[atr].add(val);
+            if (!atr) return;
+            const valores = $(this).val() || [];
+            const conjunto = new Set((Array.isArray(valores) ? valores : [valores])
+                .map((v) => String(v || '').trim())
+                .filter(Boolean));
+            filtros[atr] = conjunto;
         });
         recibirState.filtrosAtributos = filtros;
     }
@@ -2668,13 +2918,20 @@
             AppUI.showLoader();
             productos.forEach((p) => {
                 $.getJSON(rutas.matrizProducto(p.prd_id), { min_scl_id: sucursalId || '' })
-                    .done((resp) => {
-                        const data = resp?.data || {};
-                        recibirState.meta[String(p.prd_id)] = {
-                            prd_id: p.prd_id,
-                            prd_tipo: data?.producto?.prd_tipo || p.prd_tipo || 'simple',
-                            data,
-                        };
+                .done((resp) => {
+                    const data = resp?.data || {};
+                    const prdKey = String(p.prd_id);
+                    if (recibirState.productos[prdKey]) {
+                        const marcaSrv = String(data?.producto?.marca_nombre || '').trim();
+                        if (marcaSrv && !recibirState.productos[prdKey].marca_nombre) {
+                            recibirState.productos[prdKey].marca_nombre = marcaSrv;
+                        }
+                    }
+                    recibirState.meta[String(p.prd_id)] = {
+                        prd_id: p.prd_id,
+                        prd_tipo: data?.producto?.prd_tipo || p.prd_tipo || 'simple',
+                        data,
+                    };
                     })
                     .fail((xhr) => {
                         recibirState.meta[String(p.prd_id)] = {
@@ -2915,7 +3172,7 @@
                 const meta = estadoInicial.multiMeta[String(fila.prd_id)] || {};
                 const valor = String(meta.cantidades?.[pskId] || '');
                 const ariaOk = 'Cantidad para producto ' + fila.producto + ', ' + nombreDominante + ' ' + fila.dominante + ', columna ' + col.label;
-                return '<td class="multi-td-ok col-cell-' + colIndex + '"><input class="form-control form-control-sm js-multi-cantidad multi-cell-ok" type="number" min="0" step="0.01" data-prd-id="' + fila.prd_id + '" data-min-psk-id="' + pskId + '" data-grid-r="' + rowIndex + '" data-grid-c="' + colIndex + '" value="' + escapeHtml(valor) + '" title="Aplica para este producto" aria-label="' + escapeHtml(ariaOk) + '"></td>';
+                return '<td class="multi-td-ok col-cell-' + colIndex + '"><input class="form-control form-control-sm js-multi-cantidad multi-cell-ok" type="number" min="0" step="1" inputmode="numeric" data-prd-id="' + fila.prd_id + '" data-min-psk-id="' + pskId + '" data-grid-r="' + rowIndex + '" data-grid-c="' + colIndex + '" value="' + escapeHtml(valor) + '" title="Aplica para este producto" aria-label="' + escapeHtml(ariaOk) + '"></td>';
             }).join('');
 
             html += '<tr>' + tdProducto + '<th scope="row" class="fw-semibold">' + escapeHtml(fila.dominante) + '</th>' + celdasHtml + '</tr>';
@@ -3109,7 +3366,8 @@
         $.getJSON(rutas.existencias, {
             min_scl_id: $('#flt-exa-scl').val(),
             min_alm_id: $('#flt-exa-alm').val(),
-            buscar: $('#flt-exa-buscar').val()
+            buscar: $('#flt-exa-buscar').val(),
+            solo_negativas: soloExistenciasNegativas ? 1 : 0
         }).done(function (resp) {
             const data = resp.data || [];
             actualizarStatsExistencias(data);
@@ -3179,7 +3437,16 @@
                     { data: null, render: (row) => renderProductoKardex(row) },
                     { data: 'scl_nombre' },
                     { data: 'alm_nombre' },
-                    { data: 'tmi_nombre' },
+                    {
+                        data: null,
+                        render: function (row) {
+                            const nombre = String(row.tmi_nombre || '');
+                            if (nombre.toLowerCase() === 'salida de inventario' && String(row.min_documento_tipo || '').toLowerCase() === 'venta_pos') {
+                                return 'Salida de inventario (Venta)';
+                            }
+                            return escapeHtml(nombre || '-');
+                        }
+                    },
                     {
                         data: null,
                         className: 'text-end',
@@ -3206,7 +3473,16 @@
                     { data: 'min_fecha_movimiento', render: (v) => v ? v.replace('T', ' ').slice(0, 16) : '-' },
                     { data: 'psk_codigo', render: (v) => '<span class="inv-sku-chip">' + escapeHtml(v || '-') + '</span>' },
                     { data: null, render: (r) => escapeHtml(r.scl_nombre) + ' <span class="text-body-secondary">/</span> ' + escapeHtml(r.alm_nombre) },
-                    { data: 'tmi_nombre' },
+                    {
+                        data: null,
+                        render: function (row) {
+                            const nombre = String(row.tmi_nombre || '');
+                            if (nombre.toLowerCase() === 'salida de inventario' && String(row.min_documento_tipo || '').toLowerCase() === 'venta_pos') {
+                                return 'Salida de inventario (Venta)';
+                            }
+                            return escapeHtml(nombre || '-');
+                        }
+                    },
                     {
                         data: null,
                         className: 'text-end',
@@ -3383,6 +3659,11 @@
     initRemoteSelect($('#salida-sku-id'), {
         url: rutas.skusBuscar,
         placeholder: 'Busca por código, SKU o producto',
+        minInput: 2
+    });
+    initRemoteSelect($('#recibir-producto-catalogo'), {
+        url: rutas.productosBuscar,
+        placeholder: 'Busca producto base por código o nombre',
         minInput: 2
     });
 
@@ -3600,13 +3881,29 @@
             cargarProductosBase();
         }
     });
-    $(document).on('input change', '#multi-grid-shell .js-multi-cantidad,#multi-descuento-tipo,#multi-descuento-valor,#multi-flete-total,#multi-iva-porcentaje', function () {
+    $(document).on('input change', '#multi-grid-shell .js-multi-cantidad', function () {
+        normalizarInputEntero($(this));
         capturarCantidadesMultiGlobal();
         recalcularTotalesMulti();
+    });
+    $(document).on('input change', '#tab-inicial .js-matriz-cantidad,#inicial-cantidad-simple,#form-salida [name="min_cantidad"],#corregir-cantidad', function () {
+        normalizarInputEntero($(this));
+    });
+    $(document).on('input change', '#multi-descuento-tipo,#multi-descuento-valor,#multi-flete-total,#multi-iva-porcentaje', function () {
+        if (this.id === 'multi-descuento-tipo') {
+            actualizarUIDescuentoMulti();
+        }
+        capturarCantidadesMultiGlobal();
+        recalcularTotalesMulti();
+    });
+    $(document).on('keydown', '#multi-grid-shell .js-multi-cantidad,#recibir-grid-shell .js-recibir-grid-cantidad,#tab-inicial .js-matriz-cantidad,#inicial-cantidad-simple,#form-salida [name="min_cantidad"],#corregir-cantidad', function (e) {
+        if (!esTeclaDecimalBloqueada(e)) return;
+        e.preventDefault();
     });
     $(document).on('keydown', '#multi-grid-shell .js-multi-cantidad', function (e) {
         const moveKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
         if (!moveKeys.includes(e.key)) return;
+        e.preventDefault();
 
         const $actual = $(this);
         const r = Number($actual.data('grid-r'));
@@ -3622,8 +3919,6 @@
 
         const $next = $('#multi-grid-shell .js-multi-cantidad[data-grid-r="' + nextR + '"][data-grid-c="' + nextC + '"]').first();
         if (!$next.length) return;
-
-        e.preventDefault();
         $next.trigger('focus').trigger('select');
     });
     $(document).on('focusin', '#multi-grid-shell .js-multi-cantidad', function () {
@@ -3662,7 +3957,7 @@
         }
 
         if (tipo === 'simple') {
-            const cantidad = Number($('#inicial-cantidad-simple').val() || 0);
+            const cantidad = normalizarInputEntero($('#inicial-cantidad-simple'));
             if (!estadoInicial.simpleSkuId) {
                 AppUI.showMessage('Validación', 'No fue posible identificar el SKU del producto simple seleccionado.', 'warning');
                 return;
@@ -3750,7 +4045,7 @@
 
         const grupos = {};
         $('#multi-grid-shell .js-multi-cantidad').each(function () {
-            const cantidad = Number($(this).val() || 0);
+            const cantidad = normalizarInputEntero($(this));
             if (!(cantidad > 0)) return;
 
             const prdId = Number($(this).data('prd-id') || 0);
@@ -3892,11 +4187,16 @@
             cargarProductosRecibirSeleccionados();
         }
     });
-    $('#recibir-incluir-iva,#recibir-iva-porcentaje,#recibir-descuento-tipo,#recibir-descuento-valor,#recibir-flete-total').on('input change', recalcularTotalesRecibirMercancia);
+    $('#recibir-incluir-iva,#recibir-iva-porcentaje,#recibir-descuento-tipo,#recibir-descuento-valor,#recibir-flete-total').on('input change', function () {
+        if (this.id === 'recibir-descuento-tipo') {
+            actualizarUIDescuentoRecibir();
+        }
+        recalcularTotalesRecibirMercancia();
+    });
     $('#recibir-dominante-global').on('change', function () {
         renderMatrizRecibirMercancia();
     });
-    $(document).on('change', '#recibir-atributos-shell .js-recibir-atr-filter', function () {
+    $(document).on('change', '#recibir-atributos-shell .js-recibir-atr-filter-tags', function () {
         sincronizarFiltrosRecibirDesdeUI();
         renderMatrizRecibirMercancia();
     });
@@ -3907,8 +4207,14 @@
         }
         delete recibirState.productos[prdId];
         delete recibirState.meta[prdId];
-        Object.keys(recibirState.costosFila || {}).forEach((key) => {
-            if (key.startsWith(prdId + '||')) delete recibirState.costosFila[key];
+        Object.keys(recibirState.costosColumna || {}).forEach((key) => {
+            if (key.startsWith(prdId + '||')) delete recibirState.costosColumna[key];
+        });
+        Object.keys(recibirState.costosColumnaEditados || {}).forEach((key) => {
+            if (key.startsWith(prdId + '||')) delete recibirState.costosColumnaEditados[key];
+        });
+        Object.keys(recibirState.costosColumnaOrigen || {}).forEach((key) => {
+            if (key.startsWith(prdId + '||')) delete recibirState.costosColumnaOrigen[key];
         });
         Object.keys(recibirState.filasExcluidas || {}).forEach((key) => {
             if (key.startsWith(prdId + '||')) delete recibirState.filasExcluidas[key];
@@ -3934,8 +4240,14 @@
         }
         delete recibirState.productos[prdId];
         delete recibirState.meta[prdId];
-        Object.keys(recibirState.costosFila || {}).forEach((key) => {
-            if (key.startsWith(prdId + '||')) delete recibirState.costosFila[key];
+        Object.keys(recibirState.costosColumna || {}).forEach((key) => {
+            if (key.startsWith(prdId + '||')) delete recibirState.costosColumna[key];
+        });
+        Object.keys(recibirState.costosColumnaEditados || {}).forEach((key) => {
+            if (key.startsWith(prdId + '||')) delete recibirState.costosColumnaEditados[key];
+        });
+        Object.keys(recibirState.costosColumnaOrigen || {}).forEach((key) => {
+            if (key.startsWith(prdId + '||')) delete recibirState.costosColumnaOrigen[key];
         });
         Object.keys(recibirState.filasExcluidas || {}).forEach((key) => {
             if (key.startsWith(prdId + '||')) delete recibirState.filasExcluidas[key];
@@ -3957,16 +4269,21 @@
         cargarProductosRecibirSeleccionados();
         AppUI.showMessage('Éxito', 'Se restauraron ' + totalExcluidas + ' fila(s) y ' + totalProductosQuitados + ' producto(s).', 'success');
     });
-    $(document).on('input change', '#recibir-grid-shell .js-recibir-grid-cantidad', recalcularTotalesRecibirMercancia);
-    $(document).on('input change', '#recibir-grid-shell .js-recibir-row-costo', recalcularTotalesRecibirMercancia);
-    $(document).on('input change', '#recibir-grid-shell .js-recibir-row-costo', function () {
-        const rowKey = String($(this).data('row-key') || '');
-        if (!rowKey) return;
-        recibirState.costosFilaEditados[rowKey] = true;
+    $(document).on('input change', '#recibir-grid-shell .js-recibir-grid-cantidad', function () {
+        normalizarInputEntero($(this));
+        recalcularTotalesRecibirMercancia();
+    });
+    $(document).on('input change', '#recibir-grid-shell .js-recibir-costo', recalcularTotalesRecibirMercancia);
+    $(document).on('input change', '#recibir-grid-shell .js-recibir-costo', function () {
+        const costoKey = String($(this).data('cost-key') || '');
+        if (!costoKey) return;
+        recibirState.costosColumnaEditados[costoKey] = true;
+        recibirState.costosColumnaOrigen[costoKey] = 'manual';
     });
     $(document).on('keydown', '#recibir-grid-shell .js-recibir-grid-cantidad', function (e) {
         const moveKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
         if (!moveKeys.includes(e.key)) return;
+        e.preventDefault();
         const $actual = $(this);
         const r = Number($actual.data('grid-r'));
         const c = Number($actual.data('grid-c'));
@@ -3979,13 +4296,34 @@
         if (e.key === 'ArrowRight') nextC += 1;
         const $next = $('#recibir-grid-shell .js-recibir-grid-cantidad[data-grid-r="' + nextR + '"][data-grid-c="' + nextC + '"]').first();
         if (!$next.length) return;
-        e.preventDefault();
         $next.trigger('focus').trigger('select');
     });
 
     $('#btn-recibir-buscar-articulos').on('click', function () {
         cargarTablaBuscarRecibir();
         modalRecibirBuscar.show();
+    });
+    $('#recibir-producto-catalogo').on('select2:select', async function (e) {
+        const p = e?.params?.data || null;
+        if (!p || !p.id) return;
+
+        const prdKey = String(p.id);
+        recibirState.productos[prdKey] = {
+            prd_id: Number(p.id),
+            prd_tipo: String(p.prd_tipo || 'simple'),
+            prd_codigo: String(p.prd_codigo || ''),
+            prd_nombre: String(p.prd_nombre || p.text || ''),
+            marca_nombre: String(p.marca_nombre || ''),
+            prd_costo: Number(p.prd_costo || 0),
+            prd_precio_base: Number(p.prd_precio_base || 0),
+        };
+        delete recibirState.productosQuitados[prdKey];
+        Object.keys(recibirState.filasExcluidas || {}).forEach((key) => {
+            if (key.startsWith(prdKey + '||')) delete recibirState.filasExcluidas[key];
+        });
+
+        await cargarProductosRecibirSeleccionados();
+        $('#recibir-producto-catalogo').val(null).trigger('change');
     });
     $('#btn-recibir-filtrar-modal').on('click', function (e) {
         e.preventDefault();
@@ -4095,9 +4433,9 @@
                 const $el = $(el);
                 const prdId = Number($el.data('prd-id') || 0);
                 const skuId = Number($el.data('min-psk-id') || 0);
-                const rowKey = String($el.data('row-key') || '');
-                const qty = Number($el.val() || 0);
-                const costo = Number(recibirState.costosFila[rowKey] || 0);
+                const costoKey = String($el.data('cost-key') || '');
+                const qty = valorEnteroNoNegativo($el.val());
+                const costo = Number(recibirState.costosColumna[costoKey] || 0);
                 return {
                     prd_id: prdId,
                     min_psk_id: skuId,
@@ -4200,7 +4538,9 @@
                     recibirState.meta = {};
                     recibirState.filtrosAtributos = {};
                     recibirState.cantidades = {};
-                    recibirState.costosFila = {};
+                    recibirState.costosColumna = {};
+                    recibirState.costosColumnaEditados = {};
+                    recibirState.costosColumnaOrigen = {};
                     recibirState.filasExcluidas = {};
                     recibirState.productosQuitados = {};
                     renderProductosRecibirMercancia();
@@ -4212,6 +4552,7 @@
                     resetFormDateTime('#recibir-fecha-emision');
                     actualizarUIRecibirReferencia();
                     aplicarPresetRecibirMercancia();
+                    actualizarUIDescuentoRecibir();
                 }
                 return;
             }
@@ -4317,7 +4658,7 @@
             method: 'POST',
             data: {
                 min_motivo_texto: $('#corregir-motivo').val(),
-                'nuevo[min_cantidad]': $('#corregir-cantidad').val(),
+                'nuevo[min_cantidad]': valorEnteroNoNegativo($('#corregir-cantidad').val()),
                 'nuevo[min_documento_referencia]': $('#corregir-referencia').val(),
                 'nuevo[min_fecha_movimiento]': $('#corregir-fecha').val(),
                 'nuevo[min_motivo_texto]': $('#corregir-motivo-nuevo').val()
@@ -4353,6 +4694,8 @@
     actualizarUIReferenciaEntrada();
     actualizarUIReferenciaEntradaMulti();
     actualizarUIRecibirReferencia();
+    actualizarUIDescuentoMulti();
+    actualizarUIDescuentoRecibir();
     resetFormDateTime('#form-inicial [name="min_fecha_movimiento"]');
     resetFormDateTime('#multi-fecha');
     resetFormDateTime('#multi-fecha-emision');
@@ -4365,11 +4708,20 @@
     renderMatrizRecibirMercancia();
     actualizarBotonRestaurarRecibir();
 
-    cargarProductosBase();
-    if (!soloEntradas) {
+    const vistaActiva = @json($vistaActiva ?? 'existencias');
+    if (vistaActiva === 'entradas' || vistaActiva === 'recibir' || vistaActiva === 'salidas') {
+        cargarProductosBase();
+    }
+    if (vistaActiva === 'existencias' || vistaActiva === 'existencias_negativas') {
         cargarExistencias();
+    }
+    if (vistaActiva === 'kardex') {
         cargarKardex();
+    }
+    if (vistaActiva === 'minimos') {
         cargarBajoMinimo();
+    }
+    if (vistaActiva === 'reportes') {
         cargarReportesEntradas();
     }
 })();

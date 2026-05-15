@@ -22,9 +22,19 @@ class EscaneoProductoController extends Controller
     {
         $datos = $request->validate([
             'q' => ['required', 'string', 'max:120'],
+            'modo' => ['nullable', 'in:unico,sugerencias'],
         ], [
             'q.required' => 'Debes capturar un código o texto para buscar.',
         ]);
+
+        if (($datos['modo'] ?? 'unico') === 'sugerencias') {
+            $sugerencias = $this->escaneoProductoService->sugerencias((string) $datos['q']);
+
+            return response()->json([
+                'message' => 'Sugerencias cargadas correctamente.',
+                'data' => $sugerencias,
+            ]);
+        }
 
         $resultado = $this->escaneoProductoService->buscar((string) $datos['q']);
 

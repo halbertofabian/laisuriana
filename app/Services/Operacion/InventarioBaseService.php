@@ -86,6 +86,24 @@ class InventarioBaseService
         ];
     }
 
+    public function opcionesSesionesCaja(int $limite = 300): Collection
+    {
+        return DB::table('tbl_caja_sesiones_cse as cse')
+            ->join('tbl_cajas_caj as caj', 'caj.caj_id', '=', 'cse.cse_caj_id')
+            ->join('tbl_sucursales_scl as scl', 'scl.scl_id', '=', 'cse.cse_scl_id')
+            ->leftJoin('tbl_usuarios_usr as usr', 'usr.usr_id', '=', 'cse.cse_usr_apertura_id')
+            ->orderByDesc('cse.cse_abierta_at')
+            ->limit(max(50, min($limite, 1000)))
+            ->get([
+                'cse.cse_id',
+                'cse.cse_abierta_at',
+                'cse.cse_estatus',
+                'caj.caj_nombre',
+                'scl.scl_nombre',
+                'usr.usr_nombre as usuario_apertura',
+            ]);
+    }
+
     public function buscarProductosBase(string $termino = '', int $pagina = 1, int $porPagina = 20, array $filtros = []): array
     {
         $termino = trim($termino);
@@ -93,6 +111,7 @@ class InventarioBaseService
         $porPagina = max(10, min($porPagina, 50));
 
         $query = Producto::query()
+            ->with('marca:mrc_id,mrc_nombre')
             ->withCount([
                 'skus as skus_activos' => fn ($q) => $q
                     ->where('psk_deleted', false)
@@ -117,7 +136,7 @@ class InventarioBaseService
         $filas = $query
             ->orderBy('prd_nombre')
             ->forPage($pagina, $porPagina)
-            ->get(['prd_id', 'prd_codigo', 'prd_nombre', 'prd_tipo']);
+            ->get(['prd_id', 'prd_codigo', 'prd_nombre', 'prd_tipo', 'prd_mrc_id', 'prd_costo', 'prd_precio_base']);
 
         $resultados = $filas->map(fn ($producto) => [
             'id' => $producto->prd_id,
@@ -130,6 +149,11 @@ class InventarioBaseService
             ),
             'prd_tipo' => $producto->prd_tipo,
             'skus_activos' => (int) $producto->skus_activos,
+            'prd_codigo' => $producto->prd_codigo,
+            'prd_nombre' => $producto->prd_nombre,
+            'prd_costo' => (float) ($producto->prd_costo ?? 0),
+            'prd_precio_base' => (float) ($producto->prd_precio_base ?? 0),
+            'marca_nombre' => (string) ($producto->marca?->mrc_nombre ?? ''),
         ])->values()->all();
 
         return [
@@ -302,6 +326,7 @@ class InventarioBaseService
     {
         $producto = Producto::query()
             ->with([
+                'marca:mrc_id,mrc_nombre',
                 'atributos:atr_id,atr_nombre',
                 'skus' => fn ($query) => $query
                     ->where('psk_deleted', false)
@@ -363,6 +388,8 @@ class InventarioBaseService
                 'min_psk_id' => $sku->psk_id,
                 'psk_codigo' => $sku->psk_codigo,
                 'psk_nombre' => $sku->psk_nombre,
+                'psk_costo' => (float) ($sku->psk_costo ?? 0),
+                'psk_precio' => (float) ($sku->psk_precio ?? 0),
                 'atributos' => $mapa,
                 'combinacion' => !empty($mapa) ? implode(' / ', array_values($mapa)) : 'Estándar',
             ];
@@ -374,6 +401,7 @@ class InventarioBaseService
                 'prd_codigo' => $producto->prd_codigo,
                 'prd_nombre' => $producto->prd_nombre,
                 'prd_tipo' => $producto->prd_tipo,
+                'marca_nombre' => (string) ($producto->marca?->mrc_nombre ?? ''),
                 'prd_costo' => (float) ($producto->prd_costo ?? 0),
                 'prd_precio_base' => (float) ($producto->prd_precio_base ?? 0),
             ],
@@ -413,6 +441,7 @@ class InventarioBaseService
             ->when(!empty($filtros['min_scl_id']), fn ($q) => $q->where('exa.exa_scl_id', (int) $filtros['min_scl_id']))
             ->when(!empty($filtros['min_alm_id']), fn ($q) => $q->where('exa.exa_alm_id', (int) $filtros['min_alm_id']))
             ->when(!empty($filtros['min_psk_id']), fn ($q) => $q->where('exa.exa_psk_id', (int) $filtros['min_psk_id']))
+            ->when(!empty($filtros['solo_negativas']), fn ($q) => $q->where('exa.exa_existencia', '<', 0))
             ->when(!empty($filtros['buscar']), function ($q) use ($filtros): void {
                 $buscar = trim((string) $filtros['buscar']);
                 $q->where(function ($sub) use ($buscar): void {
@@ -485,6 +514,67 @@ class InventarioBaseService
                 'tmi.tmi_nombre',
                 'tmi.tmi_clase',
                 'usr.usr_nombre as usuario_nombre',
+            ]);
+    }
+
+    public function listarNegativosPorSesionCaja(array $filtros = []): Collection
+    {
+        return DB::table('tbl_movimientos_inventario_min as min')
+            ->join('tbl_pos_ventas_psv as psv', 'psv.psv_folio', '=', 'min.min_documento_referencia')
+            ->join('tbl_caja_sesiones_cse as cse', 'cse.cse_id', '=', 'psv.psv_cse_id')
+            ->join('tbl_cajas_caj as caj', 'caj.caj_id', '=', 'psv.psv_caj_id')
+            ->join('tbl_producto_skus_psk as psk', 'psk.psk_id', '=', 'min.min_psk_id')
+            ->join('tbl_productos_prd as prd', 'prd.prd_id', '=', 'psk.psk_prd_id')
+            ->join('tbl_sucursales_scl as scl', 'scl.scl_id', '=', 'min.min_scl_id')
+            ->join('tbl_almacenes_alm as alm', 'alm.alm_id', '=', 'min.min_alm_id')
+            ->leftJoin('tbl_usuarios_usr as usr_ap', 'usr_ap.usr_id', '=', 'cse.cse_usr_apertura_id')
+            ->leftJoin('tbl_usuarios_usr as usr_vta', 'usr_vta.usr_id', '=', 'psv.psv_usr_id')
+            ->where('min.min_deleted', false)
+            ->whereNull('min.min_deleted_at')
+            ->where('min.min_estatus', 'activo')
+            ->where('min.min_documento_tipo', 'venta_pos')
+            ->where('min.min_signo', -1)
+            ->where('min.min_existencia_despues', '<', 0)
+            ->when(!empty($filtros['cse_id']), fn ($q) => $q->where('cse.cse_id', (int) $filtros['cse_id']))
+            ->when(!empty($filtros['min_scl_id']), fn ($q) => $q->where('min.min_scl_id', (int) $filtros['min_scl_id']))
+            ->when(!empty($filtros['min_alm_id']), fn ($q) => $q->where('min.min_alm_id', (int) $filtros['min_alm_id']))
+            ->when(!empty($filtros['fecha_desde']), fn ($q) => $q->whereDate('min.min_fecha_movimiento', '>=', $filtros['fecha_desde']))
+            ->when(!empty($filtros['fecha_hasta']), fn ($q) => $q->whereDate('min.min_fecha_movimiento', '<=', $filtros['fecha_hasta']))
+            ->when(!empty($filtros['buscar']), function ($q) use ($filtros): void {
+                $buscar = trim((string) $filtros['buscar']);
+                $q->where(function ($sub) use ($buscar): void {
+                    $sub->where('psv.psv_folio', 'like', "%{$buscar}%")
+                        ->orWhere('psk.psk_codigo', 'like', "%{$buscar}%")
+                        ->orWhere('psk.psk_nombre', 'like', "%{$buscar}%")
+                        ->orWhere('prd.prd_nombre', 'like', "%{$buscar}%")
+                        ->orWhere('caj.caj_nombre', 'like', "%{$buscar}%")
+                        ->orWhere('usr_vta.usr_nombre', 'like', "%{$buscar}%");
+                });
+            })
+            ->orderByDesc('min.min_fecha_movimiento')
+            ->orderByDesc('min.min_id')
+            ->limit(1500)
+            ->get([
+                'min.min_id',
+                'min.min_folio',
+                'min.min_fecha_movimiento',
+                'min.min_documento_referencia',
+                'min.min_cantidad',
+                'min.min_existencia_antes',
+                'min.min_existencia_despues',
+                'cse.cse_id',
+                'cse.cse_abierta_at',
+                'cse.cse_cerrada_at',
+                'cse.cse_estatus',
+                'caj.caj_nombre',
+                'scl.scl_nombre',
+                'alm.alm_nombre',
+                'psk.psk_codigo',
+                'psk.psk_nombre',
+                'prd.prd_nombre',
+                'usr_ap.usr_nombre as usuario_apertura',
+                'usr_vta.usr_nombre as usuario_venta',
+                'psv.psv_folio',
             ]);
     }
 
@@ -1678,8 +1768,9 @@ class InventarioBaseService
 
         $antes = (float) $existencia->exa_existencia;
         $despues = round($antes + ($cantidad * $signo), 2);
+        $permitirNegativo = (bool) ($datos['min_permitir_negativo'] ?? false);
 
-        if ($despues < 0) {
+        if ($despues < 0 && !$permitirNegativo) {
             throw ValidationException::withMessages([
                 'min_cantidad' => 'La operación deja inventario negativo y no está permitido.',
             ]);

@@ -42,7 +42,7 @@ class StoreEntradaInventarioRequest extends FormRequest
                     ->where('alm_estatus', 'activo')
                     ->where('alm_scl_id', $sucursalId)),
             ],
-            'min_cantidad' => ['required', 'numeric', 'gt:0'],
+            'min_cantidad' => ['required', 'integer', 'gt:0'],
             'min_fecha_movimiento' => ['required', 'date'],
             'min_motivo_texto' => ['required', 'string', 'max:500'],
             'min_documento_referencia' => ['nullable', 'string', 'max:120'],
@@ -59,6 +59,7 @@ class StoreEntradaInventarioRequest extends FormRequest
             'min_alm_id.required' => 'El almacén es obligatorio.',
             'min_alm_id.exists' => 'El almacén seleccionado no pertenece a la sucursal o no está activo.',
             'min_cantidad.required' => 'La cantidad es obligatoria.',
+            'min_cantidad.integer' => 'La cantidad debe ser un número entero.',
             'min_cantidad.gt' => 'La cantidad debe ser mayor a cero.',
             'min_fecha_movimiento.required' => 'La fecha del movimiento es obligatoria.',
             'min_motivo_texto.required' => 'El motivo de la entrada es obligatorio.',

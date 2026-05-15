@@ -22,19 +22,68 @@ class InventarioBaseController extends Controller
 
     public function index()
     {
-        return $this->renderInventarioBase(false);
+        return redirect()->route('operacion.inventario_base.existencias.index');
+    }
+
+    public function existencias()
+    {
+        return $this->renderInventarioBase(false, 'existencias');
+    }
+
+    public function existenciasNegativas()
+    {
+        return $this->renderInventarioBase(false, 'existencias_negativas');
+    }
+
+    public function entradas()
+    {
+        return $this->renderInventarioBase(false, 'entradas');
+    }
+
+    public function recibir()
+    {
+        return $this->renderInventarioBase(false, 'recibir');
+    }
+
+    public function salidas()
+    {
+        return $this->renderInventarioBase(false, 'salidas');
+    }
+
+    public function kardex()
+    {
+        return $this->renderInventarioBase(false, 'kardex');
+    }
+
+    public function negativosPorSesion()
+    {
+        return view('operacion.inventario_base.negativos_sesion', [
+            'opciones' => $this->inventarioService->opcionesBase(),
+            'sesionesCaja' => $this->inventarioService->opcionesSesionesCaja(),
+        ]);
+    }
+
+    public function minimos()
+    {
+        return $this->renderInventarioBase(false, 'minimos');
+    }
+
+    public function reportes()
+    {
+        return $this->renderInventarioBase(false, 'reportes');
     }
 
     public function wizardEntradas()
     {
-        return $this->renderInventarioBase(true);
+        return $this->renderInventarioBase(true, 'entradas');
     }
 
-    private function renderInventarioBase(bool $soloEntradas)
+    private function renderInventarioBase(bool $soloEntradas, string $vistaActiva)
     {
         return view('operacion.inventario_base.index', [
             'opciones' => $this->inventarioService->opcionesBase(),
             'soloEntradas' => $soloEntradas,
+            'vistaActiva' => $vistaActiva,
             'permisosUI' => [
                 'ver' => auth()->user()?->tienePermiso('inventario_base.ver') ?? false,
                 'inicial' => auth()->user()?->tienePermiso('inventario_base.inicial') ?? false,
@@ -50,12 +99,18 @@ class InventarioBaseController extends Controller
 
     public function dataExistencias(Request $request): JsonResponse
     {
-        $registros = $this->inventarioService->listarExistencias($request->only([
+        $filtros = $request->only([
             'min_scl_id',
             'min_alm_id',
             'min_psk_id',
             'buscar',
-        ]));
+        ]);
+
+        if ($request->boolean('solo_negativas')) {
+            $filtros['solo_negativas'] = true;
+        }
+
+        $registros = $this->inventarioService->listarExistencias($filtros);
 
         return response()->json(['data' => $registros]);
     }
@@ -137,6 +192,20 @@ class InventarioBaseController extends Controller
             'min_psk_id',
             'fecha_desde',
             'fecha_hasta',
+        ]));
+
+        return response()->json(['data' => $registros]);
+    }
+
+    public function dataNegativosPorSesion(Request $request): JsonResponse
+    {
+        $registros = $this->inventarioService->listarNegativosPorSesionCaja($request->only([
+            'cse_id',
+            'min_scl_id',
+            'min_alm_id',
+            'fecha_desde',
+            'fecha_hasta',
+            'buscar',
         ]));
 
         return response()->json(['data' => $registros]);

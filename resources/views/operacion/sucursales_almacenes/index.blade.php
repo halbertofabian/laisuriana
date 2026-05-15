@@ -31,24 +31,10 @@
     subtitle="Administra la estructura operativa base para inventario por almacén."
 />
 
+@php($vistaActiva = $vistaActiva ?? 'sucursales')
 <div class="card app-tabs-shell mb-4">
-<div class="app-tabs-shell__header">
-<ul class="nav nav-tabs app-tabs-shell__tabs" id="operacionTabs" role="tablist">
-    <li class="nav-item" role="presentation">
-        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#panel-sucursales" type="button" role="tab" aria-selected="true">Sucursales</button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#panel-almacenes" type="button" role="tab" aria-selected="false">Almacenes</button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#panel-tipos" type="button" role="tab" aria-selected="false">Tipos de almacén</button>
-    </li>
-</ul>
-</div>
-
 <div class="app-tabs-shell__body">
-<div class="tab-content">
-    <div class="tab-pane fade show active" id="panel-sucursales" role="tabpanel" tabindex="0">
+    @if($vistaActiva === 'sucursales')
         <div class="d-flex justify-content-end mb-3">
             @if($permisosUI['sucursal_crear'])
                 <button class="btn btn-primary btn-sm" id="btn-nueva-sucursal">
@@ -69,9 +55,9 @@
                 </thead>
             </table>
         </div>
-    </div>
+    @endif
 
-    <div class="tab-pane fade" id="panel-almacenes" role="tabpanel" tabindex="0">
+    @if($vistaActiva === 'almacenes')
         <div class="row g-3 mb-3">
             <div class="col-md-4">
                 <label class="form-label">Filtro por sucursal</label>
@@ -118,9 +104,9 @@
                 </thead>
             </table>
         </div>
-    </div>
+    @endif
 
-    <div class="tab-pane fade" id="panel-tipos" role="tabpanel" tabindex="0">
+    @if($vistaActiva === 'tipos')
         <div class="d-flex justify-content-end mb-3">
             @if($permisosUI['tipo_crear'])
                 <button class="btn btn-primary btn-sm" id="btn-nuevo-tipo">
@@ -142,8 +128,7 @@
                 </thead>
             </table>
         </div>
-    </div>
-</div>
+    @endif
 </div>
 </div>
 
@@ -846,9 +831,14 @@
         });
     });
 
-    recargarSucursales();
-    recargarAlmacenes();
-    recargarTipos();
+    const vistaActiva = @json($vistaActiva ?? 'sucursales');
+    if (vistaActiva === 'sucursales') {
+        recargarSucursales();
+    } else if (vistaActiva === 'almacenes') {
+        recargarAlmacenes();
+    } else if (vistaActiva === 'tipos') {
+        recargarTipos();
+    }
 })();
 </script>
 @endpush

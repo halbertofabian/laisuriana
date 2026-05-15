@@ -77,6 +77,14 @@ class Usuario extends Authenticatable
             ->wherePivot('usc_estatus', 'activo');
     }
 
+    public function cajas()
+    {
+        return $this->belongsToMany(Caja::class, 'tbl_caja_usuarios_cju', 'cju_usr_id', 'cju_caj_id')
+            ->wherePivot('cju_deleted', false)
+            ->wherePivotNull('cju_deleted_at')
+            ->wherePivot('cju_estatus', 'activo');
+    }
+
     public function tienePermiso(string $permisoClave): bool
     {
         return Permiso::query()

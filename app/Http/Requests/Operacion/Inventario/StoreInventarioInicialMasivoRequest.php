@@ -79,7 +79,7 @@ class StoreInventarioInicialMasivoRequest extends FormRequest
                     ->whereNull('psk_deleted_at')
                     ->where('psk_estatus', 'activo')),
             ],
-            'lineas.*.min_cantidad' => ['nullable', 'numeric', 'min:0'],
+            'lineas.*.min_cantidad' => ['nullable', 'integer', 'min:0'],
             'lineas.*.min_precio_unitario' => ['nullable', 'numeric', 'min:0'],
         ];
     }
@@ -105,6 +105,20 @@ class StoreInventarioInicialMasivoRequest extends FormRequest
             if ($tipoDocumento === 'compra_factura' && (int) $this->input('min_prv_id', 0) <= 0) {
                 $validator->errors()->add('min_prv_id', 'El proveedor es obligatorio cuando la entrada es compra con factura.');
             }
+
+            if (in_array($tipoDocumento, ['compra_remision', 'compra_factura'], true)) {
+                foreach ($lineas as $idx => $linea) {
+                    $cantidad = (float) ($linea['min_cantidad'] ?? 0);
+                    if ($cantidad <= 0) {
+                        continue;
+                    }
+                    $costo = (float) ($linea['min_precio_unitario'] ?? 0);
+                    if ($costo <= 0) {
+                        $validator->errors()->add("lineas.{$idx}.min_precio_unitario", 'Para compras con remisión o factura, el costo unitario debe ser mayor a cero.');
+                    }
+                }
+            }
+
             $descuentoTipo = (string) $this->input('min_descuento_tipo', 'ninguno');
             $descuentoValor = (float) $this->input('min_descuento_valor', 0);
             if ($descuentoTipo === 'porcentaje' && $descuentoValor > 100) {
@@ -146,6 +160,7 @@ class StoreInventarioInicialMasivoRequest extends FormRequest
             'dominante_atr_id.exists' => 'La variable dominante seleccionada no es válida.',
             'lineas.required' => 'Debes seleccionar un producto base y capturar existencias antes de guardar.',
             'lineas.*.min_psk_id.required' => 'La variante SKU es obligatoria.',
+            'lineas.*.min_cantidad.integer' => 'La cantidad debe ser un número entero.',
         ];
     }
 }

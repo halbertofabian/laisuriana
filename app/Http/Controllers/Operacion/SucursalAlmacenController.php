@@ -12,6 +12,8 @@ use App\Http\Requests\Operacion\UpdateTipoAlmacenRequest;
 use App\Services\Operacion\AlmacenService;
 use App\Services\Operacion\SucursalService;
 use App\Services\Operacion\TipoAlmacenService;
+use App\Models\Almacen;
+use App\Models\Sucursal;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -26,7 +28,28 @@ class SucursalAlmacenController extends Controller
 
     public function index()
     {
+        return redirect()->route('operacion.sucursales_almacenes.sucursales.index');
+    }
+
+    public function sucursales()
+    {
+        return $this->renderVista('sucursales');
+    }
+
+    public function almacenes()
+    {
+        return $this->renderVista('almacenes');
+    }
+
+    public function tipos()
+    {
+        return $this->renderVista('tipos');
+    }
+
+    private function renderVista(string $vistaActiva)
+    {
         return view('operacion.sucursales_almacenes.index', [
+            'vistaActiva' => $vistaActiva,
             'opciones' => [
                 'sucursales' => $this->sucursalService->opcionesActivas(),
                 'tipos_almacen' => $this->tipoAlmacenService->opcionesActivas(),
@@ -234,6 +257,34 @@ class SucursalAlmacenController extends Controller
         })->values();
 
         return response()->json(['data' => $data]);
+    }
+
+    public function sucursalesMobile(): JsonResponse
+    {
+        $data = Sucursal::query()
+            ->select(['scl_id', 'scl_nombre', 'scl_clave'])
+            ->where('scl_estatus', 'activo')
+            ->orderBy('scl_nombre')
+            ->get()
+            ->values();
+
+        return response()->json(['data' => $data]);
+    }
+
+    public function almacenesMobile(Request $request): JsonResponse
+    {
+        $sucursalId = (int) $request->query('scl_id', 0);
+
+        $query = Almacen::query()
+            ->select(['alm_id', 'alm_scl_id', 'alm_nombre', 'alm_clave'])
+            ->where('alm_estatus', 'activo')
+            ->orderBy('alm_nombre');
+
+        if ($sucursalId > 0) {
+            $query->where('alm_scl_id', $sucursalId);
+        }
+
+        return response()->json(['data' => $query->get()->values()]);
     }
 
     public function showTipoAlmacen(int $tipo_almacen): JsonResponse

@@ -20,7 +20,9 @@ class RolController extends Controller
 
     public function index()
     {
-        return redirect()->route('seguridad.usuarios.index', ['tab' => 'roles']);
+        return view('seguridad.roles.index', [
+            'permisos' => $this->permisoService->listar(),
+        ]);
     }
 
     public function data(): JsonResponse

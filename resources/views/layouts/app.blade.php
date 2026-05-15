@@ -74,11 +74,6 @@
         /* --- Base body --- */
         body { background: var(--ls-surface-2); color: var(--ls-text-primary); }
 
-        /* Vista general en mayúsculas (excepto módulo de usuarios) */
-        body.ls-uppercase-ui .layout-wrapper {
-            text-transform: uppercase;
-        }
-
         /* --- Loader --- */
         #global-loader {
             background: rgba(10, 37, 64, 0.28);
@@ -266,7 +261,15 @@
             vertical-align: middle;
             border-bottom: 1px solid var(--ls-border);
             color: var(--ls-text-secondary);
+            text-transform: uppercase;
         }
+
+        /* Celdas con contenido generado (badges, tags, dropdowns) no necesitan uppercase */
+        .table tbody td .ls-badge,
+        .table tbody td .ls-tag,
+        .table tbody td .tag-chip,
+        .table tbody td .dropdown,
+        .table tbody td small { text-transform: none; }
 
         .table tbody tr:last-child td { border-bottom: none; }
         .table tbody tr:hover td { background: var(--ls-surface-2); }
@@ -586,9 +589,64 @@
             .app-message-actions { justify-content: stretch; }
             .app-message-actions .btn { width: 100%; }
         }
+
+        /* Sidebar: menu scroll + user fixed footer */
+        #layout-menu {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #layout-menu .menu-scroll-area {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-bottom: 0.6rem;
+        }
+
+        .sidebar-user-box {
+            flex: 0 0 auto;
+            border-top: 1px solid var(--ls-border);
+            background: var(--ls-surface);
+            padding: 0.85rem 0.9rem calc(0.85rem + env(safe-area-inset-bottom));
+            box-shadow: 0 -6px 18px rgba(10, 37, 64, 0.04);
+        }
+
+        .sidebar-user-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.65rem;
+            border: 1px solid var(--ls-border);
+            border-radius: 0.75rem;
+            background: var(--ls-surface-2);
+            padding: 0.65rem 0.7rem;
+        }
+
+        .sidebar-user-name {
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: var(--ls-text-primary);
+            line-height: 1.2;
+        }
+
+        .sidebar-user-handle {
+            display: block;
+            font-size: 0.78rem;
+            color: var(--ls-text-muted);
+            margin-top: 0.12rem;
+        }
+
+        .sidebar-user-logout.btn {
+            padding: 0.3rem 0.55rem;
+            font-size: 0.78rem;
+            white-space: nowrap;
+        }
     </style>
 </head>
-<body class="{{ request()->routeIs('seguridad.usuarios.*') ? '' : 'ls-uppercase-ui' }}">
+<body>
     <div class="layout-wrapper layout-content-navbar">
         <div class="layout-container">
 
@@ -610,7 +668,12 @@
 
                 <div class="menu-inner-shadow"></div>
 
+                <div class="menu-scroll-area">
                 <ul class="menu-inner py-1">
+                    {{-- ── GENERAL ─────────────────────────────────────── --}}
+                    <li class="menu-header small text-uppercase">
+                        <span class="menu-header-text">General</span>
+                    </li>
 
                     <li class="menu-item {{ request()->routeIs('dashboard') ? 'active' : '' }}">
                         <a href="{{ route('dashboard') }}" class="menu-link">
@@ -619,61 +682,242 @@
                         </a>
                     </li>
 
+                    {{-- ── SEGURIDAD ────────────────────────────────────── --}}
                     @if(auth()->user()?->tienePermiso('usuario.ver') || auth()->user()?->tienePermiso('rol.ver') || auth()->user()?->tienePermiso('permiso.ver') || auth()->user()?->tienePermiso('seguridad.ver_auditoria'))
-                        <li class="menu-item {{ request()->routeIs('seguridad.usuarios.*') || request()->routeIs('seguridad.roles.*') || request()->routeIs('seguridad.permisos.*') || request()->routeIs('seguridad.bitacora.*') ? 'active' : '' }}">
-                            <a href="{{ route('seguridad.usuarios.index') }}" class="menu-link">
-                                <i class="menu-icon icon-base ti tabler-users"></i>
-                                <div>Usuarios</div>
-                            </a>
+                        <li class="menu-header small text-uppercase">
+                            <span class="menu-header-text">Seguridad</span>
                         </li>
+
+                        @if(auth()->user()?->tienePermiso('usuario.ver'))
+                            <li class="menu-item {{ request()->routeIs('seguridad.usuarios.*') ? 'active' : '' }}">
+                                <a href="{{ route('seguridad.usuarios.index') }}" class="menu-link">
+                                    <i class="menu-icon icon-base ti tabler-users"></i>
+                                    <div>Usuarios</div>
+                                </a>
+                            </li>
+                        @endif
+
+                        @if(auth()->user()?->tienePermiso('rol.ver'))
+                            <li class="menu-item {{ request()->routeIs('seguridad.roles.*') ? 'active' : '' }}">
+                                <a href="{{ route('seguridad.roles.index') }}" class="menu-link">
+                                    <i class="menu-icon icon-base ti tabler-shield-check"></i>
+                                    <div>Roles</div>
+                                </a>
+                            </li>
+                        @endif
+
+                        @if(auth()->user()?->tienePermiso('permiso.ver'))
+                            <li class="menu-item {{ request()->routeIs('seguridad.permisos.*') ? 'active' : '' }}">
+                                <a href="{{ route('seguridad.permisos.index') }}" class="menu-link">
+                                    <i class="menu-icon icon-base ti tabler-key"></i>
+                                    <div>Permisos</div>
+                                </a>
+                            </li>
+                        @endif
+
+                        @if(auth()->user()?->tienePermiso('seguridad.ver_auditoria'))
+                            <li class="menu-item {{ request()->routeIs('seguridad.bitacora.*') ? 'active' : '' }}">
+                                <a href="{{ route('seguridad.bitacora.index') }}" class="menu-link">
+                                    <i class="menu-icon icon-base ti tabler-clipboard-list"></i>
+                                    <div>Bitácora</div>
+                                </a>
+                            </li>
+                        @endif
                     @endif
 
-                    @if(auth()->user()?->tienePermiso('sucursal.ver') && auth()->user()?->tienePermiso('almacen.ver') && auth()->user()?->tienePermiso('tipo_almacen.ver'))
-                        <li class="menu-item {{ request()->routeIs('operacion.sucursales_almacenes.*') ? 'active' : '' }}">
-                            <a href="{{ route('operacion.sucursales_almacenes.index') }}" class="menu-link">
-                                <i class="menu-icon icon-base ti tabler-building-warehouse"></i>
-                                <div>Sucursales y almacenes</div>
-                            </a>
+                    {{-- ── OPERACIÓN ────────────────────────────────────── --}}
+                    @if(auth()->user()?->tienePermiso('sucursal.ver') || auth()->user()?->tienePermiso('catalogo_comercial.ver') || auth()->user()?->tienePermiso('inventario_base.ver') || auth()->user()?->tienePermiso('caja.ver') || auth()->user()?->tienePermiso('cliente.ver') || auth()->user()?->tienePermiso('pedido_piso.ver'))
+                        <li class="menu-header small text-uppercase">
+                            <span class="menu-header-text">Operación</span>
                         </li>
+
+                        {{-- Red y gestión --}}
+                        @if(auth()->user()?->tienePermiso('sucursal.ver') || auth()->user()?->tienePermiso('almacen.ver') || auth()->user()?->tienePermiso('tipo_almacen.ver') || auth()->user()?->tienePermiso('caja.ver') || auth()->user()?->tienePermiso('cliente.ver'))
+                            <li class="menu-item has-sub {{ request()->routeIs('operacion.sucursales_almacenes.*') || request()->routeIs('operacion.cajas.*') || request()->routeIs('operacion.clientes.*') ? 'open active' : '' }}">
+                                <a href="javascript:void(0);" class="menu-link menu-toggle">
+                                    <i class="menu-icon icon-base ti tabler-building-warehouse"></i>
+                                    <div>Red y gestión</div>
+                                </a>
+                                <ul class="menu-sub">
+                                    @if(auth()->user()?->tienePermiso('sucursal.ver'))
+                                        <li class="menu-item {{ request()->routeIs('operacion.sucursales_almacenes.sucursales.index') ? 'active' : '' }}">
+                                            <a href="{{ route('operacion.sucursales_almacenes.sucursales.index') }}" class="menu-link">
+                                                <div>Sucursales</div>
+                                            </a>
+                                        </li>
+                                    @endif
+                                    @if(auth()->user()?->tienePermiso('almacen.ver'))
+                                        <li class="menu-item {{ request()->routeIs('operacion.sucursales_almacenes.almacenes.index') ? 'active' : '' }}">
+                                            <a href="{{ route('operacion.sucursales_almacenes.almacenes.index') }}" class="menu-link">
+                                                <div>Almacenes</div>
+                                            </a>
+                                        </li>
+                                    @endif
+                                    @if(auth()->user()?->tienePermiso('tipo_almacen.ver'))
+                                        <li class="menu-item {{ request()->routeIs('operacion.sucursales_almacenes.tipos.index') ? 'active' : '' }}">
+                                            <a href="{{ route('operacion.sucursales_almacenes.tipos.index') }}" class="menu-link">
+                                                <div>Tipos de almacén</div>
+                                            </a>
+                                        </li>
+                                    @endif
+                                    @if(auth()->user()?->tienePermiso('caja.ver'))
+                                        <li class="menu-item {{ request()->routeIs('operacion.cajas.*') ? 'active' : '' }}">
+                                            <a href="{{ route('operacion.cajas.index') }}" class="menu-link">
+                                                <div>Cajas</div>
+                                            </a>
+                                        </li>
+                                    @endif
+                                    @if(auth()->user()?->tienePermiso('cliente.ver'))
+                                        <li class="menu-item {{ request()->routeIs('operacion.clientes.*') ? 'active' : '' }}">
+                                            <a href="{{ route('operacion.clientes.index') }}" class="menu-link">
+                                                <div>Clientes</div>
+                                            </a>
+                                        </li>
+                                    @endif
+                                </ul>
+                            </li>
+                        @endif
+
+                        {{-- Catálogo comercial --}}
+                        @if(auth()->user()?->tienePermiso('catalogo_comercial.ver'))
+                            <li class="menu-item has-sub {{ request()->routeIs('operacion.catalogo_comercial.*') ? 'open active' : '' }}">
+                                <a href="javascript:void(0);" class="menu-link menu-toggle">
+                                    <i class="menu-icon icon-base ti tabler-box-multiple"></i>
+                                    <div>Catálogo comercial</div>
+                                </a>
+                                <ul class="menu-sub">
+                                    <li class="menu-item {{ request()->routeIs('operacion.catalogo_comercial.base.index') ? 'active' : '' }}">
+                                        <a href="{{ route('operacion.catalogo_comercial.base.index') }}" class="menu-link">
+                                            <div>Catálogos base</div>
+                                        </a>
+                                    </li>
+                                    <li class="menu-item {{ request()->routeIs('operacion.catalogo_comercial.atributos.index') ? 'active' : '' }}">
+                                        <a href="{{ route('operacion.catalogo_comercial.atributos.index') }}" class="menu-link">
+                                            <div>Atributos</div>
+                                        </a>
+                                    </li>
+                                    <li class="menu-item {{ request()->routeIs('operacion.catalogo_comercial.productos.index') ? 'active' : '' }}">
+                                        <a href="{{ route('operacion.catalogo_comercial.productos.index') }}" class="menu-link">
+                                            <div>Productos</div>
+                                        </a>
+                                    </li>
+                                    <li class="menu-item {{ request()->routeIs('operacion.catalogo_comercial.skus.index') ? 'active' : '' }}">
+                                        <a href="{{ route('operacion.catalogo_comercial.skus.index') }}" class="menu-link">
+                                            <div>SKU / Variantes</div>
+                                        </a>
+                                    </li>
+                                    <li class="menu-item {{ request()->routeIs('operacion.catalogo_comercial.proveedores.index') ? 'active' : '' }}">
+                                        <a href="{{ route('operacion.catalogo_comercial.proveedores.index') }}" class="menu-link">
+                                            <div>Proveedores</div>
+                                        </a>
+                                    </li>
+                                    <li class="menu-item {{ request()->routeIs('operacion.catalogo_comercial.etiquetado.index') ? 'active' : '' }}">
+                                        <a href="{{ route('operacion.catalogo_comercial.etiquetado.index') }}" class="menu-link">
+                                            <div>Etiquetado</div>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </li>
+                        @endif
+
+                        {{-- Inventario --}}
+                        @if(auth()->user()?->tienePermiso('inventario_base.ver'))
+                            <li class="menu-item has-sub {{ request()->routeIs('operacion.inventario_base.*') ? 'open active' : '' }}">
+                                <a href="javascript:void(0);" class="menu-link menu-toggle">
+                                    <i class="menu-icon icon-base ti tabler-packages"></i>
+                                    <div>Inventario</div>
+                                </a>
+                                <ul class="menu-sub">
+                                    <li class="menu-item {{ request()->routeIs('operacion.inventario_base.existencias.index') ? 'active' : '' }}">
+                                        <a href="{{ route('operacion.inventario_base.existencias.index') }}" class="menu-link">
+                                            <div>Existencias</div>
+                                        </a>
+                                    </li>
+                                    <li class="menu-item {{ request()->routeIs('operacion.inventario_base.existencias_negativas.index') ? 'active' : '' }}">
+                                        <a href="{{ route('operacion.inventario_base.existencias_negativas.index') }}" class="menu-link">
+                                            <div>Existencias negativas</div>
+                                        </a>
+                                    </li>
+                                    <li class="menu-item {{ request()->routeIs('operacion.inventario_base.negativos_sesion.index') ? 'active' : '' }}">
+                                        <a href="{{ route('operacion.inventario_base.negativos_sesion.index') }}" class="menu-link">
+                                            <div>Negativos por sesión</div>
+                                        </a>
+                                    </li>
+                                    <li class="menu-item {{ request()->routeIs('operacion.inventario_base.recibir.index') ? 'active' : '' }}">
+                                        <a href="{{ route('operacion.inventario_base.recibir.index') }}" class="menu-link">
+                                            <div>Recibir mercancía</div>
+                                        </a>
+                                    </li>
+                                    <li class="menu-item {{ request()->routeIs('operacion.inventario_base.salidas.index') ? 'active' : '' }}">
+                                        <a href="{{ route('operacion.inventario_base.salidas.index') }}" class="menu-link">
+                                            <div>Salidas</div>
+                                        </a>
+                                    </li>
+                                    <li class="menu-item {{ request()->routeIs('operacion.inventario_base.kardex.index') ? 'active' : '' }}">
+                                        <a href="{{ route('operacion.inventario_base.kardex.index') }}" class="menu-link">
+                                            <div>Kardex</div>
+                                        </a>
+                                    </li>
+                                    <li class="menu-item {{ request()->routeIs('operacion.inventario_base.minimos.index') ? 'active' : '' }}">
+                                        <a href="{{ route('operacion.inventario_base.minimos.index') }}" class="menu-link">
+                                            <div>Bajo mínimo</div>
+                                        </a>
+                                    </li>
+                                    <li class="menu-item {{ request()->routeIs('operacion.inventario_base.reportes.index') ? 'active' : '' }}">
+                                        <a href="{{ route('operacion.inventario_base.reportes.index') }}" class="menu-link">
+                                            <div>Reportes PDF</div>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </li>
+                        @endif
+
                     @endif
 
-                    @if(auth()->user()?->tienePermiso('catalogo_comercial.ver'))
-                        <li class="menu-item {{ request()->routeIs('operacion.catalogo_comercial.*') ? 'active' : '' }}">
-                            <a href="{{ route('operacion.catalogo_comercial.index') }}" class="menu-link">
-                                <i class="menu-icon icon-base ti tabler-box-multiple"></i>
-                                <div>Catálogo comercial</div>
-                            </a>
-                        </li>
-                    @endif
+                    {{-- ── PUNTO DE VENTA ───────────────────────────────── --}}
+                    <li class="menu-header small text-uppercase">
+                        <span class="menu-header-text">Punto de venta</span>
+                    </li>
 
-                    @if(auth()->user()?->tienePermiso('escaneo_producto.ver'))
-                        <li class="menu-item {{ request()->routeIs('operacion.escaneo_productos.*') ? 'active' : '' }}">
-                            <a href="{{ route('operacion.escaneo_productos.index') }}" class="menu-link">
-                                <i class="menu-icon icon-base ti tabler-scan"></i>
-                                <div>Escaneo productos</div>
+                    <li class="menu-item {{ request()->routeIs('pos.index') ? 'active' : '' }}">
+                        <a href="{{ route('pos.index') }}" class="menu-link">
+                            <i class="menu-icon icon-base ti tabler-building-store"></i>
+                            <div>Punto de venta</div>
+                        </a>
+                    </li>
+                    @if(auth()->user()?->tienePermiso('pedido_piso.ver'))
+                        <li class="menu-item {{ request()->routeIs('operacion.pedidos_piso.*') ? 'active' : '' }}">
+                            <a href="{{ route('operacion.pedidos_piso.index') }}" class="menu-link">
+                                <i class="menu-icon icon-base ti tabler-notes"></i>
+                                <div>Pedidos de piso</div>
                             </a>
                         </li>
                     @endif
-
-                    @if(auth()->user()?->tienePermiso('inventario_base.ver'))
-                        <li class="menu-item {{ request()->routeIs('operacion.inventario_base.*') ? 'active' : '' }}">
-                            <a href="{{ route('operacion.inventario_base.index') }}" class="menu-link">
-                                <i class="menu-icon icon-base ti tabler-packages"></i>
-                                <div>Inventario</div>
-                            </a>
-                        </li>
-                    @endif
-
-                    @if(auth()->user()?->tienePermiso('checklist_entregables.ver'))
-                        <li class="menu-item {{ request()->routeIs('operacion.checklist_entregables.*') ? 'active' : '' }}">
-                            <a href="{{ route('operacion.checklist_entregables.index') }}" class="menu-link">
-                                <i class="menu-icon icon-base ti tabler-checklist"></i>
-                                <div>Checklist entregables</div>
-                            </a>
-                        </li>
-                    @endif
+                    <li class="menu-item {{ request()->routeIs('operacion.ventas.*') ? 'active' : '' }}">
+                        <a href="{{ route('operacion.ventas.index') }}" class="menu-link">
+                            <i class="menu-icon icon-base ti tabler-receipt-2"></i>
+                            <div>Ventas</div>
+                        </a>
+                    </li>
 
                 </ul>
+                </div>
+
+                <div class="sidebar-user-box">
+                    <div class="sidebar-user-row">
+                        <div style="min-width:0;">
+                            <div class="sidebar-user-name text-truncate">{{ auth()->user()?->usr_nombre }}</div>
+                            <small class="sidebar-user-handle text-truncate">{{ auth()->user()?->usr_usuario }}</small>
+                        </div>
+                        <form method="POST" action="{{ route('logout') }}">
+                            @csrf
+                            <button type="submit" class="btn btn-sm btn-outline-danger sidebar-user-logout d-flex align-items-center gap-1">
+                                <i class="icon-base ti tabler-logout"></i>
+                                <span>Salir</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
             </aside>
             <!-- / Sidebar vertical -->
 
@@ -691,22 +935,7 @@
                             </a>
                         </div>
 
-                        <!-- Spacer -->
-                        <div class="navbar-nav-right d-flex align-items-center justify-content-end w-100" id="navbar-collapse">
-                            <div class="d-flex align-items-center gap-3">
-                                <div class="text-end">
-                                    <div class="fw-semibold" style="font-size:.88rem;">{{ auth()->user()?->usr_nombre }}</div>
-                                    <small class="text-body-secondary">{{ auth()->user()?->usr_usuario }}</small>
-                                </div>
-                                <form method="POST" action="{{ route('logout') }}">
-                                    @csrf
-                                    <button type="submit" class="btn btn-sm btn-outline-danger d-flex align-items-center gap-1">
-                                        <i class="icon-base ti tabler-logout"></i>
-                                        <span class="d-none d-md-inline">Salir</span>
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
+                        <div class="navbar-nav-right d-flex align-items-center justify-content-end w-100" id="navbar-collapse"></div>
 
                     </div>
                 </nav>
@@ -782,13 +1011,49 @@
     <script src="{{ $templateAssetBase }}/js/main.js"></script>
     <script>
         window.AppUI = {
+            _loaderCount: 0,
+            _loaderTimer: null,
             showLoader() {
-                document.getElementById('global-loader').classList.remove('d-none');
-                document.getElementById('global-loader').classList.add('d-flex');
+                const loader = document.getElementById('global-loader');
+                if (!loader) return;
+
+                this._loaderCount += 1;
+                loader.classList.remove('d-none');
+                loader.classList.add('d-flex');
+
+                if (this._loaderTimer) {
+                    clearTimeout(this._loaderTimer);
+                }
+                this._loaderTimer = setTimeout(() => {
+                    this._loaderCount = 0;
+                    loader.classList.add('d-none');
+                    loader.classList.remove('d-flex');
+                }, 15000);
             },
             hideLoader() {
-                document.getElementById('global-loader').classList.add('d-none');
-                document.getElementById('global-loader').classList.remove('d-flex');
+                const loader = document.getElementById('global-loader');
+                if (!loader) return;
+
+                this._loaderCount = Math.max(0, this._loaderCount - 1);
+                if (this._loaderCount === 0) {
+                    loader.classList.add('d-none');
+                    loader.classList.remove('d-flex');
+                    if (this._loaderTimer) {
+                        clearTimeout(this._loaderTimer);
+                        this._loaderTimer = null;
+                    }
+                }
+            },
+            forceHideLoader() {
+                const loader = document.getElementById('global-loader');
+                if (!loader) return;
+                this._loaderCount = 0;
+                loader.classList.add('d-none');
+                loader.classList.remove('d-flex');
+                if (this._loaderTimer) {
+                    clearTimeout(this._loaderTimer);
+                    this._loaderTimer = null;
+                }
             },
             showMessage(title, body, type = null) {
                 const normalizedTitle = (title || '')
@@ -837,6 +1102,10 @@
             headers: {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
             }
+        });
+
+        $(document).ajaxStop(function () {
+            window.AppUI.forceHideLoader();
         });
     </script>
     @stack('page-scripts')
