@@ -558,8 +558,285 @@
             align-items: center;
             margin-bottom: 0.95rem;
         }
+
+        .cc-sku-matrix-empty {
+            border: 1px dashed #d7dfef;
+            border-radius: 1rem;
+            background: linear-gradient(180deg, #fbfcff 0%, #f5f8ff 100%);
+            padding: 1.4rem;
+            text-align: center;
+        }
+
+        .cc-sku-matrix-empty strong {
+            display: block;
+            color: var(--ls-text-primary);
+            font-size: 1rem;
+            margin-bottom: 0.35rem;
+        }
+
+        .cc-sku-matrix-header {
+            display: grid;
+            gap: 0.65rem;
+            margin-bottom: 1rem;
+            padding: 0.9rem 1rem;
+            border: 1px solid #e7ebf5;
+            border-radius: 1rem;
+            background: linear-gradient(135deg, #fafbff 0%, #f4f7ff 100%);
+        }
+
+        .cc-sku-matrix-header small {
+            display: block;
+            color: #7e88a3;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            font-weight: 700;
+            margin-bottom: 0.2rem;
+        }
+
+        .cc-sku-matrix-header h6 {
+            margin: 0;
+            color: #253858;
+            font-size: 1.05rem;
+        }
+
+        .cc-sku-matrix-meta {
+            display: flex;
+            gap: 0.45rem;
+            flex-wrap: wrap;
+        }
+
+        .cc-sku-matrix-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.45rem 0.65rem;
+            border: 1px solid #dde5f4;
+            border-radius: 999px;
+            background: #fff;
+            color: #54627d;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .cc-sku-matrix-table {
+            --bs-table-bg: transparent;
+            min-width: 860px;
+        }
+
+        .cc-sku-matrix-table thead th {
+            vertical-align: bottom;
+            background: #f3f6fc;
+            border-color: #dbe3f1;
+            color: #2c3d5a;
+            font-weight: 700;
+        }
+
+        .cc-sku-matrix-rowhead {
+            position: sticky;
+            left: 0;
+            z-index: 2;
+            min-width: 180px;
+            background: #f9fbff;
+            border-right: 1px solid #dbe3f1;
+        }
+
+        .cc-sku-matrix-rowhead small {
+            display: block;
+            color: #7f8ba3;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            font-size: 0.7rem;
+            margin-bottom: 0.2rem;
+        }
+
+        .cc-sku-matrix-colhead {
+            min-width: 110px;
+        }
+
+        .cc-sku-matrix-colhead strong {
+            display: block;
+            font-size: 0.9rem;
+            line-height: 1.2;
+            margin-bottom: 0.12rem;
+        }
+
+        .cc-sku-matrix-colhead span {
+            display: block;
+            color: #7a859d;
+            font-size: 0.72rem;
+            line-height: 1.25;
+            font-weight: 500;
+        }
+
+        .cc-sku-matrix-cell {
+            min-width: 110px;
+            padding: 0.3rem;
+            background: #fff;
+        }
+
+        .cc-sku-variant-pill {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: .1rem;
+            width: 100%;
+            border: 1px solid #dbe3f1;
+            border-radius: .4rem;
+            padding: .28rem .45rem;
+            background: #fff;
+            cursor: pointer;
+            transition: background .12s, border-color .12s, box-shadow .12s;
+            font-family: inherit;
+            text-align: left;
+        }
+
+        .cc-sku-variant-pill:hover {
+            background: #f0f4ff;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, .12);
+        }
+
+        .cc-sku-variant-pill:active {
+            background: #e8edff;
+        }
+
+        .cc-sku-variant-pill__code {
+            font-size: .78rem;
+            font-weight: 700;
+            color: #253858;
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+
+        .cc-sku-variant-pill__price {
+            font-size: .68rem;
+            color: #3d5a80;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            line-height: 1.2;
+        }
+
+        .cc-sku-variant-pill--inactivo {
+            opacity: .55;
+            border-style: dashed;
+            background: #f9fafb;
+        }
+
+        .cc-sku-variant-pill--inactivo .cc-sku-variant-pill__code {
+            color: #7a859d;
+        }
+
+        .cc-sku-matrix-cell--empty {
+            min-width: 110px;
+            padding: 0.3rem;
+            background: #fbfcfe;
+        }
+
+        .cc-sku-matrix-na {
+            min-height: 34px;
+            border: 1px dashed #dde4f0;
+            border-radius: .35rem;
+            background: #f9fafc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #b0baca;
+            font-size: .68rem;
+            font-weight: 600;
+        }
         @media (max-width: 991.98px) {
             .cc-products-toolbar { grid-template-columns: 1fr; }
+        }
+
+        /* ---- Filtro + tabla agrupada en vista matriz SKUs ---- */
+        .cc-mtz-filter-bar {
+            background: var(--ls-surface-2, #f8f9fc);
+            border: 1px solid var(--ls-border, #e3e8f4);
+            border-radius: .6rem;
+            padding: .85rem 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .cc-mtz-filter-bar .form-label {
+            font-size: .75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: var(--ls-text-muted, #8a94a8);
+            margin-bottom: .3rem;
+        }
+
+        .cc-mtz-table td,
+        .cc-mtz-table th {
+            vertical-align: middle;
+        }
+
+        .cc-mtz-meta {
+            display: flex;
+            flex-direction: column;
+            gap: .12rem;
+        }
+
+        .cc-mtz-meta__title {
+            font-weight: 700;
+            color: var(--ls-text-primary, #253858);
+            line-height: 1.2;
+        }
+
+        .cc-mtz-meta__sub {
+            font-size: .75rem;
+            color: var(--ls-text-secondary, #637594);
+            line-height: 1.3;
+        }
+
+        .cc-mtz-variant-strip {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .22rem .28rem;
+            align-items: center;
+            min-width: 180px;
+        }
+
+        .cc-mtz-pill {
+            display: inline-flex;
+            align-items: baseline;
+            gap: .18rem;
+            border: 1px solid #dbe3f1;
+            border-radius: .3rem;
+            padding: .08rem .38rem;
+            font-size: .74rem;
+            line-height: 1.6;
+            white-space: nowrap;
+            background: #fff;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background .1s, border-color .1s, box-shadow .1s;
+        }
+
+        .cc-mtz-pill:hover {
+            background: #f0f4ff;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, .12);
+        }
+
+        .cc-mtz-pill__label {
+            font-weight: 700;
+            font-size: .72rem;
+            letter-spacing: .02em;
+            color: #3a4d6b;
+        }
+
+        .cc-mtz-pill--inactivo {
+            opacity: .55;
+            border-style: dashed;
+            background: #f9fafb;
+        }
+
+        .cc-mtz-pill--inactivo .cc-mtz-pill__label {
+            color: #8a94a8;
         }
 
         .cc-editor-shell {
@@ -985,36 +1262,97 @@
             </div>
 
             <div class="tab-pane fade {{ $vistaActiva === 'skus' ? 'show active' : '' }}" id="panel-skus">
-                <div class="alert alert-info mb-3" role="alert">
-                    Los SKU se generan automáticamente desde la configuración del producto base. Aquí puedes revisar las corridas creadas.
+                {{-- Selector de producto oculto en DOM para compatibilidad con JS existente --}}
+                <select class="d-none" id="flt-sku-producto">
+                    <option value="">Todos los productos</option>
+                    @foreach($opciones['productos'] as $producto)
+                        <option value="{{ $producto->prd_id }}">{{ $producto->prd_codigo }} - {{ $producto->prd_nombre }}</option>
+                    @endforeach
+                </select>
+                <div id="sku-filtros-dinamicos-shell" class="d-none">
+                    <div id="sku-filtros-dinamicos"></div>
+                    <div class="d-none" id="sku-filtros-orden-note"></div>
                 </div>
-                <div class="d-flex justify-content-between mb-3 gap-2">
-                    <div>
-                        <select class="form-select" id="flt-sku-producto">
-                            <option value="">Todos los productos</option>
-                            @foreach($opciones['productos'] as $producto)
-                                <option value="{{ $producto->prd_id }}">{{ $producto->prd_codigo }} - {{ $producto->prd_nombre }}</option>
-                            @endforeach
-                        </select>
+                <div class="d-none" id="skus-table-shell">
+                    <table id="skus-table" class="table table-bordered cc-table">
+                        <thead><tr>
+                            <th>Producto</th><th>SKU</th><th>Barcode SKU</th>
+                            <th>Nombre</th><th>Combinación</th><th>Precio</th>
+                            <th>Stock</th><th>Estatus</th><th>Acciones</th>
+                        </tr></thead>
+                    </table>
+                </div>
+                <div id="skus-matriz-shell">
+                    <div class="cc-mtz-filter-bar mb-3">
+                        {{-- Fila 1: Producto + Buscar + Marca --}}
+                        <div class="row g-2 mb-2">
+                            <div class="col-md-5">
+                                <label class="form-label" for="mtz-flt-producto">Producto</label>
+                                <select id="mtz-flt-producto" class="form-select form-select-sm">
+                                    <option value="">Todos los productos</option>
+                                    @foreach($opciones['productos'] as $producto)
+                                        <option value="{{ $producto->prd_id }}">{{ $producto->prd_codigo }} - {{ $producto->prd_nombre }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label" for="mtz-flt-buscar">Buscar</label>
+                                <input id="mtz-flt-buscar" type="text" class="form-control form-control-sm" placeholder="Código, SKU o nombre">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label" for="mtz-flt-mrc">Marca</label>
+                                <select id="mtz-flt-mrc" class="form-select form-select-sm">
+                                    <option value="">Todas</option>
+                                    @foreach($opciones['marcas'] as $marca)
+                                        <option value="{{ $marca->mrc_id }}">{{ $marca->mrc_nombre }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        {{-- Fila 2: Modelo + Línea + Concepto + Botones --}}
+                        <div class="row g-2 mb-2">
+                            <div class="col-md-3">
+                                <label class="form-label" for="mtz-flt-mdl">Modelo</label>
+                                <select id="mtz-flt-mdl" class="form-select form-select-sm">
+                                    <option value="">Todos</option>
+                                    @foreach($opciones['modelos'] as $modelo)
+                                        <option value="{{ $modelo->mdl_id }}">{{ $modelo->mdl_nombre }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label" for="mtz-flt-lna">Línea</label>
+                                <select id="mtz-flt-lna" class="form-select form-select-sm">
+                                    <option value="">Todas</option>
+                                    @foreach($opciones['lineas'] as $linea)
+                                        <option value="{{ $linea->lna_id }}">{{ $linea->lna_nombre }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label" for="mtz-flt-ctg">Concepto</label>
+                                <select id="mtz-flt-ctg" class="form-select form-select-sm">
+                                    <option value="">Todos</option>
+                                    @foreach($opciones['categorias'] as $categoria)
+                                        <option value="{{ $categoria->ctg_id }}">{{ $categoria->ctg_nombre }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-3 d-flex align-items-end">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-mtz-limpiar" title="Limpiar filtros">
+                                    <i class="ti tabler-eraser me-1"></i>Limpiar
+                                </button>
+                            </div>
+                        </div>
+                        {{-- Fila 3: Filtros dinámicos de atributos (Talla, Color, etc.) — aparece al seleccionar producto --}}
+                        <div class="row g-2 d-none" id="mtz-atributos-wrap"></div>
                     </div>
-                </div>
-                <div class="card">
-                    <div class="card-datatable table-responsive">
-                        <table id="skus-table" class="table table-bordered cc-table">
-                            <thead>
-                                <tr>
-                                    <th>Producto</th>
-                                    <th>SKU</th>
-                                    <th>Barcode SKU</th>
-                                    <th>Nombre</th>
-                                    <th>Combinación</th>
-                                    <th>Precio</th>
-                                    <th>Stock</th>
-                                    <th>Estatus</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                        </table>
+                    <div class="card">
+                        <div class="card-body p-0">
+                            <div class="table-responsive" id="skus-matriz-wrap">
+                                <div class="p-3 text-body-secondary">Cargando...</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1486,6 +1824,9 @@
         productoImagenTempState: (token) => '{{ url('/operacion/catalogo-comercial/productos/imagen-temporal') }}/' + token + '/estado',
 
         skusData: '{{ route('operacion.catalogo_comercial.skus.data') }}',
+        skusFiltros: '{{ route('operacion.catalogo_comercial.skus.filtros') }}',
+        skusMatriz: '{{ route('operacion.catalogo_comercial.skus.matriz') }}',
+        skusAgrupados: '{{ route('operacion.catalogo_comercial.skus.agrupados') }}',
         skuShow: (id) => '{{ url('/operacion/catalogo-comercial/skus') }}/' + id,
         skuStore: '{{ route('operacion.catalogo_comercial.skus.store') }}',
         skuUpdate: (id) => '{{ url('/operacion/catalogo-comercial/skus') }}/' + id,
@@ -1546,6 +1887,8 @@
         productoImagenActual: null,
         productoImagenSesion: null,
         productoImagenPollId: null,
+        skuFiltrosMeta: [],
+        skuViewMode: 'matriz',
     };
 
     const estatusBadge = (estatus) => estatus === 'activo'
@@ -1567,6 +1910,10 @@
             .replace(/'/g, '&#39;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;');
+    }
+
+    function escapeHtml(value) {
+        return escapeAttr(value);
     }
 
     function limpiarPollingImagenProducto() {
@@ -2580,7 +2927,10 @@
     }
 
     function recargarSkus() {
-        $.getJSON(rutas.skusData, { psk_prd_id: $('#flt-sku-producto').val() }).done(function (resp) {
+        $.getJSON(rutas.skusData, {
+            psk_prd_id: $('#flt-sku-producto').val(),
+            atributo_filtros: obtenerFiltrosSkuSeleccionados(),
+        }).done(function (resp) {
             if ($.fn.DataTable.isDataTable('#skus-table')) $('#skus-table').DataTable().clear().destroy();
             $('#skus-table').DataTable({
                 data: resp.data || [],
@@ -2597,6 +2947,255 @@
                     { data: null, orderable: false, searchable: false, render: (row) => buildActions('sku', row.psk_id, row.psk_codigo, row.psk_estatus === 'activo') },
                 ],
             });
+        });
+    }
+
+    function aplicarVistaSkus(vista) {
+        const modo = vista === 'matriz' ? 'matriz' : 'tabla';
+
+        catalogoState.skuViewMode = modo;
+
+        $('#btn-sku-vista-tabla')
+            .toggleClass('btn-primary', modo === 'tabla')
+            .toggleClass('btn-outline-primary', modo !== 'tabla');
+
+        $('#btn-sku-vista-matriz')
+            .toggleClass('btn-primary', modo === 'matriz')
+            .toggleClass('btn-outline-primary', modo !== 'matriz')
+            .prop('disabled', false);
+
+        // En modo Matriz el selector de producto y los filtros de atributos quedan
+        // reemplazados por la barra de filtros propia de la matriz.
+        const esMatriz = modo === 'matriz';
+        $('#sku-producto-selector-wrap').toggleClass('d-none', esMatriz);
+
+        if (esMatriz) {
+            $('#sku-filtros-dinamicos-shell').addClass('d-none');
+        } else {
+            // Restaurar visibilidad solo si hay filtros cargados
+            const tieneFiltros = $('#sku-filtros-dinamicos').children().length > 0;
+            $('#sku-filtros-dinamicos-shell').toggleClass('d-none', !tieneFiltros);
+        }
+
+        $('#skus-table-shell').toggleClass('d-none', esMatriz);
+        $('#skus-matriz-shell').toggleClass('d-none', !esMatriz);
+    }
+
+    function recargarVistaSkus() {
+        if (catalogoState.skuViewMode === 'matriz') {
+            recargarMatrizSkus();
+            return;
+        }
+
+        recargarSkus();
+    }
+
+    function limpiarFiltrosSkuDinamicos() {
+        catalogoState.skuFiltrosMeta = [];
+        $('#sku-filtros-dinamicos').html('');
+        $('#sku-filtros-dinamicos-shell').addClass('d-none');
+        $('#sku-filtros-orden-note').addClass('d-none').text('');
+    }
+
+    function obtenerFiltrosSkuSeleccionados() {
+        const filtros = {};
+
+        $('#sku-filtros-dinamicos').find('[data-sku-atributo-id]').each(function () {
+            const atrId = String($(this).data('skuAtributoId') || '').trim();
+            const valorId = String($(this).val() || '').trim();
+
+            if (atrId && valorId) {
+                filtros[atrId] = valorId;
+            }
+        });
+
+        return filtros;
+    }
+
+    function renderFiltrosSkuDinamicos(meta, seleccionados = {}) {
+        const atributos = meta?.atributos || [];
+        catalogoState.skuFiltrosMeta = atributos;
+
+        if (!atributos.length) {
+            limpiarFiltrosSkuDinamicos();
+            return;
+        }
+
+        const html = atributos.map(function (atributo) {
+            const opciones = ['<option value="">Todos</option>'].concat((atributo.valores || []).map(function (valor) {
+                const selected = String(seleccionados?.[atributo.atr_id] || '') === String(valor.vat_id) ? ' selected' : '';
+                return '<option value="' + escapeAttr(valor.vat_id) + '"' + selected + '>' + escapeAttr(valor.vat_valor || '') + '</option>';
+            }));
+
+            return '' +
+                '<div class="col-md-4">' +
+                    '<label class="form-label">' + escapeAttr(atributo.atr_nombre || 'Atributo') + '</label>' +
+                    '<select class="form-select js-sku-filtro-atributo" data-sku-atributo-id="' + escapeAttr(atributo.atr_id) + '">' +
+                        opciones.join('') +
+                    '</select>' +
+                '</div>';
+        }).join('');
+
+        $('#sku-filtros-dinamicos').html(html);
+        $('#sku-filtros-dinamicos-shell').removeClass('d-none');
+
+        const notaOrden = String(meta?.ordenamiento?.criterio || '').trim();
+        if (notaOrden && meta?.ordenamiento?.usa_talla) {
+            $('#sku-filtros-orden-note').removeClass('d-none').text(notaOrden);
+        } else {
+            $('#sku-filtros-orden-note').addClass('d-none').text('');
+        }
+    }
+
+    function cargarFiltrosSkuProducto(productoId, recargar = true, seleccionados = {}) {
+        // Los filtros de atributos solo aplican a la vista Tabla.
+        // En modo Matriz estos están ocultos y la barra propia de la matriz filtra.
+        if (catalogoState.skuViewMode === 'matriz') {
+            return;
+        }
+
+        if (!productoId) {
+            limpiarFiltrosSkuDinamicos();
+            aplicarVistaSkus(catalogoState.skuViewMode);
+            if (recargar) recargarSkus();
+            return;
+        }
+
+        $.getJSON(rutas.skusFiltros, { psk_prd_id: productoId })
+            .done(function (resp) {
+                renderFiltrosSkuDinamicos(resp.data || {}, seleccionados);
+                aplicarVistaSkus(catalogoState.skuViewMode);
+                if (recargar) recargarVistaSkus();
+            })
+            .fail(function () {
+                limpiarFiltrosSkuDinamicos();
+                aplicarVistaSkus(catalogoState.skuViewMode);
+                if (recargar) recargarVistaSkus();
+            });
+    }
+
+    function renderMatrizSkusVacia(mensaje) {
+        $('#skus-matriz-wrap').html(
+            '<div class="p-4 text-center">' +
+                '<div class="text-body-secondary">' + escapeHtml(mensaje || 'No hay datos para mostrar.') + '</div>' +
+            '</div>'
+        );
+    }
+
+    function renderMatrizSkus(filas) {
+        if (!Array.isArray(filas) || !filas.length) {
+            renderMatrizSkusVacia('No se encontraron registros con los filtros aplicados.');
+            return;
+        }
+
+        const headHtml =
+            '<thead>' +
+                '<tr>' +
+                    '<th>Marca</th>' +
+                    '<th>Modelo</th>' +
+                    '<th>Línea</th>' +
+                    '<th>Concepto</th>' +
+                    '<th>Color</th>' +
+                    '<th style="min-width:240px">Variantes</th>' +
+                '</tr>' +
+            '</thead>';
+
+        const bodyHtml = '<tbody>' + filas.map(function (fila) {
+            const meta = function (title, sub) {
+                return '<div class="cc-mtz-meta"><span class="cc-mtz-meta__title">' + escapeHtml(title || '-') + '</span>' +
+                    (sub ? '<span class="cc-mtz-meta__sub">' + escapeHtml(sub) + '</span>' : '') + '</div>';
+            };
+
+            const pills = (fila.variantes || []).map(function (v) {
+                const mod = v.psk_estatus === 'inactivo' ? ' cc-mtz-pill--inactivo' : '';
+                const tooltip = 'Editar SKU / Variante · ' + (v.psk_codigo || '-') + (v.psk_estatus === 'inactivo' ? ' · Inactivo' : '');
+                return '<button type="button" class="cc-mtz-pill' + mod + '" ' +
+                    'data-action="edit-sku" data-id="' + escapeAttr(v.psk_id) + '" ' +
+                    'title="' + escapeAttr(tooltip) + '">' +
+                    '<span class="cc-mtz-pill__label">' + escapeHtml(v.label || v.psk_codigo || '-') + '</span>' +
+                '</button>';
+            }).join('');
+
+            const concepto = fila.concepto_nombre || '-';
+            const subConcepto = fila.producto_codigo ? (fila.producto_codigo + ' · ' + (fila.producto_nombre || '')) : '';
+
+            return '<tr>' +
+                '<td>' + meta(fila.marca_nombre) + '</td>' +
+                '<td>' + meta(fila.modelo_nombre) + '</td>' +
+                '<td>' + meta(fila.linea_nombre) + '</td>' +
+                '<td>' + meta(concepto, subConcepto) + '</td>' +
+                '<td>' + meta(fila.color_nombre) + '</td>' +
+                '<td><div class="cc-mtz-variant-strip">' + (pills || '<span class="text-body-secondary" style="font-size:.75rem">Sin variantes</span>') + '</div></td>' +
+            '</tr>';
+        }).join('') + '</tbody>';
+
+        $('#skus-matriz-wrap').html(
+            '<table class="table table-bordered table-sm cc-mtz-table">' + headHtml + bodyHtml + '</table>'
+        );
+    }
+
+    function cargarFiltrosMatrizProducto(productoId) {
+        $('#mtz-atributos-wrap').addClass('d-none').html('');
+
+        if (!productoId) {
+            recargarMatrizSkus();
+            return;
+        }
+
+        $.getJSON(rutas.skusFiltros, { psk_prd_id: productoId })
+            .done(function (resp) {
+                const atributos = resp.data?.atributos || [];
+
+                if (atributos.length) {
+                    const html = atributos.map(function (attr) {
+                        const opts = ['<option value="">Todos</option>'].concat(
+                            (attr.valores || []).map(function (v) {
+                                return '<option value="' + escapeAttr(v.vat_id) + '">' + escapeHtml(v.vat_valor || '') + '</option>';
+                            })
+                        );
+                        return '<div class="col-md-3">' +
+                            '<label class="form-label">' + escapeHtml(attr.atr_nombre || 'Atributo') + '</label>' +
+                            '<select class="form-select form-select-sm js-mtz-atributo" data-atr-id="' + escapeAttr(attr.atr_id) + '">' +
+                                opts.join('') +
+                            '</select>' +
+                        '</div>';
+                    }).join('');
+
+                    $('#mtz-atributos-wrap').html(html).removeClass('d-none');
+                }
+
+                recargarMatrizSkus();
+            })
+            .fail(function () {
+                recargarMatrizSkus();
+            });
+    }
+
+    function recargarMatrizSkus() {
+        $('#skus-matriz-wrap').html('<div class="p-3 text-body-secondary">Cargando...</div>');
+
+        const params = {
+            psk_prd_id: $('#mtz-flt-producto').val() || '',
+            prd_mrc_id: $('#mtz-flt-mrc').val() || '',
+            prd_mdl_id: $('#mtz-flt-mdl').val() || '',
+            prd_lna_id: $('#mtz-flt-lna').val() || '',
+            prd_ctg_id: $('#mtz-flt-ctg').val() || '',
+            buscar: $('#mtz-flt-buscar').val() || '',
+        };
+
+        // Solo enviar atributo_filtros si hay valores seleccionados
+        $('#mtz-atributos-wrap').find('.js-mtz-atributo').each(function () {
+            const atrId = String($(this).data('atrId') || '').trim();
+            const val = String($(this).val() || '').trim();
+            if (atrId && val) {
+                params['atributo_filtros[' + atrId + ']'] = val;
+            }
+        });
+
+        $.getJSON(rutas.skusAgrupados, params).done(function (resp) {
+            renderMatrizSkus(resp.data || []);
+        }).fail(function (xhr) {
+            renderMatrizSkusVacia(parseErrorMessage(xhr) || 'Error al cargar la matriz.');
         });
     }
 
@@ -2712,6 +3311,11 @@
     }
 
     function recargarOpcionesDependientes() {
+        const productoSkuSeleccionado = String($('#flt-sku-producto').val() || '');
+        const productoEtiquetaSeleccionado = String($('#flt-etq-producto').val() || '');
+        const productoModalSeleccionado = String($('#psk_prd_id').val() || '');
+        const filtrosSkuSeleccionados = obtenerFiltrosSkuSeleccionados();
+
         $.when(
             $.getJSON(rutas.baseData('marcas')),
             $.getJSON(rutas.baseData('lineas')),
@@ -2745,7 +3349,15 @@
 
             llenarSelectSimple('#psk_prd_id', productos, 'prd_id', (x) => x.prd_codigo + ' - ' + x.prd_nombre, 'Selecciona');
             llenarSelectSimple('#flt-sku-producto', productos, 'prd_id', (x) => x.prd_codigo + ' - ' + x.prd_nombre, 'Todos los productos');
+            llenarSelectSimple('#mtz-flt-producto', productos, 'prd_id', (x) => x.prd_codigo + ' - ' + x.prd_nombre, 'Todos los productos');
             llenarSelectSimple('#flt-etq-producto', productos, 'prd_id', (x) => x.prd_codigo + ' - ' + x.prd_nombre, 'Todos los productos');
+
+            if (productoModalSeleccionado && productos.some((x) => String(x.prd_id) === productoModalSeleccionado)) {
+                $('#psk_prd_id').val(productoModalSeleccionado);
+            }
+            if (productoEtiquetaSeleccionado && productos.some((x) => String(x.prd_id) === productoEtiquetaSeleccionado)) {
+                $('#flt-etq-producto').val(productoEtiquetaSeleccionado);
+            }
 
             llenarSelectMultiple('#psk_valor_atributo_ids', valores, 'vat_id', (x) => (x.atributo || 'Atributo') + ': ' + x.vat_valor);
 
@@ -2767,7 +3379,30 @@
         sincronizarUIcatalogo(tipo);
         recargarCatalogo();
     });
-    $('#flt-sku-producto').on('change', recargarSkus);
+    $('#flt-sku-producto').on('change', function () {
+        cargarFiltrosSkuProducto($(this).val(), true);
+    });
+    $(document).on('change', '.js-sku-filtro-atributo', recargarVistaSkus);
+    $(document).on('click', '[data-sku-view]', function () {
+        const vista = String($(this).data('skuView') || 'tabla');
+        aplicarVistaSkus(vista);
+        recargarVistaSkus();
+    });
+
+    $('#mtz-flt-producto').on('change', function () {
+        cargarFiltrosMatrizProducto($(this).val());
+    });
+    $('#mtz-flt-mrc, #mtz-flt-mdl, #mtz-flt-lna, #mtz-flt-ctg').on('change', recargarMatrizSkus);
+    $('#btn-mtz-limpiar').on('click', function () {
+        $('#mtz-flt-producto, #mtz-flt-mrc, #mtz-flt-mdl, #mtz-flt-lna, #mtz-flt-ctg').val('');
+        $('#mtz-flt-buscar').val('');
+        $('#mtz-atributos-wrap').addClass('d-none').html('');
+        recargarMatrizSkus();
+    });
+    $('#mtz-flt-buscar').on('keydown', function (e) {
+        if (e.key === 'Enter') recargarMatrizSkus();
+    }).on('blur', recargarMatrizSkus);
+    $(document).on('change', '.js-mtz-atributo', recargarMatrizSkus);
     $('#flt-etq-producto').on('change', recargarEtiquetado);
     $('#etq-usar-config-manual').on('change', function () {
         $('#etq-config-manual-wrap').toggleClass('d-none', !$(this).is(':checked'));
@@ -3001,7 +3636,7 @@
             processData: false,
             contentType: false,
         })
-            .done((resp) => { cerrarTabProducto(true); recargarProductos(); recargarSkus(); recargarOpcionesDependientes(); AppUI.showMessage('Éxito', resp.message || 'Guardado correctamente.', 'success'); })
+            .done((resp) => { cerrarTabProducto(true); recargarProductos(); recargarVistaSkus(); recargarOpcionesDependientes(); AppUI.showMessage('Éxito', resp.message || 'Guardado correctamente.', 'success'); })
             .fail((xhr) => AppUI.showMessage('Error', parseErrorMessage(xhr), 'error'));
     });
 
@@ -3009,7 +3644,7 @@
         e.preventDefault();
         const id = $('#psk_id').val();
         $.ajax({ url: id ? rutas.skuUpdate(id) : rutas.skuStore, method: id ? 'PUT' : 'POST', data: $(this).serialize(), dataType: 'json' })
-            .done((resp) => { modalSku.hide(); recargarSkus(); recargarProductos(); recargarOpcionesDependientes(); AppUI.showMessage('Éxito', resp.message || 'Guardado correctamente.', 'success'); })
+            .done((resp) => { modalSku.hide(); recargarVistaSkus(); recargarProductos(); recargarOpcionesDependientes(); AppUI.showMessage('Éxito', resp.message || 'Guardado correctamente.', 'success'); })
             .fail((xhr) => AppUI.showMessage('Error', parseErrorMessage(xhr), 'error'));
     });
 
@@ -3368,7 +4003,7 @@
 
     $(document).on('click', '[data-action="toggle-sku"]', function () {
         $.ajax({ url: rutas.skuEstatus($(this).data('id')), method: 'PATCH', data: { psk_estatus: $(this).data('next') }, dataType: 'json' })
-            .done((resp) => { recargarSkus(); recargarOpcionesDependientes(); AppUI.showMessage('Éxito', resp.message || 'Estatus actualizado.', 'success'); })
+            .done((resp) => { recargarVistaSkus(); recargarOpcionesDependientes(); AppUI.showMessage('Éxito', resp.message || 'Estatus actualizado.', 'success'); })
             .fail((xhr) => AppUI.showMessage('Error', parseErrorMessage(xhr), 'error'));
     });
 
@@ -3419,7 +4054,7 @@
         const id = $(this).data('id');
         confirmDelete('¿Deseas eliminar el SKU seleccionado?', function () {
             $.ajax({ url: rutas.skuDelete(id), method: 'DELETE', dataType: 'json' })
-                .done((resp) => { recargarSkus(); recargarOpcionesDependientes(); AppUI.showMessage('Éxito', resp.message || 'Eliminado correctamente.', 'success'); })
+                .done((resp) => { recargarVistaSkus(); recargarOpcionesDependientes(); AppUI.showMessage('Éxito', resp.message || 'Eliminado correctamente.', 'success'); })
                 .fail((xhr) => AppUI.showMessage('Error', parseErrorMessage(xhr), 'error'));
         });
     });
@@ -3448,7 +4083,7 @@
     } else if (vistaActiva === 'productos') {
         recargarProductos();
     } else if (vistaActiva === 'skus') {
-        recargarSkus();
+        recargarMatrizSkus();
     } else if (vistaActiva === 'proveedores') {
         recargarProveedores();
     } else if (vistaActiva === 'etiquetado') {

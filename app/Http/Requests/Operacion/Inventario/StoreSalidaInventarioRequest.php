@@ -4,6 +4,7 @@ namespace App\Http\Requests\Operacion\Inventario;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StoreSalidaInventarioRequest extends FormRequest
 {
@@ -18,7 +19,7 @@ class StoreSalidaInventarioRequest extends FormRequest
 
         return [
             'min_psk_id' => [
-                'required',
+                'nullable',
                 'integer',
                 Rule::exists('tbl_producto_skus_psk', 'psk_id')->where(fn ($query) => $query
                     ->where('psk_deleted', false)
@@ -42,11 +43,12 @@ class StoreSalidaInventarioRequest extends FormRequest
                     ->where('alm_estatus', 'activo')
                     ->where('alm_scl_id', $sucursalId)),
             ],
-            'min_cantidad' => ['required', 'integer', 'gt:0'],
+            'min_cantidad' => ['nullable', 'integer', 'gt:0'],
             'min_documento_tipo' => ['required', Rule::in(['ajuste_manual', 'merma'])],
             'min_fecha_movimiento' => ['required', 'date'],
             'min_motivo_texto' => ['required', 'string', 'max:500'],
             'min_documento_referencia' => ['nullable', 'string', 'max:120'],
+            'min_observaciones' => ['nullable', 'string', 'max:1500'],
             'min_mtv_id' => [
                 'nullable',
                 'integer',
@@ -55,7 +57,37 @@ class StoreSalidaInventarioRequest extends FormRequest
                     ->whereNull('mtv_deleted_at')
                     ->where('mtv_estatus', 'activo')),
             ],
+            'lineas' => ['nullable', 'array', 'min:1'],
+            'lineas.*.min_psk_id' => [
+                'required',
+                'integer',
+                Rule::exists('tbl_producto_skus_psk', 'psk_id')->where(fn ($query) => $query
+                    ->where('psk_deleted', false)
+                    ->whereNull('psk_deleted_at')
+                    ->where('psk_estatus', 'activo')),
+            ],
+            'lineas.*.min_cantidad' => ['required', 'integer', 'gt:0'],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            $lineas = collect($this->input('lineas', []))
+                ->filter(fn ($linea) => is_array($linea) && ((int) ($linea['min_psk_id'] ?? 0) > 0));
+
+            if ($lineas->isNotEmpty()) {
+                return;
+            }
+
+            if (!(int) $this->input('min_psk_id')) {
+                $validator->errors()->add('min_psk_id', 'Debes agregar al menos un producto para la salida.');
+            }
+
+            if (!(int) $this->input('min_cantidad')) {
+                $validator->errors()->add('min_cantidad', 'La cantidad es obligatoria.');
+            }
+        });
     }
 
     public function messages(): array
@@ -75,6 +107,13 @@ class StoreSalidaInventarioRequest extends FormRequest
             'min_fecha_movimiento.required' => 'La fecha del movimiento es obligatoria.',
             'min_motivo_texto.required' => 'El motivo de la salida es obligatorio.',
             'min_mtv_id.exists' => 'El motivo seleccionado no está disponible.',
+            'lineas.array' => 'Las líneas de salida deben enviarse en un formato válido.',
+            'lineas.min' => 'Debes agregar al menos una línea para registrar la salida.',
+            'lineas.*.min_psk_id.required' => 'Cada línea debe incluir un SKU.',
+            'lineas.*.min_psk_id.exists' => 'Uno de los SKU enviados ya no está disponible.',
+            'lineas.*.min_cantidad.required' => 'Cada línea debe incluir cantidad.',
+            'lineas.*.min_cantidad.integer' => 'La cantidad de cada línea debe ser un número entero.',
+            'lineas.*.min_cantidad.gt' => 'La cantidad de cada línea debe ser mayor a cero.',
         ];
     }
 }

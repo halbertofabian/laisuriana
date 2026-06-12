@@ -534,6 +534,7 @@ class CatalogoComercialController extends Controller
             'buscar' => $request->query('buscar'),
             'estatus' => $request->query('estatus'),
             'psk_prd_id' => $request->query('psk_prd_id'),
+            'atributo_filtros' => $request->query('atributo_filtros', []),
         ]);
 
         $data = $skus->map(function ($item): array {
@@ -560,6 +561,58 @@ class CatalogoComercialController extends Controller
         })->values();
 
         return response()->json(['data' => $data]);
+    }
+
+    public function dataSkusAgrupados(Request $request): JsonResponse
+    {
+        $filtros = $request->only([
+            'psk_prd_id',
+            'prd_mrc_id',
+            'prd_mdl_id',
+            'prd_lna_id',
+            'prd_ctg_id',
+            'buscar',
+        ]);
+
+        $atributoFiltros = $request->input('atributo_filtros', []);
+        if (is_array($atributoFiltros)) {
+            $filtros['atributo_filtros'] = $atributoFiltros;
+        }
+
+        return response()->json([
+            'data' => $this->productoSkuService->listarAgrupado($filtros),
+        ]);
+    }
+
+    public function filtrosSkus(Request $request): JsonResponse
+    {
+        $datos = $request->validate([
+            'psk_prd_id' => ['required', 'integer', Rule::exists('tbl_productos_prd', 'prd_id')],
+        ], [
+            'psk_prd_id.required' => 'El producto es obligatorio.',
+            'psk_prd_id.exists' => 'El producto seleccionado no existe.',
+        ]);
+
+        return response()->json([
+            'data' => $this->productoSkuService->obtenerFiltrosProducto((int) $datos['psk_prd_id']),
+        ]);
+    }
+
+    public function matrizSkus(Request $request): JsonResponse
+    {
+        $datos = $request->validate([
+            'psk_prd_id' => ['required', 'integer', Rule::exists('tbl_productos_prd', 'prd_id')],
+        ], [
+            'psk_prd_id.required' => 'El producto es obligatorio.',
+            'psk_prd_id.exists' => 'El producto seleccionado no existe.',
+        ]);
+
+        return response()->json([
+            'data' => $this->productoSkuService->obtenerMatrizProducto(
+                (int) $datos['psk_prd_id'],
+                (array) $request->query('atributo_filtros', [])
+            ),
+        ]);
     }
 
     public function showSku(int $sku): JsonResponse

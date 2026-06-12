@@ -26,6 +26,7 @@ class MovimientoInventario extends Model
         'min_scl_id',
         'min_alm_id',
         'min_prv_id',
+        'min_rme_id',
         'min_mtv_id',
         'min_origen_min_id',
         'min_reversa_de_min_id',
@@ -103,6 +104,11 @@ class MovimientoInventario extends Model
     public function motivo()
     {
         return $this->belongsTo(Motivo::class, 'min_mtv_id', 'mtv_id');
+    }
+
+    public function recepcionMercancia()
+    {
+        return $this->belongsTo(RecepcionMercancia::class, 'min_rme_id', 'rme_id');
     }
 
     public function origen()

@@ -828,8 +828,8 @@
                                     <div>Inventario</div>
                                 </a>
                                 <ul class="menu-sub">
-                                    <li class="menu-item {{ request()->routeIs('operacion.inventario_base.existencias.index') ? 'active' : '' }}">
-                                        <a href="{{ route('operacion.inventario_base.existencias.index') }}" class="menu-link">
+                                    <li class="menu-item {{ request()->routeIs('operacion.inventario_base.existencias_matriz.index') ? 'active' : '' }}">
+                                        <a href="{{ route('operacion.inventario_base.existencias_matriz.index') }}" class="menu-link">
                                             <div>Existencias</div>
                                         </a>
                                     </li>
@@ -846,6 +846,11 @@
                                     <li class="menu-item {{ request()->routeIs('operacion.inventario_base.recibir.index') ? 'active' : '' }}">
                                         <a href="{{ route('operacion.inventario_base.recibir.index') }}" class="menu-link">
                                             <div>Recibir mercancía</div>
+                                        </a>
+                                    </li>
+                                    <li class="menu-item {{ request()->routeIs('operacion.inventario_base.recepciones.index') ? 'active' : '' }}">
+                                        <a href="{{ route('operacion.inventario_base.recepciones.index') }}" class="menu-link">
+                                            <div>Recepciones capturadas</div>
                                         </a>
                                     </li>
                                     <li class="menu-item {{ request()->routeIs('operacion.inventario_base.salidas.index') ? 'active' : '' }}">

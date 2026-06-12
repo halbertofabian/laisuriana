@@ -269,6 +269,7 @@
             <li class="nav-item"><button class="nav-link {{ $esVistaExistencias ? 'active' : '' }}" data-bs-toggle="tab" data-bs-target="#tab-existencias" type="button"><i class="ti tabler-layout-grid"></i>Existencias</button></li>
             <li class="nav-item"><button class="nav-link {{ $vistaActiva === 'entradas' ? 'active' : '' }}" data-bs-toggle="tab" data-bs-target="#tab-inicial" type="button"><i class="ti tabler-package-import"></i>Entradas</button></li>
             <li class="nav-item"><button class="nav-link {{ $vistaActiva === 'recibir' ? 'active' : '' }}" data-bs-toggle="tab" data-bs-target="#tab-recibir-mercancia" type="button"><i class="ti tabler-truck-delivery"></i>Recibir mercancía</button></li>
+            <li class="nav-item"><button class="nav-link {{ $vistaActiva === 'recepciones' ? 'active' : '' }}" data-bs-toggle="tab" data-bs-target="#tab-recepciones-mercancia" type="button"><i class="ti tabler-list-search"></i>Recepciones capturadas</button></li>
             <li class="nav-item"><button class="nav-link {{ $vistaActiva === 'salidas' ? 'active' : '' }}" data-bs-toggle="tab" data-bs-target="#tab-salidas" type="button"><i class="ti tabler-package-export"></i>Salidas</button></li>
             <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-correcciones" type="button"><i class="ti tabler-pencil"></i>Corrección/Cancelación</button></li>
             <li class="nav-item"><button class="nav-link {{ $vistaActiva === 'kardex' ? 'active' : '' }}" data-bs-toggle="tab" data-bs-target="#tab-kardex" type="button"><i class="ti tabler-list-details"></i>Kardex</button></li>
@@ -768,23 +769,19 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-3">
                         <label class="form-label">Factura / Ref.</label>
                         <input type="text" class="form-control" id="recibir-referencia" maxlength="120">
                     </div>
-                    <div class="col-md-2 d-flex align-items-end">
+                    <div class="col-md-1 d-flex align-items-end">
                         <div class="form-check pb-2">
                             <input class="form-check-input" type="checkbox" id="recibir-referencia-na">
                             <label class="form-check-label" for="recibir-referencia-na">N/A</label>
                         </div>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-4">
                         <label class="form-label">Fecha factura</label>
                         <input type="datetime-local" class="form-control" id="recibir-fecha-emision">
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label">Fecha captura</label>
-                        <input type="datetime-local" class="form-control" id="recibir-fecha-captura" required>
                     </div>
 
                     <div class="col-md-4">
@@ -916,31 +913,64 @@
                             <div class="col-md-2"><div class="inv-stat-card"><div><div class="inv-stat-card__lbl">Total</div><div class="inv-stat-card__val" id="recibir-total-general">$0.00</div></div></div></div>
                         </div>
                     </div>
-                    <div class="col-12 d-flex justify-content-end pt-1">
-                        <button type="submit" class="btn btn-primary" {{ ($permisosUI['inicial'] || $permisosUI['entrada']) ? '' : 'disabled' }}>
-                            <i class="ti tabler-device-floppy me-1"></i>Guardar entrada
-                        </button>
+                    <div class="col-12 d-flex flex-wrap justify-content-between align-items-center gap-2 pt-1">
+                        <div id="recibir-borrador-estado" class="small text-body-secondary">
+                            Sin borrador en edición.
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-secondary" id="btn-guardar-borrador" {{ $permisosUI['entrada'] ? '' : 'disabled' }}>
+                                <i class="ti tabler-file-pencil me-1"></i>Guardar borrador
+                            </button>
+                            <button type="submit" class="btn btn-primary" {{ ($permisosUI['inicial'] || $permisosUI['entrada']) ? '' : 'disabled' }}>
+                                <i class="ti tabler-device-floppy me-1"></i>Guardar entrada
+                            </button>
+                        </div>
                     </div>
                 </form>
+            </div>
+
+            <div class="tab-pane fade {{ $vistaActiva === 'recepciones' ? 'show active' : '' }}" id="tab-recepciones-mercancia" role="tabpanel">
+                <div class="inv-section-label"><i class="ti tabler-list-search me-1"></i>Recepciones capturadas</div>
+                <div class="card border">
+                    <div class="card-header py-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <strong>Listado de recepciones</strong>
+                        <div class="d-flex flex-wrap gap-2">
+                            <select id="flt-rec-estado" class="form-select form-select-sm">
+                                <option value="">Todos los estados</option>
+                                <option value="borrador">Borrador</option>
+                                <option value="finalizado">Finalizado</option>
+                                <option value="cancelado">Cancelado</option>
+                            </select>
+                            <input id="flt-rec-desde" type="date" class="form-control form-control-sm">
+                            <input id="flt-rec-hasta" type="date" class="form-control form-control-sm">
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="btn-filtrar-recepciones">
+                                <i class="ti tabler-filter me-1"></i>Aplicar
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table id="tbl-recepciones-mercancia" class="table table-mini mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Folio</th>
+                                        <th>Fecha</th>
+                                        <th>Proveedor / Origen</th>
+                                        <th>Usuario</th>
+                                        <th>Estado</th>
+                                        <th class="text-end">Artículos</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="tab-pane fade {{ $vistaActiva === 'salidas' ? 'show active' : '' }}" id="tab-salidas" role="tabpanel">
                 <form id="form-salida" class="row g-3">
                     @csrf
-                    <div class="col-md-4">
-                        <label class="form-label">SKU</label>
-                        <select
-                            class="form-select js-remote-select"
-                            id="salida-sku-id"
-                            name="min_psk_id"
-                            data-url="{{ route('operacion.inventario_base.skus.buscar') }}"
-                            data-placeholder="Busca por código, SKU o producto"
-                            data-min-input="2"
-                            required
-                        >
-                            <option value="">Selecciona</option>
-                        </select>
-                    </div>
                     <div class="col-md-4">
                         <label class="form-label">Sucursal</label>
                         <select class="form-select input-sucursal" id="salida-scl-id" name="min_scl_id" required>
@@ -954,22 +984,47 @@
                         <label class="form-label">Almacén</label>
                         <select class="form-select input-almacen" id="salida-alm-id" name="min_alm_id" required><option value="">Selecciona</option></select>
                     </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Escaneo principal</label>
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="salida-scan-code"
+                            placeholder="Escanea el código y presiona Enter"
+                            autocomplete="off"
+                            inputmode="search"
+                        >
+                        <div class="form-text">Pensado para lector de código de barras con foco persistente.</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Agregar manualmente</label>
+                        <select
+                            class="form-select js-remote-select"
+                            id="salida-sku-manual"
+                            data-url="{{ route('operacion.inventario_base.skus.buscar') }}"
+                            data-placeholder="Busca por código, SKU o producto"
+                            data-min-input="2"
+                        >
+                            <option value="">Selecciona</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="button" class="btn btn-outline-primary w-100" id="btn-salida-agregar-manual">
+                            <i class="ti tabler-plus me-1"></i>Agregar
+                        </button>
+                    </div>
 
-                    {{-- Availability indicator --}}
                     <div class="col-12 d-none" id="inv-availability-wrap">
                         <div id="inv-availability-card">
                             <i class="ti tabler-box av-icon"></i>
                             <div>
                                 <div class="av-val" id="av-existencia">0</div>
                                 <div class="av-lbl">Existencia disponible en almacén</div>
+                                <div class="small text-body-secondary mt-1" id="salida-ultimo-scan">Sin lecturas todavía.</div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="col-md-3">
-                        <label class="form-label">Cantidad a retirar</label>
-                        <input type="number" step="1" min="1" class="form-control" name="min_cantidad" required inputmode="numeric">
-                    </div>
                     <div class="col-md-3">
                         <label class="form-label">Tipo salida</label>
                         <select class="form-select" name="min_documento_tipo" required>
@@ -998,9 +1053,38 @@
                         <label class="form-label">Motivo <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" name="min_motivo_texto" maxlength="500" placeholder="Describe la razón de la salida" required>
                     </div>
+                    <div class="col-12">
+                        <div class="alert d-none mb-0" id="salida-feedback" role="alert"></div>
+                    </div>
+                    <div class="col-12">
+                        <div class="table-responsive border rounded">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Producto</th>
+                                        <th>Variante</th>
+                                        <th>Unidad</th>
+                                        <th class="text-end">Disponible</th>
+                                        <th class="text-end">Cantidad</th>
+                                        <th class="text-end">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="salida-lineas-body">
+                                    <tr>
+                                        <td colspan="7" class="text-center text-body-secondary py-4">Escanea productos para armar la salida.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-2 small text-body-secondary">
+                            <span id="salida-lineas-resumen">0 productos, 0 piezas</span>
+                            <span>Enter agrega. La tabla permite ajustar cantidades o quitar líneas.</span>
+                        </div>
+                    </div>
                     <div class="col-12 d-flex justify-content-end">
-                        <button class="btn btn-danger" type="submit" {{ ($permisosUI['salida'] || $permisosUI['ajustar']) ? '' : 'disabled' }}>
-                            <i class="ti tabler-package-export me-1"></i>Registrar salida
+                        <button class="btn btn-danger" id="btn-salida-confirmar" type="submit" {{ ($permisosUI['salida'] || $permisosUI['ajustar']) ? '' : 'disabled' }}>
+                            <i class="ti tabler-package-export me-1"></i>Confirmar salida completa
                         </button>
                     </div>
                 </form>
@@ -1356,6 +1440,49 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="modal-detalle-recepcion" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header" style="border-bottom:1px solid var(--ls-border);">
+                <h5 class="modal-title mb-0">Detalle de recepción</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detalle-recepcion-shell">
+                <div class="text-body-secondary">Sin información.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modal-confirmar-recepcion" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="form-confirmar-recepcion">
+                <div class="modal-header" style="border-bottom:1px solid var(--ls-border);">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="d-inline-flex align-items-center justify-content-center rounded" style="width:2rem;height:2rem;background:var(--ls-warning-bg);color:var(--ls-warning);font-size:1rem;"><i class="ti tabler-lock"></i></span>
+                        <h5 class="modal-title mb-0">Confirmar recepción</h5>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex align-items-start gap-2 mb-3 p-2 rounded" style="background:var(--ls-warning-bg);border:1px solid var(--ls-warning);font-size:.83rem;">
+                        <i class="ti tabler-alert-triangle" style="color:var(--ls-warning);margin-top:.1rem;flex-shrink:0;"></i>
+                        <span>¿Estás seguro de guardar la entrada de forma definitiva? Esta acción generará movimientos de inventario.</span>
+                    </div>
+                    <label class="form-label fw-semibold">Contraseña del usuario actual <span class="text-danger">*</span></label>
+                    <input type="password" class="form-control" id="confirmar-recepcion-password" maxlength="255" autocomplete="current-password" required>
+                    <div class="form-text">Captura tu contraseña para autorizar la recepción definitiva.</div>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid var(--ls-border);">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary"><i class="ti tabler-device-floppy me-1"></i>Confirmar entrada</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('vendor-scripts')
@@ -1379,7 +1506,15 @@
         kardex: '{{ route('operacion.inventario_base.kardex.data') }}',
         bajoMinimo: '{{ route('operacion.inventario_base.minimos.bajo.data') }}',
         reportesEntradasData: '{{ route('operacion.inventario_base.reportes.entradas.data') }}',
+        recepcionesData: '{{ route('operacion.inventario_base.recepciones.data') }}',
+        recepcionDraft: '{{ route('operacion.inventario_base.recepciones.borrador.store') }}',
+        recepcionConfirmar: '{{ route('operacion.inventario_base.recepciones.confirmar') }}',
+        recepcionShow: (id) => '{{ url('/operacion/inventario-base/recepciones') }}/' + id,
+        recepcionCancelar: (id) => '{{ url('/operacion/inventario-base/recepciones') }}/' + id + '/cancelar',
+        recepcionReportePdf: (id) => '{{ url('/operacion/inventario-base/recepciones') }}/' + id + '/reporte-pdf',
+        recibirIndex: '{{ route('operacion.inventario_base.recibir.index') }}',
         disponibilidad: '{{ route('operacion.inventario_base.disponibilidad') }}',
+        salidaResolver: '{{ route('operacion.inventario_base.salidas.resolver') }}',
         matrizProducto: (id) => '{{ url('/operacion/inventario-base/productos') }}/' + id + '/matriz',
         inicial: '{{ route('operacion.inventario_base.inicial.store') }}',
         inicialMasivo: '{{ route('operacion.inventario_base.inicial.masivo.store') }}',
@@ -1396,6 +1531,8 @@
     const modalCancelar = new bootstrap.Modal(document.getElementById('modal-cancelar'));
     const modalCorregir = new bootstrap.Modal(document.getElementById('modal-corregir'));
     const modalRecibirBuscar = new bootstrap.Modal(document.getElementById('modal-recibir-buscar'));
+    const modalDetalleRecepcion = new bootstrap.Modal(document.getElementById('modal-detalle-recepcion'));
+    const modalConfirmarRecepcion = new bootstrap.Modal(document.getElementById('modal-confirmar-recepcion'));
     const storageKeyDensity = 'inventario.multiGridDensity';
     let multiGridDensity = 'auto';
     const estadoInicial = {
@@ -1411,6 +1548,10 @@
     };
     const seleccionProductos = {};
     const recibirState = {
+        rmeId: null,
+        rmeFolio: null,
+        rmeEstado: null,
+        payloadPendienteConfirmacion: null,
         modalSeleccion: {},
         tablaModalInicializada: false,
         productos: {},
@@ -1422,6 +1563,10 @@
         costosColumnaOrigen: {},
         filasExcluidas: {},
         productosQuitados: {},
+    };
+    const salidaState = {
+        lineas: {},
+        enviando: false,
     };
 
     function parseError(xhr) {
@@ -1649,6 +1794,251 @@
         });
 
         $(select).html(opts.join(''));
+    }
+
+    function focusSalidaScanner(delay = 0) {
+        window.setTimeout(function () {
+            const input = document.getElementById('salida-scan-code');
+            if (!input || input.disabled) return;
+            input.focus({ preventScroll: true });
+            input.select();
+        }, delay);
+    }
+
+    function limpiarFeedbackSalida() {
+        $('#salida-feedback')
+            .addClass('d-none')
+            .removeClass('alert-success alert-warning alert-danger')
+            .text('');
+    }
+
+    function mostrarFeedbackSalida(tipo, mensaje) {
+        const clase = tipo === 'success'
+            ? 'alert-success'
+            : (tipo === 'error' ? 'alert-danger' : 'alert-warning');
+
+        $('#salida-feedback')
+            .removeClass('d-none alert-success alert-warning alert-danger')
+            .addClass(clase)
+            .text(mensaje);
+    }
+
+    function salidaTieneLineas() {
+        return Object.keys(salidaState.lineas).length > 0;
+    }
+
+    function obtenerLineasSalida() {
+        return Object.values(salidaState.lineas);
+    }
+
+    function actualizarResumenSalida() {
+        const lineas = obtenerLineasSalida();
+        const totalPiezas = lineas.reduce(function (acumulado, linea) {
+            return acumulado + Number(linea.cantidad || 0);
+        }, 0);
+
+        $('#salida-lineas-resumen').text(lineas.length + ' productos, ' + totalPiezas + ' piezas');
+        $('#btn-salida-confirmar').prop('disabled', !((permisosUI.salida || permisosUI.ajustar) && lineas.length > 0 && !salidaState.enviando));
+    }
+
+    function renderSalidaLineas() {
+        const lineas = obtenerLineasSalida().sort(function (a, b) {
+            return String(a.codigo || '').localeCompare(String(b.codigo || ''), 'es', { numeric: true, sensitivity: 'base' });
+        });
+
+        if (!lineas.length) {
+            $('#salida-lineas-body').html('<tr><td colspan="7" class="text-center text-body-secondary py-4">Escanea productos para armar la salida.</td></tr>');
+            actualizarResumenSalida();
+            return;
+        }
+
+        const html = lineas.map(function (linea) {
+            return '' +
+                '<tr data-key="' + escapeHtml(linea.key) + '">' +
+                    '<td><div class="fw-semibold">' + escapeHtml(linea.codigo) + '</div><div class="small text-body-secondary">' + escapeHtml(linea.codigoBarras || '') + '</div></td>' +
+                    '<td><div class="fw-semibold">' + escapeHtml(linea.productoCodigo || '') + '</div><div class="small text-body-secondary">' + escapeHtml(linea.productoNombre || '') + '</div></td>' +
+                    '<td>' + escapeHtml(linea.variante || 'Base') + '</td>' +
+                    '<td>' + escapeHtml(linea.unidad || 'PZA') + '</td>' +
+                    '<td class="text-end">' + Number(linea.existencia || 0).toFixed(2) + '</td>' +
+                    '<td class="text-end" style="max-width:120px;"><input type="number" min="1" step="1" class="form-control form-control-sm text-end js-salida-cantidad" data-key="' + escapeHtml(linea.key) + '" value="' + escapeHtml(linea.cantidad) + '"></td>' +
+                    '<td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger js-salida-remove" data-key="' + escapeHtml(linea.key) + '"><i class="ti tabler-trash"></i></button></td>' +
+                '</tr>';
+        }).join('');
+
+        $('#salida-lineas-body').html(html);
+        actualizarResumenSalida();
+    }
+
+    function actualizarCardSalida(linea) {
+        const ex = Number(linea?.existencia ?? 0);
+        const $wrap = $('#inv-availability-wrap');
+        const $card = $('#inv-availability-card');
+
+        $('#av-existencia').text(ex.toFixed(2));
+        $('#salida-ultimo-scan').text((linea?.codigo || '-') + ' - ' + (linea?.productoNombre || 'Producto'));
+        $card.removeClass('av-ok av-low av-zero');
+
+        if (ex <= 0) {
+            $card.find('.av-icon').attr('class', 'ti tabler-box-off av-icon');
+            $card.addClass('av-zero');
+        } else if (ex <= 3) {
+            $card.find('.av-icon').attr('class', 'ti tabler-alert-triangle av-icon');
+            $card.addClass('av-low');
+        } else {
+            $card.find('.av-icon').attr('class', 'ti tabler-box av-icon');
+            $card.addClass('av-ok');
+        }
+
+        $wrap.removeClass('d-none');
+    }
+
+    function obtenerContextoSalida() {
+        return {
+            min_scl_id: $('#salida-scl-id').val(),
+            min_alm_id: $('#salida-alm-id').val(),
+        };
+    }
+
+    function validarContextoSalida() {
+        const contexto = obtenerContextoSalida();
+        if (!contexto.min_scl_id || !contexto.min_alm_id) {
+            mostrarFeedbackSalida('warning', 'Selecciona sucursal y almacén antes de escanear.');
+            focusSalidaScanner(20);
+            return null;
+        }
+
+        return contexto;
+    }
+
+    function registrarLineaSalida(data, incremento = 1) {
+        const key = String(data.psk_id);
+        const existencia = Number(data.existencia || 0);
+
+        if (existencia <= 0) {
+            actualizarCardSalida({
+                codigo: data.psk_codigo,
+                productoNombre: data.producto?.prd_nombre || '',
+                existencia,
+            });
+            mostrarFeedbackSalida('warning', 'El producto no tiene existencia disponible en este almacén.');
+            return;
+        }
+
+        const actual = salidaState.lineas[key];
+        const cantidadActual = Number(actual?.cantidad || 0);
+        const nuevaCantidad = Math.min(existencia, cantidadActual + incremento);
+
+        if (actual && nuevaCantidad === cantidadActual) {
+            actualizarCardSalida(actual);
+            mostrarFeedbackSalida('warning', 'La cantidad no puede superar la existencia disponible.');
+            return;
+        }
+
+        salidaState.lineas[key] = {
+            key,
+            min_psk_id: Number(data.psk_id),
+            codigo: data.psk_codigo || data.producto?.prd_codigo || ('SKU-' + data.psk_id),
+            codigoBarras: data.psk_codigo_barras || data.producto?.prd_codigo_barras || '',
+            productoCodigo: data.producto?.prd_codigo || '',
+            productoNombre: data.producto?.prd_nombre || data.psk_nombre || 'Producto',
+            variante: data.psk_nombre || '',
+            unidad: data.unidad?.umd_codigo || data.unidad?.umd_nombre || 'PZA',
+            existencia,
+            cantidad: nuevaCantidad,
+        };
+
+        actualizarCardSalida(salidaState.lineas[key]);
+        renderSalidaLineas();
+        mostrarFeedbackSalida('success', 'Producto agregado a la lista temporal.');
+    }
+
+    function resolverLineaSalida(payload) {
+        const contexto = validarContextoSalida();
+        if (!contexto) return $.Deferred().reject().promise();
+        return $.getJSON(rutas.salidaResolver, Object.assign({}, contexto, payload));
+    }
+
+    function procesarEscaneoSalida() {
+        const codigo = String($('#salida-scan-code').val() || '').trim();
+        if (!codigo) {
+            focusSalidaScanner(10);
+            return;
+        }
+
+        limpiarFeedbackSalida();
+
+        resolverLineaSalida({ q: codigo })
+            .done(function (resp) {
+                registrarLineaSalida(resp.data, 1);
+            })
+            .fail(function (xhr) {
+                if (xhr?.status) {
+                    mostrarFeedbackSalida('error', parseError(xhr));
+                }
+            })
+            .always(function () {
+                $('#salida-scan-code').val('');
+                focusSalidaScanner(20);
+            });
+    }
+
+    function agregarSalidaManual() {
+        const skuId = Number($('#salida-sku-manual').val() || 0);
+        if (!skuId) {
+            mostrarFeedbackSalida('warning', 'Selecciona un SKU para agregar manualmente.');
+            focusSalidaScanner(20);
+            return;
+        }
+
+        limpiarFeedbackSalida();
+
+        resolverLineaSalida({ min_psk_id: skuId })
+            .done(function (resp) {
+                registrarLineaSalida(resp.data, 1);
+                $('#salida-sku-manual').val(null).trigger('change');
+            })
+            .fail(function (xhr) {
+                if (xhr?.status) {
+                    mostrarFeedbackSalida('error', parseError(xhr));
+                }
+            })
+            .always(function () {
+                focusSalidaScanner(20);
+            });
+    }
+
+    function payloadSalidaLote() {
+        return {
+            _token: $('#form-salida input[name="_token"]').val(),
+            min_scl_id: $('#salida-scl-id').val(),
+            min_alm_id: $('#salida-alm-id').val(),
+            min_documento_tipo: $('#form-salida [name="min_documento_tipo"]').val(),
+            min_fecha_movimiento: $('#form-salida [name="min_fecha_movimiento"]').val(),
+            min_mtv_id: $('#form-salida [name="min_mtv_id"]').val(),
+            min_documento_referencia: $('#form-salida [name="min_documento_referencia"]').val(),
+            min_motivo_texto: $('#form-salida [name="min_motivo_texto"]').val(),
+            lineas: obtenerLineasSalida().map(function (linea) {
+                return {
+                    min_psk_id: linea.min_psk_id,
+                    min_cantidad: Number(linea.cantidad || 0),
+                };
+            }),
+        };
+    }
+
+    function limpiarSalidaCompleta() {
+        salidaState.lineas = {};
+        salidaState.enviando = false;
+        $('#form-salida')[0].reset();
+        $('#salida-sku-manual').val(null).trigger('change');
+        $('#form-salida [name="min_documento_tipo"]').val('ajuste_manual');
+        resetFormDateTime('#form-salida [name="min_fecha_movimiento"]');
+        $('#inv-availability-wrap').addClass('d-none');
+        $('#salida-ultimo-scan').text('Sin lecturas todavía.');
+        $('#salida-scan-code').val('');
+        limpiarFeedbackSalida();
+        renderSalidaLineas();
+        focusSalidaScanner(40);
     }
 
     function formToPayload($form) {
@@ -3556,6 +3946,260 @@
         return valor || '-';
     }
 
+    function estadoRecepcionBadge(estado) {
+        if (estado === 'borrador') return '<span class="ls-badge ls-badge-warning">Borrador</span>';
+        if (estado === 'finalizado') return '<span class="ls-badge ls-badge-success">Finalizado</span>';
+        if (estado === 'cancelado') return '<span class="ls-badge ls-badge-danger">Cancelado</span>';
+        return '<span class="ls-badge">' + escapeHtml(String(estado || '-')) + '</span>';
+    }
+
+    function actualizarEstadoBorradorRecibir() {
+        const $shell = $('#recibir-borrador-estado');
+        if (!recibirState.rmeId) {
+            $shell.html('Sin borrador en edición.');
+            return;
+        }
+
+        const estado = String(recibirState.rmeEstado || 'borrador');
+        $shell.html('Editando <strong>' + escapeHtml(String(recibirState.rmeFolio || ('RME-' + recibirState.rmeId))) + '</strong> · ' + estadoRecepcionBadge(estado));
+    }
+
+    function limpiarEstadoRecepcionRecibir() {
+        recibirState.rmeId = null;
+        recibirState.rmeFolio = null;
+        recibirState.rmeEstado = null;
+        actualizarEstadoBorradorRecibir();
+    }
+
+    function obtenerLineasRecibir(includeZero) {
+        return $('#recibir-grid-shell .js-recibir-grid-cantidad').toArray()
+            .map((el) => {
+                const $el = $(el);
+                const prdId = Number($el.data('prd-id') || 0);
+                const skuId = Number($el.data('min-psk-id') || 0);
+                const costoKey = String($el.data('cost-key') || '');
+                const qty = valorEnteroNoNegativo($el.val());
+                const costo = Number(recibirState.costosColumna[costoKey] || 0);
+                return {
+                    prd_id: prdId,
+                    min_psk_id: skuId,
+                    min_cantidad: qty,
+                    min_precio_unitario: costo,
+                };
+            })
+            .filter((linea) => linea.prd_id > 0 && linea.min_psk_id > 0 && (includeZero || linea.min_cantidad > 0));
+    }
+
+    function construirPayloadRecepcion(includeZero) {
+        const tipoEntrada = String($('#recibir-tipo-entrada').val() || 'compra_factura');
+        const sucursalId = Number($('#recibir-scl-id').val() || 0);
+        const almacenId = Number($('#recibir-alm-id').val() || 0);
+        const fechaEmision = String($('#recibir-fecha-emision').val() || '');
+        const proveedorId = Number($('#recibir-prv-id').val() || 0);
+        const referencia = String($('#recibir-referencia').val() || '').trim();
+        const observaciones = String($('#recibir-observaciones').val() || '').trim();
+        const descuentoTipo = String($('#recibir-descuento-tipo').val() || 'ninguno');
+        const descuentoValor = Number($('#recibir-descuento-valor').val() || 0);
+        const flete = Number($('#recibir-flete-total').val() || 0);
+        const iva = $('#recibir-incluir-iva').is(':checked') ? Number($('#recibir-iva-porcentaje').val() || 0) : 0;
+        const atrDominanteGlobal = Number($('#recibir-dominante-global').val() || 0);
+        const lineas = obtenerLineasRecibir(includeZero);
+
+        return {
+            rme_id: recibirState.rmeId || null,
+            min_scl_id: sucursalId || null,
+            min_alm_id: almacenId || null,
+            min_fecha_movimiento: null,
+            min_fecha_emision: fechaEmision || null,
+            min_documento_tipo: tipoEntrada || null,
+            min_documento_referencia: referencia || null,
+            min_motivo_texto: 'Recepción de mercancía manual',
+            min_observaciones: observaciones || null,
+            min_prv_id: proveedorId || null,
+            min_descuento_tipo: descuentoTipo,
+            min_descuento_valor: Number(descuentoValor.toFixed(2)),
+            min_flete_total: Number(flete.toFixed(2)),
+            min_iva_porcentaje: Number(iva.toFixed(2)),
+            dominante_atr_id: atrDominanteGlobal || null,
+            lineas,
+            payload: {
+                productos: Object.values(recibirState.productos || {}),
+                meta: recibirState.meta || {},
+                filtrosAtributos: Object.fromEntries(Object.entries(recibirState.filtrosAtributos || {}).map(([k, v]) => [k, Array.from(v || [])])),
+                cantidades: recibirState.cantidades || {},
+                costosColumna: recibirState.costosColumna || {},
+                costosColumnaEditados: recibirState.costosColumnaEditados || {},
+                costosColumnaOrigen: recibirState.costosColumnaOrigen || {},
+                filasExcluidas: recibirState.filasExcluidas || {},
+                productosQuitados: recibirState.productosQuitados || {},
+                dominanteGlobal: atrDominanteGlobal || null,
+            }
+        };
+    }
+
+    function resetRecibirState() {
+        limpiarEstadoRecepcionRecibir();
+        recibirState.payloadPendienteConfirmacion = null;
+        recibirState.productos = {};
+        recibirState.meta = {};
+        recibirState.filtrosAtributos = {};
+        recibirState.cantidades = {};
+        recibirState.costosColumna = {};
+        recibirState.costosColumnaEditados = {};
+        recibirState.costosColumnaOrigen = {};
+        recibirState.filasExcluidas = {};
+        recibirState.productosQuitados = {};
+        renderProductosRecibirMercancia();
+        renderFiltrosRecibirMercancia();
+        renderMatrizRecibirMercancia();
+        actualizarBotonRestaurarRecibir();
+        $('#form-recibir-mercancia')[0].reset();
+        resetFormDateTime('#recibir-fecha-emision');
+        actualizarUIRecibirReferencia();
+        aplicarPresetRecibirMercancia();
+        actualizarUIDescuentoRecibir();
+    }
+
+    async function poblarRecepcionEnFormulario(data) {
+        const payload = data?.payload || {};
+        recibirState.rmeId = Number(data?.rme_id || 0) || null;
+        recibirState.rmeFolio = String(data?.rme_folio || '');
+        recibirState.rmeEstado = String(data?.rme_estado || 'borrador');
+        $('#recibir-tipo-entrada').val(data?.min_documento_tipo || 'compra_factura');
+        $('#recibir-scl-id').val(data?.min_scl_id || '').trigger('change');
+        setTimeout(function () {
+            $('#recibir-alm-id').val(data?.min_alm_id || '').trigger('change');
+        }, 50);
+        $('#recibir-prv-id').val(data?.min_prv_id || '');
+        $('#recibir-referencia').val(data?.min_documento_referencia || '');
+        $('#recibir-fecha-emision').val(data?.min_fecha_emision || '');
+        $('#recibir-observaciones').val(data?.min_observaciones || '');
+        $('#recibir-descuento-tipo').val(data?.min_descuento_tipo || 'ninguno');
+        $('#recibir-descuento-valor').val(Number(data?.min_descuento_valor || 0));
+        $('#recibir-flete-total').val(Number(data?.min_flete_total || 0));
+        $('#recibir-iva-porcentaje').val(Number(data?.min_iva_porcentaje || 0));
+        $('#recibir-incluir-iva').prop('checked', Number(data?.min_iva_porcentaje || 0) > 0);
+        recibirState.productos = {};
+        recibirState.meta = {};
+        recibirState.filtrosAtributos = {};
+        recibirState.cantidades = {};
+        recibirState.costosColumna = {};
+        recibirState.costosColumnaEditados = {};
+        recibirState.costosColumnaOrigen = {};
+        recibirState.filasExcluidas = {};
+        recibirState.productosQuitados = {};
+        Object.values(payload.productos || {}).forEach((producto) => {
+            if (producto?.prd_id) {
+                recibirState.productos[String(producto.prd_id)] = producto;
+            }
+        });
+        actualizarEstadoBorradorRecibir();
+        await cargarProductosRecibirSeleccionados();
+        Object.entries(payload.filtrosAtributos || {}).forEach(([key, valores]) => {
+            recibirState.filtrosAtributos[key] = new Set(valores || []);
+        });
+        recibirState.cantidades = payload.cantidades || {};
+        recibirState.costosColumna = payload.costosColumna || {};
+        recibirState.costosColumnaEditados = payload.costosColumnaEditados || {};
+        recibirState.costosColumnaOrigen = payload.costosColumnaOrigen || {};
+        recibirState.filasExcluidas = payload.filasExcluidas || {};
+        recibirState.productosQuitados = payload.productosQuitados || {};
+        $('#recibir-dominante-global').val(payload.dominanteGlobal || data?.dominante_atr_id || '');
+        cargarDominantesRecibirMercancia();
+        if (payload.dominanteGlobal || data?.dominante_atr_id) {
+            $('#recibir-dominante-global').val(String(payload.dominanteGlobal || data?.dominante_atr_id));
+        }
+        renderFiltrosRecibirMercancia();
+        renderMatrizRecibirMercancia();
+        actualizarBotonRestaurarRecibir();
+        recalcularTotalesRecibirMercancia();
+        actualizarUIRecibirReferencia();
+        actualizarUIDescuentoRecibir();
+    }
+
+    function mostrarDetalleRecepcion(data) {
+        const lineas = Array.isArray(data?.lineas) ? data.lineas : [];
+        const html = `
+            <div class="row g-3 mb-3">
+                <div class="col-md-4"><strong>Folio:</strong><br>${escapeHtml(String(data?.rme_folio || '-'))}</div>
+                <div class="col-md-4"><strong>Estado:</strong><br>${estadoRecepcionBadge(String(data?.rme_estado || ''))}</div>
+                <div class="col-md-4"><strong>Fecha:</strong><br>${escapeHtml(String(data?.min_fecha_movimiento || '-'))}</div>
+                <div class="col-md-4"><strong>Sucursal:</strong><br>${escapeHtml(String(data?.resumen?.sucursal_nombre || '-'))}</div>
+                <div class="col-md-4"><strong>Almacén:</strong><br>${escapeHtml(String(data?.resumen?.almacen_nombre || '-'))}</div>
+                <div class="col-md-4"><strong>Proveedor:</strong><br>${escapeHtml(String(data?.resumen?.proveedor_nombre || '-'))}</div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-mini">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>SKU</th>
+                            <th class="text-end">Cantidad</th>
+                            <th class="text-end">Costo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${lineas.length ? lineas.map((linea) => `
+                            <tr>
+                                <td>${escapeHtml(String(linea.producto_nombre || '-'))}</td>
+                                <td>${escapeHtml(String(linea.sku_codigo || '-'))} - ${escapeHtml(String(linea.sku_nombre || '-'))}</td>
+                                <td class="text-end">${Number(linea.min_cantidad || 0).toFixed(2)}</td>
+                                <td class="text-end">${toMoney(linea.min_precio_unitario || 0)}</td>
+                            </tr>
+                        `).join('') : '<tr><td colspan="4" class="text-body-secondary">Sin detalle capturado.</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
+        `;
+        $('#detalle-recepcion-shell').html(html);
+        modalDetalleRecepcion.show();
+    }
+
+    function cargarRecepcionesMercancia() {
+        AppUI.showLoader();
+        $.getJSON(rutas.recepcionesData, {
+            estado: $('#flt-rec-estado').val(),
+            fecha_desde: $('#flt-rec-desde').val(),
+            fecha_hasta: $('#flt-rec-hasta').val()
+        }).done(function (resp) {
+            if ($.fn.DataTable.isDataTable('#tbl-recepciones-mercancia')) $('#tbl-recepciones-mercancia').DataTable().clear().destroy();
+            $('#tbl-recepciones-mercancia').DataTable({
+                data: resp.data || [],
+                order: [[1, 'desc']],
+                columns: [
+                    { data: 'rme_folio' },
+                    { data: 'rme_fecha_captura', render: (v) => v ? String(v).replace('T', ' ').slice(0, 16) : '-' },
+                    { data: null, render: (row) => escapeHtml(String(row.proveedor_nombre || row.rme_documento_referencia || 'N/D')) },
+                    { data: null, render: (row) => escapeHtml(String(row.usuario_confirmo || row.usuario_creo || 'N/D')) },
+                    { data: 'rme_estado', render: (v) => estadoRecepcionBadge(String(v || '')) },
+                    { data: 'total_articulos', className: 'text-end', render: (v) => Number(v || 0).toFixed(2) },
+                    {
+                        data: null,
+                        orderable: false,
+                        searchable: false,
+                        render: function (row) {
+                            const id = Number(row.rme_id || 0);
+                            let acciones = '<div class="d-flex flex-wrap gap-1">';
+                            if (String(row.rme_estado || '') === 'borrador') {
+                                acciones += '<button class="btn btn-sm btn-primary" data-action="continuar-recepcion" data-id="' + id + '" title="Retomar captura"><i class="ti tabler-pencil"></i></button>';
+                                if (permisosUI.cancelar) {
+                                    acciones += '<button class="btn btn-sm btn-outline-danger" data-action="cancelar-recepcion" data-id="' + id + '" title="Cancelar"><i class="ti tabler-ban"></i></button>';
+                                }
+                            } else {
+                                acciones += '<button class="btn btn-sm btn-outline-primary" data-action="ver-reporte-recepcion" data-id="' + id + '" title="Ver reporte"><i class="ti tabler-file-type-pdf me-1"></i>Ver reporte</button>';
+                                acciones += '<button class="btn btn-sm btn-outline-secondary" data-action="ver-recepcion" data-id="' + id + '" title="Ver detalle"><i class="ti tabler-eye me-1"></i>Ver detalle</button>';
+                            }
+                            acciones += '</div>';
+                            return acciones;
+                        }
+                    }
+                ]
+            });
+        }).fail(function (xhr) {
+            AppUI.showMessage('Error', parseError(xhr), 'error');
+        }).always(function () { AppUI.hideLoader(); });
+    }
+
     function cargarReportesEntradas() {
         AppUI.showLoader();
         $.getJSON(rutas.reportesEntradasData, {
@@ -3656,7 +4300,7 @@
         llenarAlmacenesPorSucursal('#flt-min-alm', $(this).val(), true);
     });
 
-    initRemoteSelect($('#salida-sku-id'), {
+    initRemoteSelect($('#salida-sku-manual'), {
         url: rutas.skusBuscar,
         placeholder: 'Busca por código, SKU o producto',
         minInput: 2
@@ -3667,41 +4311,54 @@
         minInput: 2
     });
 
-    function consultarDisponibilidadSalida() {
-        const pskId = $('#salida-sku-id').val();
-        const sclId = $('#salida-scl-id').val();
-        const almId = $('#salida-alm-id').val();
-        const $wrap = $('#inv-availability-wrap');
-        const $card = $('#inv-availability-card');
+    $('#salida-scan-code').on('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        procesarEscaneoSalida();
+    });
 
-        if (!pskId || !sclId || !almId) {
-            $wrap.addClass('d-none');
-            return;
+    $('#btn-salida-agregar-manual').on('click', function () {
+        agregarSalidaManual();
+    });
+
+    $(document).on('click', '.js-salida-remove', function () {
+        delete salidaState.lineas[String($(this).data('key') || '')];
+        renderSalidaLineas();
+        mostrarFeedbackSalida('success', 'Producto quitado de la lista temporal.');
+        focusSalidaScanner(20);
+    });
+
+    $(document).on('input change', '.js-salida-cantidad', function () {
+        const key = String($(this).data('key') || '');
+        const linea = salidaState.lineas[key];
+        if (!linea) return;
+
+        let cantidad = Number.parseInt(String($(this).val() || '0'), 10);
+        if (!Number.isFinite(cantidad) || cantidad < 1) {
+            cantidad = 1;
+        }
+        if (cantidad > Number(linea.existencia || 0)) {
+            cantidad = Number(linea.existencia || 0);
+            mostrarFeedbackSalida('warning', 'La cantidad no puede superar la existencia disponible.');
         }
 
-        $.getJSON(rutas.disponibilidad, { min_psk_id: pskId, min_scl_id: sclId, min_alm_id: almId })
-            .done(function (resp) {
-                const ex = Number(resp.data?.existencia ?? 0);
-                $('#av-existencia').text(ex.toFixed(2));
-                $card.removeClass('av-ok av-low av-zero');
-                if (ex <= 0) {
-                    $card.find('.av-icon').attr('class', 'ti tabler-box-off av-icon');
-                    $card.addClass('av-zero');
-                } else if (resp.data?.bajo_minimo) {
-                    $card.find('.av-icon').attr('class', 'ti tabler-alert-triangle av-icon');
-                    $card.addClass('av-low');
-                } else {
-                    $card.find('.av-icon').attr('class', 'ti tabler-box av-icon');
-                    $card.addClass('av-ok');
-                }
-                $wrap.removeClass('d-none');
-            })
-            .fail(function () { $wrap.addClass('d-none'); });
-    }
+        linea.cantidad = cantidad;
+        $(this).val(String(cantidad));
+        actualizarCardSalida(linea);
+        actualizarResumenSalida();
+        focusSalidaScanner(20);
+    });
 
-    $('#salida-sku-id').on('change', consultarDisponibilidadSalida);
-    $('#salida-scl-id').on('change', consultarDisponibilidadSalida);
-    $('#salida-alm-id').on('change', consultarDisponibilidadSalida);
+    $('#salida-scl-id, #salida-alm-id').on('change', function () {
+        if (salidaTieneLineas()) {
+            salidaState.lineas = {};
+            renderSalidaLineas();
+            mostrarFeedbackSalida('warning', 'Se limpió la lista temporal porque cambió la sucursal o el almacén.');
+        }
+        $('#inv-availability-wrap').addClass('d-none');
+        $('#salida-ultimo-scan').text('Sin lecturas todavía.');
+        focusSalidaScanner(20);
+    });
 
     $('#btn-filtrar-productos-base').on('click', function (e) {
         e.preventDefault();
@@ -4394,200 +5051,176 @@
         modalRecibirBuscar.hide();
     });
 
+    $('#btn-guardar-borrador').on('click', function () {
+        const payload = construirPayloadRecepcion(true);
+        if (!payload.lineas.length && !Object.keys(recibirState.productos || {}).length) {
+            AppUI.showMessage('Validación', 'Agrega al menos un producto antes de guardar el borrador.', 'warning');
+            return;
+        }
+
+        AppUI.showLoader();
+        $.ajax({
+            url: rutas.recepcionDraft,
+            method: 'POST',
+            dataType: 'json',
+            data: payload,
+        }).done(function (resp) {
+            recibirState.rmeId = Number(resp?.data?.rme_id || 0) || null;
+            recibirState.rmeFolio = String(resp?.data?.rme_folio || '');
+            recibirState.rmeEstado = String(resp?.data?.rme_estado || 'borrador');
+            actualizarEstadoBorradorRecibir();
+            cargarRecepcionesMercancia();
+            AppUI.showMessage('Éxito', resp?.message || 'Borrador guardado correctamente.', 'success');
+        }).fail(function (xhr) {
+            AppUI.showMessage('Error', parseError(xhr), 'error');
+        }).always(function () {
+            AppUI.hideLoader();
+        });
+    });
+
     $('#form-recibir-mercancia').on('submit', function (e) {
         e.preventDefault();
-        const tipoEntrada = String($('#recibir-tipo-entrada').val() || 'compra_factura');
-        const sucursalId = Number($('#recibir-scl-id').val() || 0);
-        const almacenId = Number($('#recibir-alm-id').val() || 0);
-        const fechaCaptura = String($('#recibir-fecha-captura').val() || '');
-        const fechaEmision = String($('#recibir-fecha-emision').val() || '');
-        const proveedorId = Number($('#recibir-prv-id').val() || 0);
-        const referencia = String($('#recibir-referencia').val() || '').trim();
-        const observaciones = String($('#recibir-observaciones').val() || '').trim();
-        const descuentoTipo = String($('#recibir-descuento-tipo').val() || 'ninguno');
-        const descuentoValor = Number($('#recibir-descuento-valor').val() || 0);
-        const flete = Number($('#recibir-flete-total').val() || 0);
-        const iva = $('#recibir-incluir-iva').is(':checked') ? Number($('#recibir-iva-porcentaje').val() || 0) : 0;
-        const esCompra = tipoEntrada === 'compra_remision' || tipoEntrada === 'compra_factura';
-        const esFactura = tipoEntrada === 'compra_factura';
-
-        if (!sucursalId || !almacenId || !fechaCaptura) {
-            AppUI.showMessage('Validación', 'Completa tipo, sucursal, almacén y fecha de captura.', 'warning');
-            return;
-        }
-        if (esCompra && !referencia) {
-            AppUI.showMessage('Validación', 'La referencia es obligatoria para compras.', 'warning');
-            return;
-        }
-        if (esCompra && !fechaEmision) {
-            AppUI.showMessage('Validación', 'La fecha de factura/remisión es obligatoria para compras.', 'warning');
-            return;
-        }
-        if (esFactura && !proveedorId) {
-            AppUI.showMessage('Validación', 'Selecciona proveedor para compras con factura.', 'warning');
-            return;
-        }
-
-        const lineas = $('#recibir-grid-shell .js-recibir-grid-cantidad').toArray()
-            .map((el) => {
-                const $el = $(el);
-                const prdId = Number($el.data('prd-id') || 0);
-                const skuId = Number($el.data('min-psk-id') || 0);
-                const costoKey = String($el.data('cost-key') || '');
-                const qty = valorEnteroNoNegativo($el.val());
-                const costo = Number(recibirState.costosColumna[costoKey] || 0);
-                return {
-                    prd_id: prdId,
-                    min_psk_id: skuId,
-                    min_cantidad: qty,
-                    min_precio_unitario: costo,
-                };
-            })
-            .filter((linea) => linea.prd_id > 0 && linea.min_psk_id > 0 && linea.min_cantidad > 0);
-
-        if (!lineas.length) {
+        const payload = construirPayloadRecepcion(false);
+        if (!payload.lineas.length) {
             AppUI.showMessage('Validación', 'Captura al menos una cantidad recibida mayor a cero.', 'warning');
             return;
         }
+        recibirState.payloadPendienteConfirmacion = payload;
+        $('#confirmar-recepcion-password').val('');
+        modalConfirmarRecepcion.show();
+    });
+    $('#form-confirmar-recepcion').on('submit', function (e) {
+        e.preventDefault();
+        const payload = recibirState.payloadPendienteConfirmacion;
+        if (!payload) {
+            modalConfirmarRecepcion.hide();
+            AppUI.showMessage('Error', 'No hay una recepción pendiente por confirmar.', 'error');
+            return;
+        }
 
-        const grupos = {};
-        lineas.forEach((linea) => {
-            if (!grupos[linea.prd_id]) grupos[linea.prd_id] = [];
-            grupos[linea.prd_id].push({
-                min_psk_id: linea.min_psk_id,
-                min_cantidad: linea.min_cantidad,
-                min_precio_unitario: linea.min_precio_unitario,
-            });
-        });
-
-        const atrDominanteGlobal = Number($('#recibir-dominante-global').val() || 0);
-        const lotes = Object.keys(grupos).map((prdIdRaw) => {
-            const prdId = Number(prdIdRaw);
-            const payload = {
-                prd_id: prdId,
-                min_scl_id: sucursalId,
-                min_alm_id: almacenId,
-                min_fecha_movimiento: fechaCaptura,
-                min_fecha_emision: fechaEmision || null,
-                min_documento_tipo: tipoEntrada,
-                min_documento_referencia: referencia,
-                min_motivo_texto: 'Recepción de mercancía manual',
-                min_observaciones: observaciones || null,
-                min_prv_id: proveedorId || null,
-                min_descuento_tipo: descuentoTipo,
-                min_descuento_valor: Number(descuentoValor.toFixed(2)),
-                min_flete_total: Number(flete.toFixed(2)),
-                min_iva_porcentaje: Number(iva.toFixed(2)),
-                lineas: grupos[prdIdRaw],
-            };
-            const meta = recibirState.meta[String(prdId)] || null;
-            if (meta && meta.prd_tipo === 'variable' && atrDominanteGlobal && productoAdmiteDominante(meta, atrDominanteGlobal)) {
-                payload.dominante_atr_id = atrDominanteGlobal;
-            }
-            return payload;
-        });
-
+        payload.confirm_password = String($('#confirmar-recepcion-password').val() || '');
         const resumen = recalcularTotalesRecibirMercancia();
         AppUI.showLoader();
-        let idx = 0;
-        let ok = 0;
-        const errores = [];
-        const folios = [];
+        $.ajax({
+            url: rutas.recepcionConfirmar,
+            method: 'POST',
+            dataType: 'json',
+            data: payload,
+        }).done(function (resp) {
+            const folios = resp?.data?.folios || [];
+            modalConfirmarRecepcion.hide();
+            cargarExistencias();
+            cargarKardex();
+            cargarReportesEntradas();
+            cargarRecepcionesMercancia();
+            AppUI.showMessage('Éxito', resp?.message || 'Recepción registrada correctamente.', 'success');
 
-        const siguiente = function () {
-            if (idx >= lotes.length) {
-                AppUI.hideLoader();
-                if (ok > 0) {
-                    cargarExistencias();
-                    cargarKardex();
-                    cargarReportesEntradas();
-                }
-
-                if (!errores.length) {
-                    AppUI.showMessage('Éxito', 'Recepción registrada correctamente.', 'success');
-                } else if (ok > 0) {
-                    AppUI.showMessage('Aviso', 'Se registró parcialmente. Primer error: ' + errores[0], 'warning');
-                } else {
-                    AppUI.showMessage('Error', errores[0] || 'No fue posible registrar la recepción.', 'error');
-                }
-
-                if (folios.length) {
-                    const atrDominanteGlobal = Number($('#recibir-dominante-global').val() || 0);
-                    descargarReporteEntradasSeleccionadas({
-                        folios,
-                        atr_dominante_id: atrDominanteGlobal || null,
-                        min_scl_id: sucursalId,
-                        min_alm_id: almacenId,
-                        min_documento_tipo: tipoEntrada,
-                        min_documento_referencia: referencia,
-                        min_motivo_texto: 'Recepción de mercancía manual',
-                        min_observaciones: observaciones || null,
-                        min_fecha_movimiento: fechaCaptura,
-                        min_fecha_emision: fechaEmision || null,
-                        min_prv_id: proveedorId || null,
-                        min_descuento_tipo: descuentoTipo,
-                        min_descuento_valor: Number(descuentoValor.toFixed(2)),
-                        min_flete_total: Number(flete.toFixed(2)),
-                        min_iva_porcentaje: Number(iva.toFixed(2)),
-                        min_total_documento: resumen.total,
-                    });
-                }
-
-                if (!errores.length) {
-                    recibirState.productos = {};
-                    recibirState.meta = {};
-                    recibirState.filtrosAtributos = {};
-                    recibirState.cantidades = {};
-                    recibirState.costosColumna = {};
-                    recibirState.costosColumnaEditados = {};
-                    recibirState.costosColumnaOrigen = {};
-                    recibirState.filasExcluidas = {};
-                    recibirState.productosQuitados = {};
-                    renderProductosRecibirMercancia();
-                    renderFiltrosRecibirMercancia();
-                    renderMatrizRecibirMercancia();
-                    actualizarBotonRestaurarRecibir();
-                    $('#form-recibir-mercancia')[0].reset();
-                    resetFormDateTime('#recibir-fecha-captura');
-                    resetFormDateTime('#recibir-fecha-emision');
-                    actualizarUIRecibirReferencia();
-                    aplicarPresetRecibirMercancia();
-                    actualizarUIDescuentoRecibir();
-                }
-                return;
+            if (folios.length) {
+                descargarReporteEntradasSeleccionadas({
+                    folios,
+                    atr_dominante_id: payload.dominante_atr_id || null,
+                    min_scl_id: payload.min_scl_id,
+                    min_alm_id: payload.min_alm_id,
+                    min_documento_tipo: payload.min_documento_tipo,
+                    min_documento_referencia: payload.min_documento_referencia,
+                    min_motivo_texto: payload.min_motivo_texto,
+                    min_observaciones: payload.min_observaciones,
+                    min_fecha_movimiento: payload.min_fecha_movimiento,
+                    min_fecha_emision: payload.min_fecha_emision,
+                    min_prv_id: payload.min_prv_id,
+                    min_descuento_tipo: payload.min_descuento_tipo,
+                    min_descuento_valor: payload.min_descuento_valor,
+                    min_flete_total: payload.min_flete_total,
+                    min_iva_porcentaje: payload.min_iva_porcentaje,
+                    min_total_documento: resumen.total,
+                });
             }
 
-            $.ajax({
-                url: rutas.entradaMasiva,
-                method: 'POST',
-                dataType: 'json',
-                data: lotes[idx],
-            }).done(function (resp) {
-                ok += 1;
-                (resp?.data?.folios || []).forEach((f) => {
-                    if (f) folios.push(String(f));
-                });
-            }).fail(function (xhr) {
-                errores.push(parseError(xhr));
-            }).always(function () {
-                idx += 1;
-                siguiente();
-            });
-        };
-
-        siguiente();
+            resetRecibirState();
+        }).fail(function (xhr) {
+            AppUI.showMessage('Error', parseError(xhr), 'error');
+        }).always(function () {
+            AppUI.hideLoader();
+        });
+    });
+    $('#btn-filtrar-recepciones').on('click', function () {
+        cargarRecepcionesMercancia();
+    });
+    $(document).on('click', 'button[data-action="continuar-recepcion"]', function () {
+        const id = Number($(this).data('id') || 0);
+        if (!id) return;
+        window.location.href = rutas.recibirIndex + '?rme_id=' + id;
+    });
+    $(document).on('click', 'button[data-action="ver-recepcion"]', function () {
+        const id = Number($(this).data('id') || 0);
+        if (!id) return;
+        AppUI.showLoader();
+        $.getJSON(rutas.recepcionShow(id)).done(function (resp) {
+            mostrarDetalleRecepcion(resp?.data || {});
+        }).fail(function (xhr) {
+            AppUI.showMessage('Error', parseError(xhr), 'error');
+        }).always(function () {
+            AppUI.hideLoader();
+        });
+    });
+    $(document).on('click', 'button[data-action="ver-reporte-recepcion"]', function () {
+        const id = Number($(this).data('id') || 0);
+        if (!id) return;
+        window.open(rutas.recepcionReportePdf(id), '_blank', 'noopener');
+    });
+    $(document).on('click', 'button[data-action="cancelar-recepcion"]', function () {
+        const id = Number($(this).data('id') || 0);
+        if (!id) return;
+        if (!window.confirm('Se cancelará el borrador seleccionado.')) return;
+        AppUI.showLoader();
+        $.ajax({
+            url: rutas.recepcionCancelar(id),
+            method: 'POST',
+            dataType: 'json',
+            data: {},
+        }).done(function () {
+            if (recibirState.rmeId === id) {
+                resetRecibirState();
+            }
+            cargarRecepcionesMercancia();
+            AppUI.showMessage('Éxito', 'Borrador cancelado correctamente.', 'success');
+        }).fail(function (xhr) {
+            AppUI.showMessage('Error', parseError(xhr), 'error');
+        }).always(function () {
+            AppUI.hideLoader();
+        });
     });
 
     $('#form-salida').on('submit', function (e) {
         e.preventDefault();
-        postForm(rutas.salida, $(this), 'Salida registrada.', function () {
+        if (!salidaTieneLineas()) {
+            mostrarFeedbackSalida('warning', 'Agrega al menos un producto antes de confirmar la salida.');
+            focusSalidaScanner(20);
+            return;
+        }
+
+        salidaState.enviando = true;
+        actualizarResumenSalida();
+        AppUI.showLoader();
+
+        $.ajax({
+            url: rutas.salida,
+            method: 'POST',
+            data: payloadSalidaLote(),
+            dataType: 'json'
+        }).done(function (resp) {
+            AppUI.showMessage('Éxito', resp.message || 'Salida registrada.', 'success');
             cargarExistencias();
             cargarKardex();
-            $('#form-salida')[0].reset();
-            $('#salida-sku-id').val(null).trigger('change');
-            $('#form-salida [name="min_documento_tipo"]').val('ajuste_manual');
-            resetFormDateTime('#form-salida [name="min_fecha_movimiento"]');
-            $('#inv-availability-wrap').addClass('d-none');
+            limpiarSalidaCompleta();
+        }).fail(function (xhr) {
+            mostrarFeedbackSalida('error', parseError(xhr));
+            AppUI.showMessage('Error', parseError(xhr), 'error');
+        }).always(function () {
+            salidaState.enviando = false;
+            actualizarResumenSalida();
+            AppUI.hideLoader();
+            focusSalidaScanner(30);
         });
     });
 
@@ -4699,19 +5332,46 @@
     resetFormDateTime('#form-inicial [name="min_fecha_movimiento"]');
     resetFormDateTime('#multi-fecha');
     resetFormDateTime('#multi-fecha-emision');
-    resetFormDateTime('#recibir-fecha-captura');
     resetFormDateTime('#recibir-fecha-emision');
     resetFormDateTime('#form-salida [name="min_fecha_movimiento"]');
     aplicarPresetRecibirMercancia();
+    renderSalidaLineas();
     renderProductosRecibirMercancia();
     renderFiltrosRecibirMercancia();
     renderMatrizRecibirMercancia();
     actualizarBotonRestaurarRecibir();
+    actualizarEstadoBorradorRecibir();
 
     const vistaActiva = @json($vistaActiva ?? 'existencias');
+    const recepcionQueryId = Number(new URLSearchParams(window.location.search).get('rme_id') || 0);
     if (vistaActiva === 'entradas' || vistaActiva === 'recibir' || vistaActiva === 'salidas') {
         cargarProductosBase();
     }
+    if (vistaActiva === 'recibir' || vistaActiva === 'recepciones') {
+        cargarRecepcionesMercancia();
+    }
+    if (vistaActiva === 'salidas') {
+        focusSalidaScanner(120);
+    }
+    if (vistaActiva === 'recibir' && recepcionQueryId > 0) {
+        AppUI.showLoader();
+        $.getJSON(rutas.recepcionShow(recepcionQueryId)).done(function (resp) {
+            Promise.resolve(poblarRecepcionEnFormulario(resp?.data || {}))
+                .then(function () {
+                    AppUI.showMessage('Éxito', 'Borrador cargado para continuar la recepción.', 'success');
+                })
+                .catch(function () {
+                    AppUI.showMessage('Error', 'No fue posible reconstruir la matriz del borrador.', 'error');
+                });
+        }).fail(function (xhr) {
+            AppUI.showMessage('Error', parseError(xhr), 'error');
+        }).always(function () {
+            AppUI.hideLoader();
+        });
+    }
+    $('button[data-bs-target="#tab-salidas"]').on('shown.bs.tab', function () {
+        focusSalidaScanner(120);
+    });
     if (vistaActiva === 'existencias' || vistaActiva === 'existencias_negativas') {
         cargarExistencias();
     }

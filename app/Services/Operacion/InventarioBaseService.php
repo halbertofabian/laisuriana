@@ -10,11 +10,14 @@ use App\Models\MovimientoInventario;
 use App\Models\PreferenciaMatrizProducto;
 use App\Models\Producto;
 use App\Models\ProductoSku;
+use App\Models\RecepcionMercancia;
+use App\Models\RecepcionMercanciaDetalle;
 use App\Models\Sucursal;
 use App\Models\TipoMovimientoInventario;
 use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -517,6 +520,90 @@ class InventarioBaseService
             ]);
     }
 
+    public function obtenerKardexDetalleSku(int $skuId, array $filtros = []): array
+    {
+        $sku = ProductoSku::query()
+            ->with([
+                'producto:prd_id,prd_codigo,prd_nombre,prd_umd_id',
+                'producto.unidad:umd_id,umd_nombre,umd_codigo',
+                'valoresAtributo' => fn ($query) => $query
+                    ->where('vat_deleted', false)
+                    ->whereNull('vat_deleted_at')
+                    ->where('vat_estatus', 'activo')
+                    ->with(['atributo:atr_id,atr_nombre,atr_clave']),
+            ])
+            ->where('psk_deleted', false)
+            ->whereNull('psk_deleted_at')
+            ->where('psk_estatus', 'activo')
+            ->findOrFail($skuId);
+
+        $periodo = (string) ($filtros['periodo'] ?? 'este_mes');
+        [$fechaInicio, $fechaFin] = $this->resolverPeriodoKardexDetalle($periodo, $filtros);
+
+        $movimientos = $this->listarKardex([
+            'min_psk_id' => $skuId,
+            'fecha_desde' => $fechaInicio->toDateString(),
+            'fecha_hasta' => $fechaFin->toDateString(),
+        ]);
+
+        $existenciaActual = round((float) ExistenciaAlmacen::query()
+            ->where('exa_psk_id', $skuId)
+            ->where('exa_deleted', false)
+            ->whereNull('exa_deleted_at')
+            ->where('exa_estatus', 'activo')
+            ->sum('exa_existencia'), 2);
+
+        $atributos = collect($sku->valoresAtributo ?? []);
+        $talla = (string) optional($atributos->first(fn ($valor) => $this->esAtributoTalla(
+            (string) ($valor->atributo?->atr_nombre ?? ''),
+            (string) ($valor->atributo?->atr_clave ?? '')
+        )))->vat_valor ?: 'Base';
+        $color = (string) optional($atributos->first(fn ($valor) => $this->esAtributoColor(
+            (string) ($valor->atributo?->atr_nombre ?? ''),
+            (string) ($valor->atributo?->atr_clave ?? '')
+        )))->vat_valor;
+
+        $timeline = $movimientos
+            ->groupBy(fn ($movimiento) => Carbon::parse($movimiento->min_fecha_movimiento)->format('Y-m'))
+            ->map(function (Collection $items, string $mesKey): array {
+                $mes = Carbon::createFromFormat('Y-m', $mesKey);
+
+                return [
+                    'mes_key' => $mesKey,
+                    'mes_label' => Str::title($mes->translatedFormat('F Y')),
+                    'total_movimientos' => $items->count(),
+                    'entradas' => round((float) $items->filter(fn ($movimiento) => (float) $movimiento->min_signo > 0)->sum('min_cantidad'), 2),
+                    'salidas' => round((float) $items->filter(fn ($movimiento) => (float) $movimiento->min_signo < 0)->sum('min_cantidad'), 2),
+                    'movimientos' => $items->values(),
+                ];
+            })
+            ->values();
+
+        return [
+            'sku' => $sku,
+            'producto' => $sku->producto,
+            'periodo' => $periodo,
+            'fecha_inicio' => $fechaInicio->toDateString(),
+            'fecha_fin' => $fechaFin->toDateString(),
+            'existencia_actual' => $existenciaActual,
+            'fecha_consulta' => now(),
+            'talla' => $talla,
+            'color' => $color,
+            'unidad' => (string) ($sku->producto?->unidad?->umd_codigo ?? $sku->producto?->unidad?->umd_nombre ?? 'PZA'),
+            'timeline' => $timeline,
+            'movimientos_total' => $movimientos->count(),
+            'back_filters' => [
+                'prd_mrc_id' => $filtros['back_prd_mrc_id'] ?? null,
+                'prd_mdl_id' => $filtros['back_prd_mdl_id'] ?? null,
+                'prd_lna_id' => $filtros['back_prd_lna_id'] ?? null,
+                'prd_ctg_id' => $filtros['back_prd_ctg_id'] ?? null,
+                'prd_id' => $filtros['back_prd_id'] ?? null,
+                'prd_text' => $filtros['back_prd_text'] ?? null,
+                'buscar' => $filtros['back_buscar'] ?? null,
+            ],
+        ];
+    }
+
     public function listarNegativosPorSesionCaja(array $filtros = []): Collection
     {
         return DB::table('tbl_movimientos_inventario_min as min')
@@ -680,6 +767,276 @@ class InventarioBaseService
         })->values();
     }
 
+    public function listarRecepcionesMercancia(array $filtros = []): Collection
+    {
+        $detalleSub = DB::table('tbl_recepcion_mercancia_detalle_rmd as rmd')
+            ->selectRaw('rmd_rme_id, COUNT(*) as total_lineas, SUM(rmd_cantidad) as total_articulos, SUM(COALESCE(rmd_cantidad, 0) * COALESCE(rmd_precio_unitario, 0)) as total_importe')
+            ->where('rmd_deleted', false)
+            ->whereNull('rmd_deleted_at')
+            ->groupBy('rmd_rme_id');
+
+        return DB::table('tbl_recepciones_mercancia_rme as rme')
+            ->leftJoinSub($detalleSub, 'det', fn ($join) => $join->on('det.rmd_rme_id', '=', 'rme.rme_id'))
+            ->leftJoin('tbl_sucursales_scl as scl', 'scl.scl_id', '=', 'rme.rme_scl_id')
+            ->leftJoin('tbl_almacenes_alm as alm', 'alm.alm_id', '=', 'rme.rme_alm_id')
+            ->leftJoin('tbl_proveedores_prv as prv', 'prv.prv_id', '=', 'rme.rme_prv_id')
+            ->leftJoin('tbl_usuarios_usr as usr_creo', 'usr_creo.usr_id', '=', 'rme.rme_created_by_usr_id')
+            ->leftJoin('tbl_usuarios_usr as usr_conf', 'usr_conf.usr_id', '=', 'rme.rme_confirmado_by_usr_id')
+            ->where('rme.rme_deleted', false)
+            ->whereNull('rme.rme_deleted_at')
+            ->when(!empty($filtros['estado']), fn ($q) => $q->where('rme.rme_estado', (string) $filtros['estado']))
+            ->when(!empty($filtros['fecha_desde']), fn ($q) => $q->whereDate('rme.rme_fecha_captura', '>=', $filtros['fecha_desde']))
+            ->when(!empty($filtros['fecha_hasta']), fn ($q) => $q->whereDate('rme.rme_fecha_captura', '<=', $filtros['fecha_hasta']))
+            ->orderByDesc('rme.rme_created_at')
+            ->limit(300)
+            ->get([
+                'rme.rme_id',
+                'rme.rme_folio',
+                'rme.rme_estado',
+                'rme.rme_documento_tipo',
+                'rme.rme_documento_referencia',
+                'rme.rme_fecha_captura',
+                'rme.rme_confirmado_at',
+                'rme.rme_cancelado_at',
+                'rme.rme_cancelacion_motivo',
+                'scl.scl_nombre as sucursal_nombre',
+                'alm.alm_nombre as almacen_nombre',
+                'prv.prv_nombre_empresa as proveedor_nombre',
+                'usr_creo.usr_nombre as usuario_creo',
+                'usr_conf.usr_nombre as usuario_confirmo',
+                DB::raw('COALESCE(det.total_lineas, 0) as total_lineas'),
+                DB::raw('COALESCE(det.total_articulos, 0) as total_articulos'),
+                DB::raw('COALESCE(det.total_importe, 0) as total_importe'),
+            ]);
+    }
+
+    public function obtenerRecepcionMercancia(int $recepcionId): array
+    {
+        $recepcion = RecepcionMercancia::query()
+            ->with([
+                'sucursal:scl_id,scl_nombre',
+                'almacen:alm_id,alm_nombre',
+                'proveedor:prv_id,prv_nombre_empresa',
+                'detalle' => fn ($query) => $query
+                    ->with([
+                        'sku:psk_id,psk_prd_id,psk_codigo,psk_nombre',
+                        'sku.producto:prd_id,prd_codigo,prd_nombre',
+                    ])
+                    ->orderBy('rmd_id'),
+            ])
+            ->findOrFail($recepcionId);
+
+        $payload = $recepcion->rme_payload;
+        if (!is_array($payload)) {
+            $payload = [];
+        }
+
+        return [
+            'rme_id' => (int) $recepcion->rme_id,
+            'rme_folio' => (string) $recepcion->rme_folio,
+            'rme_estado' => (string) $recepcion->rme_estado,
+            'min_scl_id' => $recepcion->rme_scl_id ? (int) $recepcion->rme_scl_id : null,
+            'min_alm_id' => $recepcion->rme_alm_id ? (int) $recepcion->rme_alm_id : null,
+            'min_prv_id' => $recepcion->rme_prv_id ? (int) $recepcion->rme_prv_id : null,
+            'dominante_atr_id' => $recepcion->rme_dominante_atr_id ? (int) $recepcion->rme_dominante_atr_id : null,
+            'min_documento_tipo' => $recepcion->rme_documento_tipo,
+            'min_documento_referencia' => $recepcion->rme_documento_referencia,
+            'min_fecha_movimiento' => optional($recepcion->rme_fecha_captura)?->format('Y-m-d\TH:i'),
+            'min_fecha_emision' => optional($recepcion->rme_fecha_emision)?->format('Y-m-d\TH:i'),
+            'min_motivo_texto' => $recepcion->rme_motivo_texto,
+            'min_observaciones' => $recepcion->rme_observaciones,
+            'min_descuento_tipo' => $recepcion->rme_descuento_tipo ?: 'ninguno',
+            'min_descuento_valor' => (float) ($recepcion->rme_descuento_valor ?? 0),
+            'min_flete_total' => (float) ($recepcion->rme_flete_total ?? 0),
+            'min_iva_porcentaje' => (float) ($recepcion->rme_iva_porcentaje ?? 0),
+            'payload' => $payload,
+            'lineas' => $recepcion->detalle->map(function (RecepcionMercanciaDetalle $detalle) {
+                return [
+                    'prd_id' => $detalle->rmd_prd_id ? (int) $detalle->rmd_prd_id : (int) ($detalle->sku?->psk_prd_id ?? 0),
+                    'min_psk_id' => (int) $detalle->rmd_psk_id,
+                    'min_cantidad' => (float) $detalle->rmd_cantidad,
+                    'min_precio_unitario' => (float) ($detalle->rmd_precio_unitario ?? 0),
+                    'sku_codigo' => (string) ($detalle->sku?->psk_codigo ?? ''),
+                    'sku_nombre' => (string) ($detalle->sku?->psk_nombre ?? ''),
+                    'producto_nombre' => (string) ($detalle->sku?->producto?->prd_nombre ?? ''),
+                ];
+            })->values()->all(),
+            'resumen' => [
+                'total_lineas' => (int) $recepcion->detalle->count(),
+                'total_articulos' => (float) $recepcion->detalle->sum('rmd_cantidad'),
+                'total_importe' => (float) $recepcion->detalle->sum(fn (RecepcionMercanciaDetalle $detalle) => ((float) $detalle->rmd_cantidad) * ((float) ($detalle->rmd_precio_unitario ?? 0))),
+                'sucursal_nombre' => (string) ($recepcion->sucursal?->scl_nombre ?? 'N/D'),
+                'almacen_nombre' => (string) ($recepcion->almacen?->alm_nombre ?? 'N/D'),
+                'proveedor_nombre' => (string) ($recepcion->proveedor?->prv_nombre_empresa ?? 'N/D'),
+            ],
+        ];
+    }
+
+    public function descargarReporteRecepcionMercanciaPdf(Request $request, int $recepcionId): array
+    {
+        $recepcion = RecepcionMercancia::query()->findOrFail($recepcionId);
+
+        $folios = MovimientoInventario::query()
+            ->where('min_rme_id', $recepcionId)
+            ->where('min_deleted', false)
+            ->whereNull('min_deleted_at')
+            ->where('min_estatus', 'activo')
+            ->where('min_signo', '>', 0)
+            ->orderBy('min_id')
+            ->pluck('min_folio')
+            ->map(fn ($folio) => trim((string) $folio))
+            ->filter()
+            ->values()
+            ->all();
+
+        if (empty($folios)) {
+            throw ValidationException::withMessages([
+                'recepcion' => 'La recepción no tiene movimientos definitivos para generar reporte.',
+            ]);
+        }
+
+        return $this->generarReporteEntradasSeleccionadasPdf($request, [
+            'folios' => $folios,
+            'atr_dominante_id' => (int) ($recepcion->rme_dominante_atr_id ?? 0),
+            'min_scl_id' => (int) ($recepcion->rme_scl_id ?? 0),
+            'min_alm_id' => (int) ($recepcion->rme_alm_id ?? 0),
+            'min_documento_tipo' => (string) ($recepcion->rme_documento_tipo ?? 'entrada_normal'),
+            'min_documento_referencia' => (string) ($recepcion->rme_documento_referencia ?? ''),
+            'min_motivo_texto' => (string) ($recepcion->rme_motivo_texto ?? ''),
+            'min_observaciones' => (string) ($recepcion->rme_observaciones ?? ''),
+            'min_fecha_movimiento' => (string) optional($recepcion->rme_fecha_captura)?->toDateTimeString(),
+            'min_fecha_emision' => (string) optional($recepcion->rme_fecha_emision)?->toDateTimeString(),
+            'min_prv_id' => (int) ($recepcion->rme_prv_id ?? 0),
+            'min_descuento_tipo' => (string) ($recepcion->rme_descuento_tipo ?? 'ninguno'),
+            'min_descuento_valor' => (float) ($recepcion->rme_descuento_valor ?? 0),
+            'min_flete_total' => (float) ($recepcion->rme_flete_total ?? 0),
+            'min_iva_porcentaje' => (float) ($recepcion->rme_iva_porcentaje ?? 0),
+        ], false);
+    }
+
+    public function guardarRecepcionMercanciaBorrador(Request $request, array $datos): RecepcionMercancia
+    {
+        return DB::transaction(function () use ($request, $datos): RecepcionMercancia {
+            $datos['min_fecha_movimiento'] = (string) ($datos['min_fecha_movimiento'] ?? $this->fechaActualSistema()->toDateTimeString());
+            $recepcion = $this->resolverRecepcionEditable((int) ($datos['rme_id'] ?? 0));
+
+            if ($recepcion) {
+                $this->validarRecepcionEditable($recepcion);
+            } else {
+                $recepcion = new RecepcionMercancia();
+                $recepcion->rme_folio = $this->crearFolioRecepcion();
+                $recepcion->rme_created_by_usr_id = optional($request->user())->usr_id;
+            }
+
+            $recepcion->fill($this->mapearDatosRecepcion($datos));
+            $recepcion->rme_estado = RecepcionMercancia::ESTADO_BORRADOR;
+            $recepcion->rme_updated_by_usr_id = optional($request->user())->usr_id;
+            $recepcion->save();
+
+            $this->sincronizarDetalleRecepcion($recepcion, (array) ($datos['lineas'] ?? []), optional($request->user())->usr_id);
+
+            $this->auditoriaService->registrarAccion(
+                $request,
+                'inventario_base.recepcion.borrador',
+                'tbl_recepciones_mercancia_rme',
+                (string) $recepcion->rme_id,
+                [
+                    'rme_folio' => $recepcion->rme_folio,
+                    'rme_estado' => $recepcion->rme_estado,
+                ]
+            );
+
+            return $recepcion->fresh();
+        });
+    }
+
+    public function confirmarRecepcionMercancia(Request $request, array $datos): array
+    {
+        return DB::transaction(function () use ($request, $datos): array {
+            $datos['min_fecha_movimiento'] = $this->fechaActualSistema()->toDateTimeString();
+            $recepcion = $this->resolverRecepcionEditable((int) ($datos['rme_id'] ?? 0));
+
+            if ($recepcion) {
+                $this->validarRecepcionEditable($recepcion);
+            } else {
+                $recepcion = new RecepcionMercancia();
+                $recepcion->rme_folio = $this->crearFolioRecepcion();
+                $recepcion->rme_created_by_usr_id = optional($request->user())->usr_id;
+            }
+
+            $recepcion->fill($this->mapearDatosRecepcion($datos));
+            $recepcion->rme_estado = RecepcionMercancia::ESTADO_BORRADOR;
+            $recepcion->rme_updated_by_usr_id = optional($request->user())->usr_id;
+            $recepcion->save();
+
+            $lineas = $this->normalizarLineasRecepcion((array) ($datos['lineas'] ?? []), true);
+            $this->sincronizarDetalleRecepcion($recepcion, $lineas->all(), optional($request->user())->usr_id);
+
+            $folios = [];
+            foreach ($this->agruparLineasRecepcionPorProducto($lineas, $datos) as $lote) {
+                $resultado = $this->registrarEntradaProductoLote(
+                    request: $request,
+                    datos: $lote,
+                    recepcionId: (int) $recepcion->rme_id,
+                    registrarAuditoria: true,
+                );
+                $folios = array_merge($folios, $resultado['folios']);
+            }
+
+            $recepcion->forceFill([
+                'rme_estado' => RecepcionMercancia::ESTADO_FINALIZADO,
+                'rme_confirmado_at' => $this->fechaActualSistema(),
+                'rme_confirmado_by_usr_id' => optional($request->user())->usr_id,
+                'rme_updated_by_usr_id' => optional($request->user())->usr_id,
+            ])->save();
+
+            $this->auditoriaService->registrarAccion(
+                $request,
+                'inventario_base.recepcion.finalizar',
+                'tbl_recepciones_mercancia_rme',
+                (string) $recepcion->rme_id,
+                [
+                    'rme_folio' => $recepcion->rme_folio,
+                    'folios_movimiento' => $folios,
+                ]
+            );
+
+            return [
+                'recepcion' => $recepcion->fresh(),
+                'folios' => array_values(array_unique($folios)),
+            ];
+        });
+    }
+
+    public function cancelarRecepcionMercancia(Request $request, int $recepcionId, string $motivo = ''): RecepcionMercancia
+    {
+        return DB::transaction(function () use ($request, $recepcionId, $motivo): RecepcionMercancia {
+            $recepcion = RecepcionMercancia::query()->lockForUpdate()->findOrFail($recepcionId);
+            $this->validarRecepcionEditable($recepcion);
+
+            $recepcion->forceFill([
+                'rme_estado' => RecepcionMercancia::ESTADO_CANCELADO,
+                'rme_cancelado_at' => now(),
+                'rme_cancelado_by_usr_id' => optional($request->user())->usr_id,
+                'rme_cancelacion_motivo' => trim($motivo) !== '' ? trim($motivo) : 'Cancelado por usuario.',
+                'rme_updated_by_usr_id' => optional($request->user())->usr_id,
+            ])->save();
+
+            $this->auditoriaService->registrarAccion(
+                $request,
+                'inventario_base.recepcion.cancelar',
+                'tbl_recepciones_mercancia_rme',
+                (string) $recepcion->rme_id,
+                [
+                    'rme_folio' => $recepcion->rme_folio,
+                    'motivo' => $recepcion->rme_cancelacion_motivo,
+                ]
+            );
+
+            return $recepcion->fresh();
+        });
+    }
+
     public function descargarReporteEntradasPdfDesdeBitacora(Request $request, int $reporteId): array
     {
         $registro = DB::table('tbl_bitacora_acciones_bac')
@@ -768,172 +1125,7 @@ class InventarioBaseService
 
     public function registrarInventarioInicialMasivo(Request $request, array $datos): array
     {
-        return DB::transaction(function () use ($request, $datos): array {
-            $producto = Producto::query()
-                ->with([
-                    'atributos' => fn ($q) => $q
-                        ->where('atr_deleted', false)
-                        ->whereNull('atr_deleted_at')
-                        ->where('atr_estatus', 'activo')
-                        ->orderBy('atr_nombre'),
-                ])
-                ->where('prd_deleted', false)
-                ->whereNull('prd_deleted_at')
-                ->where('prd_estatus', 'activo')
-                ->findOrFail((int) $datos['prd_id']);
-
-            $lineas = collect($datos['lineas'] ?? [])
-                ->map(fn ($linea) => [
-                    'min_psk_id' => (int) ($linea['min_psk_id'] ?? 0),
-                    'min_cantidad' => round((float) ($linea['min_cantidad'] ?? 0), 2),
-                    'min_precio_unitario' => round((float) ($linea['min_precio_unitario'] ?? 0), 2),
-                ])
-                ->filter(fn ($linea) => $linea['min_cantidad'] > 0)
-                ->values();
-
-            $skuIdsPermitidos = ProductoSku::query()
-                ->where('psk_prd_id', $producto->prd_id)
-                ->where('psk_deleted', false)
-                ->whereNull('psk_deleted_at')
-                ->where('psk_estatus', 'activo')
-                ->pluck('psk_id')
-                ->map(fn ($id) => (int) $id)
-                ->all();
-
-            $noPermitidos = $lineas
-                ->pluck('min_psk_id')
-                ->reject(fn ($skuId) => in_array((int) $skuId, $skuIdsPermitidos, true))
-                ->values()
-                ->all();
-
-            if (!empty($noPermitidos)) {
-                throw ValidationException::withMessages([
-                    'lineas' => 'Se detectaron variantes que no pertenecen al producto seleccionado.',
-                ]);
-            }
-
-            $dominanteAtrId = Arr::has($datos, 'dominante_atr_id') ? (int) $datos['dominante_atr_id'] : null;
-            $guardarPredeterminado = filter_var($datos['dominante_guardar_predeterminado'] ?? false, FILTER_VALIDATE_BOOL);
-            if ($guardarPredeterminado && $producto->prd_tipo === 'variable') {
-                if (empty($dominanteAtrId)) {
-                    $dominanteAtrId = (int) ($producto->atributos->first()?->atr_id ?? 0);
-                }
-
-                if ($dominanteAtrId > 0) {
-                    $this->guardarPreferenciaDominante($request, (int) $producto->prd_id, (int) $datos['min_scl_id'], $dominanteAtrId);
-                }
-            }
-
-            $tipoEntrada = (string) ($datos['min_documento_tipo'] ?? 'inventario_inicial');
-            $documentoTipo = match ($tipoEntrada) {
-                'compra_remision' => 'remision',
-                'compra_factura' => 'factura',
-                'entrada_normal' => 'entrada_normal',
-                default => 'inventario_inicial',
-            };
-
-            $movimientos = [];
-            $subtotal = round((float) $lineas->sum(fn ($linea) => ((float) $linea['min_cantidad']) * ((float) $linea['min_precio_unitario'])), 2);
-            $descuentoTipo = (string) ($datos['min_descuento_tipo'] ?? 'ninguno');
-            $descuentoValor = round((float) ($datos['min_descuento_valor'] ?? 0), 2);
-            $fleteTotal = round((float) ($datos['min_flete_total'] ?? 0), 2);
-            $ivaPorcentaje = round((float) ($datos['min_iva_porcentaje'] ?? 16), 2);
-            if ($ivaPorcentaje < 0) {
-                $ivaPorcentaje = 0;
-            }
-
-            $descuentoMonto = 0.0;
-            if ($descuentoTipo === 'porcentaje') {
-                $descuentoMonto = round($subtotal * ($descuentoValor / 100), 2);
-            } elseif ($descuentoTipo === 'importe') {
-                $descuentoMonto = min($subtotal, $descuentoValor);
-            }
-            $baseSinIva = max(0, round($subtotal - $descuentoMonto + $fleteTotal, 2));
-            $ivaTotal = $tipoEntrada === 'compra_factura'
-                ? round($baseSinIva * ($ivaPorcentaje / 100), 2)
-                : 0.0;
-            $totalDocumento = round($baseSinIva + $ivaTotal, 2);
-
-            $totalPiezas = max(0.01, (float) $lineas->sum(fn ($linea) => (float) $linea['min_cantidad']));
-            foreach ($lineas as $linea) {
-                $subtotalLinea = round(((float) $linea['min_cantidad']) * ((float) $linea['min_precio_unitario']), 2);
-                $proporcion = $subtotal > 0
-                    ? ($subtotalLinea / max(0.01, $subtotal))
-                    : (((float) $linea['min_cantidad']) / $totalPiezas);
-                $descuentoLinea = round($descuentoMonto * $proporcion, 2);
-                $fleteLinea = round($fleteTotal * $proporcion, 2);
-                $baseLinea = round(max(0, $subtotalLinea - $descuentoLinea + $fleteLinea), 2);
-                $ivaLinea = $tipoEntrada === 'compra_factura'
-                    ? round($baseLinea * ($ivaPorcentaje / 100), 2)
-                    : 0.0;
-                $totalLinea = round($baseLinea + $ivaLinea, 2);
-
-                $movimientos[] = $this->registrarMovimientoInterno(
-                    request: $request,
-                    datos: [
-                        'min_psk_id' => $linea['min_psk_id'],
-                        'min_scl_id' => $datos['min_scl_id'],
-                        'min_alm_id' => $datos['min_alm_id'],
-                        'min_cantidad' => $linea['min_cantidad'],
-                        'min_fecha_movimiento' => $datos['min_fecha_movimiento'],
-                        'min_fecha_emision' => $datos['min_fecha_emision'] ?? null,
-                        'min_documento_referencia' => $datos['min_documento_referencia'] ?? null,
-                        'min_descuento_tipo' => $descuentoTipo,
-                        'min_descuento_valor' => $descuentoValor,
-                        'min_flete_total' => $fleteTotal,
-                        'min_motivo_texto' => $datos['min_motivo_texto'],
-                        'min_observaciones' => $datos['min_observaciones'] ?? null,
-                        'min_prv_id' => $datos['min_prv_id'] ?? null,
-                        'min_precio_unitario' => $linea['min_precio_unitario'],
-                        'min_subtotal_linea' => $subtotalLinea,
-                        'min_descuento_linea' => $descuentoLinea,
-                        'min_flete_linea' => $fleteLinea,
-                        'min_iva_porcentaje' => $ivaPorcentaje,
-                        'min_iva_linea' => $ivaLinea,
-                        'min_total_linea' => $totalLinea,
-                    ],
-                    tmiClave: 'inventario.entrada',
-                    documentoTipo: $documentoTipo,
-                    signo: 1,
-                    movimientoOrigenId: null,
-                    reversaDeId: null,
-                    esReversa: false,
-                );
-            }
-
-            $eventoAuditoria = $tipoEntrada === 'inventario_inicial'
-                ? 'inventario_base.inicial.masivo'
-                : 'inventario_base.entrada.masivo';
-
-            $this->auditoriaService->registrarAccion(
-                $request,
-                $eventoAuditoria,
-                'tbl_movimientos_inventario_min',
-                (string) $producto->prd_id,
-                [
-                    'producto' => $producto->prd_codigo,
-                    'lineas' => count($movimientos),
-                    'sucursal' => (int) $datos['min_scl_id'],
-                    'almacen' => (int) $datos['min_alm_id'],
-                    'tipo_entrada' => $tipoEntrada,
-                    'proveedor_id' => (int) ($datos['min_prv_id'] ?? 0),
-                    'fecha_emision' => (string) ($datos['min_fecha_emision'] ?? ''),
-                    'subtotal' => $subtotal,
-                    'descuento_tipo' => $descuentoTipo,
-                    'descuento_valor' => $descuentoValor,
-                    'descuento_monto' => $descuentoMonto,
-                    'flete_total' => $fleteTotal,
-                    'iva_porcentaje' => $ivaPorcentaje,
-                    'iva_total' => $ivaTotal,
-                    'total_documento' => $totalDocumento,
-                ]
-            );
-
-            return [
-                'total' => count($movimientos),
-                'folios' => collect($movimientos)->map(fn ($mov) => $mov->min_folio)->values()->all(),
-            ];
-        });
+        return DB::transaction(fn () => $this->registrarEntradaProductoLote($request, $datos));
     }
 
     public function generarReporteEntradasSeleccionadasPdf(Request $request, array $datos, bool $registrarAuditoria = true): array
@@ -994,7 +1186,7 @@ class InventarioBaseService
         $skuIds = $movimientos->pluck('min_psk_id')->unique()->values();
         $skus = ProductoSku::query()
             ->with([
-                'producto:prd_id,prd_codigo,prd_nombre,prd_tipo',
+                'producto:prd_id,prd_codigo,prd_nombre,prd_tipo,prd_precio_base,prd_costo',
                 'valoresAtributo' => fn ($q) => $q
                     ->where('vat_deleted', false)
                     ->whereNull('vat_deleted_at')
@@ -1003,7 +1195,7 @@ class InventarioBaseService
                     ->orderBy('vat_valor'),
             ])
             ->whereIn('psk_id', $skuIds->all())
-            ->get(['psk_id', 'psk_prd_id', 'psk_codigo', 'psk_nombre'])
+            ->get(['psk_id', 'psk_prd_id', 'psk_codigo', 'psk_nombre', 'psk_precio', 'psk_costo'])
             ->keyBy('psk_id');
 
         $dominanteAtrId = (int) ($datos['atr_dominante_id'] ?? 0);
@@ -1068,7 +1260,10 @@ class InventarioBaseService
                     'producto' => $productoLabel,
                     'dominante' => $dominanteValor,
                     'cells' => [],
-                    'total' => 0.0,
+                    'total_articulos' => 0.0,
+                    'precio_acumulado' => 0.0,
+                    'costo_acumulado' => 0.0,
+                    'total_monetario' => 0.0,
                     'compatible_dominante' => $compatibleDominante || $tipoProducto === 'simple',
                 ];
                 $rowSort[$rowId] = [
@@ -1079,7 +1274,21 @@ class InventarioBaseService
 
             $cantidad = (float) $movimiento->min_cantidad;
             $filasMap[$rowId]['cells'][$colKey] = (float) ($filasMap[$rowId]['cells'][$colKey] ?? 0) + $cantidad;
-            $filasMap[$rowId]['total'] += $cantidad;
+            $filasMap[$rowId]['total_articulos'] += $cantidad;
+
+            $precioReferencia = (float) ($sku->psk_precio ?? $producto->prd_precio_base ?? 0);
+            $costoReferencia = (float) ($movimiento->min_precio_unitario ?? 0);
+            if ($costoReferencia <= 0) {
+                $costoReferencia = (float) ($sku->psk_costo ?? $producto->prd_costo ?? 0);
+            }
+            $totalLineaMonetario = (float) ($movimiento->min_total_linea ?? 0);
+            if ($totalLineaMonetario <= 0) {
+                $totalLineaMonetario = round($cantidad * $costoReferencia, 2);
+            }
+
+            $filasMap[$rowId]['precio_acumulado'] += ($precioReferencia * $cantidad);
+            $filasMap[$rowId]['costo_acumulado'] += ($costoReferencia * $cantidad);
+            $filasMap[$rowId]['total_monetario'] += $totalLineaMonetario;
         }
 
         if (empty($filasMap)) {
@@ -1149,7 +1358,7 @@ class InventarioBaseService
             foreach ($columnasMap as $colKey => $colLabel) {
                 $totalesPorColumna[$colKey] = (float) ($totalesPorColumna[$colKey] ?? 0) + (float) ($row['cells'][$colKey] ?? 0);
             }
-            $granTotal += (float) $row['total'];
+            $granTotal += (float) $row['total_articulos'];
         }
 
         $totalFilas   = count($filasMap);
@@ -1268,8 +1477,11 @@ class InventarioBaseService
         // ── Anchos fijos en mm (A4 landscape = 297mm, márgenes 7mm c/u → 283mm útiles) ──
         $mmProducto  = 70;   // columna producto
         $mmDominante = 26;   // columna dominante (color, talla, etc.)
-        $mmTotal     = 20;   // columna total fila
-        $mmDisponible = 283 - $mmProducto - $mmDominante - $mmTotal;
+        $mmTotalArt  = 18;   // total articulo
+        $mmPrecio    = 22;   // precio
+        $mmCosto     = 22;   // costo
+        $mmTotal     = 24;   // total monetario
+        $mmDisponible = 283 - $mmProducto - $mmDominante - $mmTotalArt - $mmPrecio - $mmCosto - $mmTotal;
         $numColumnas  = max(1, count($columnasMap));
         $mmCol        = max(10, (int) floor($mmDisponible / $numColumnas));
 
@@ -1316,7 +1528,10 @@ class InventarioBaseService
         $stProducto  = 'width:' . $mmProducto  . 'mm;border:1px solid ' . $colorBorderTbl . ';padding:4px 5px;vertical-align:middle;';
         $stDominante = 'width:' . $mmDominante . 'mm;border:1px solid ' . $colorBorderTbl . ';padding:4px 5px;text-align:center;vertical-align:middle;';
         $stCol       = 'width:' . $mmCol       . 'mm;border:1px solid ' . $colorBorderTbl . ';padding:4px 4px;text-align:center;vertical-align:middle;';
-        $stTotal     = 'width:' . $mmTotal     . 'mm;border:1px solid ' . $colorBorderTbl . ';padding:4px 5px;text-align:center;vertical-align:middle;';
+        $stTotalArt  = 'width:' . $mmTotalArt  . 'mm;border:1px solid ' . $colorBorderTbl . ';padding:4px 5px;text-align:center;vertical-align:middle;';
+        $stPrecio    = 'width:' . $mmPrecio    . 'mm;border:1px solid ' . $colorBorderTbl . ';padding:4px 5px;text-align:right;vertical-align:middle;';
+        $stCosto     = 'width:' . $mmCosto     . 'mm;border:1px solid ' . $colorBorderTbl . ';padding:4px 5px;text-align:right;vertical-align:middle;';
+        $stTotal     = 'width:' . $mmTotal     . 'mm;border:1px solid ' . $colorBorderTbl . ';padding:4px 5px;text-align:right;vertical-align:middle;';
 
         $html .= '<table style="border-collapse:collapse;font-size:8.5px;width:283mm;">';
         $html .= '<thead><tr>';
@@ -1328,6 +1543,9 @@ class InventarioBaseService
                    . $this->esc((string) $colLabel) . '</th>';
         }
 
+        $html .= '<th style="' . $stTotalArt . 'background-color:' . $colorAccent . ';color:#ffffff;font-weight:bold;">Total artículo</th>';
+        $html .= '<th style="' . $stPrecio . 'background-color:' . $colorHeaderBg . ';color:#ffffff;font-weight:bold;">Precio cliente</th>';
+        $html .= '<th style="' . $stCosto . 'background-color:' . $colorHeaderBg . ';color:#ffffff;font-weight:bold;">Costo</th>';
         $html .= '<th style="' . $stTotal . 'background-color:' . $colorAccent . ';color:#ffffff;font-weight:bold;">Total</th>';
         $html .= '</tr></thead><tbody>';
 
@@ -1370,8 +1588,19 @@ class InventarioBaseService
             }
 
             // Total de fila
+            $totalArticulosFila = (float) ($row['total_articulos'] ?? 0);
+            $precioPromedioFila = $totalArticulosFila > 0 ? ((float) $row['precio_acumulado'] / $totalArticulosFila) : 0;
+            $costoPromedioFila = $totalArticulosFila > 0 ? ((float) $row['costo_acumulado'] / $totalArticulosFila) : 0;
+            $totalMonetarioFila = (float) ($row['total_monetario'] ?? 0);
+
+            $html .= '<td style="' . $stTotalArt . 'background-color:' . $colorTotalBg . ';font-weight:bold;' . $borderTopProducto . '">'
+                   . number_format($totalArticulosFila, 0, '.', ',') . '</td>';
+            $html .= '<td style="' . $stPrecio . 'background-color:' . $bgFila . ';font-weight:bold;' . $borderTopProducto . '">'
+                   . number_format($precioPromedioFila, 2, '.', ',') . '</td>';
+            $html .= '<td style="' . $stCosto . 'background-color:' . $bgFila . ';font-weight:bold;' . $borderTopProducto . '">'
+                   . number_format($costoPromedioFila, 2, '.', ',') . '</td>';
             $html .= '<td style="' . $stTotal . 'background-color:' . $colorTotalBg . ';font-weight:bold;' . $borderTopProducto . '">'
-                   . number_format((float) $row['total'], 0, '.', ',') . '</td>';
+                   . number_format($totalMonetarioFila, 2, '.', ',') . '</td>';
             $html .= '</tr>';
 
             $productoAnterior = $row['producto_id'];
@@ -1388,8 +1617,12 @@ class InventarioBaseService
                    . ($tot > 0 ? number_format($tot, 0, '.', ',') : '—') . '</td>';
         }
 
-        $html .= '<td style="' . $stTotal . 'background-color:' . $colorAccent . ';color:#ffffff;font-weight:bold;border-top:2px solid ' . $colorHeaderBg . ';font-size:10px;">'
+        $html .= '<td style="' . $stTotalArt . 'background-color:' . $colorAccent . ';color:#ffffff;font-weight:bold;border-top:2px solid ' . $colorHeaderBg . ';font-size:10px;">'
                . number_format($granTotal, 0, '.', ',') . '</td>';
+        $html .= '<td style="' . $stPrecio . 'background-color:' . $colorHeaderBg . ';color:#ffffff;font-weight:bold;border-top:2px solid ' . $colorHeaderBg . ';font-size:9px;">—</td>';
+        $html .= '<td style="' . $stCosto . 'background-color:' . $colorHeaderBg . ';color:#ffffff;font-weight:bold;border-top:2px solid ' . $colorHeaderBg . ';font-size:9px;">—</td>';
+        $html .= '<td style="' . $stTotal . 'background-color:' . $colorAccent . ';color:#ffffff;font-weight:bold;border-top:2px solid ' . $colorHeaderBg . ';font-size:10px;">'
+               . number_format($totalMonetario, 2, '.', ',') . '</td>';
         $html .= '</tr>';
 
         $html .= '</tbody></table>';
@@ -1534,37 +1767,19 @@ class InventarioBaseService
 
     public function registrarSalida(Request $request, array $datos): MovimientoInventario
     {
-        return DB::transaction(function () use ($request, $datos): MovimientoInventario {
-            $tipoSalida = (string) ($datos['min_documento_tipo'] ?? 'ajuste_manual');
-            $tmiClave = $tipoSalida === 'ajuste_manual' ? 'inventario.ajuste' : 'inventario.salida';
+        return DB::transaction(fn () => $this->registrarSalidaMovimiento($request, $datos));
+    }
 
-            $movimiento = $this->registrarMovimientoInterno(
-                request: $request,
-                datos: $datos,
-                tmiClave: $tmiClave,
-                documentoTipo: $tipoSalida,
-                signo: -1,
-                movimientoOrigenId: null,
-                reversaDeId: null,
-                esReversa: false,
-            );
+    public function registrarSalidaLote(Request $request, array $datos): array
+    {
+        return DB::transaction(function () use ($request, $datos): array {
+            $movimientos = [];
 
-            $this->auditoriaService->registrarAccion(
-                $request,
-                'inventario_base.salida',
-                'tbl_movimientos_inventario_min',
-                (string) $movimiento->min_id,
-                [
-                    'min_folio' => $movimiento->min_folio,
-                    'min_psk_id' => $movimiento->min_psk_id,
-                    'min_scl_id' => $movimiento->min_scl_id,
-                    'min_alm_id' => $movimiento->min_alm_id,
-                    'min_cantidad' => $movimiento->min_cantidad,
-                    'min_documento_tipo' => $movimiento->min_documento_tipo,
-                ]
-            );
+            foreach ($this->normalizarLineasSalida($datos) as $linea) {
+                $movimientos[] = $this->registrarSalidaMovimiento($request, array_merge($datos, $linea));
+            }
 
-            return $movimiento;
+            return ['movimientos' => $movimientos];
         });
     }
 
@@ -1783,6 +1998,7 @@ class InventarioBaseService
             'min_scl_id' => $sucursalId,
             'min_alm_id' => $almacenId,
             'min_prv_id' => $datos['min_prv_id'] ?? null,
+            'min_rme_id' => $datos['min_rme_id'] ?? null,
             'min_mtv_id' => $datos['min_mtv_id'] ?? null,
             'min_origen_min_id' => $movimientoOrigenId,
             'min_reversa_de_min_id' => $reversaDeId,
@@ -1821,6 +2037,64 @@ class InventarioBaseService
         $this->sincronizarExistenciaSucursal($skuId, $sucursalId, optional($request->user())->usr_id);
 
         return $movimiento;
+    }
+
+    private function registrarSalidaMovimiento(Request $request, array $datos): MovimientoInventario
+    {
+        $tipoSalida = (string) ($datos['min_documento_tipo'] ?? 'ajuste_manual');
+        $tmiClave = $tipoSalida === 'ajuste_manual' ? 'inventario.ajuste' : 'inventario.salida';
+
+        $movimiento = $this->registrarMovimientoInterno(
+            request: $request,
+            datos: $datos,
+            tmiClave: $tmiClave,
+            documentoTipo: $tipoSalida,
+            signo: -1,
+            movimientoOrigenId: null,
+            reversaDeId: null,
+            esReversa: false,
+        );
+
+        $this->auditoriaService->registrarAccion(
+            $request,
+            'inventario_base.salida',
+            'tbl_movimientos_inventario_min',
+            (string) $movimiento->min_id,
+            [
+                'min_folio' => $movimiento->min_folio,
+                'min_psk_id' => $movimiento->min_psk_id,
+                'min_scl_id' => $movimiento->min_scl_id,
+                'min_alm_id' => $movimiento->min_alm_id,
+                'min_cantidad' => $movimiento->min_cantidad,
+                'min_documento_tipo' => $movimiento->min_documento_tipo,
+            ]
+        );
+
+        return $movimiento;
+    }
+
+    private function normalizarLineasSalida(array $datos): array
+    {
+        $lineas = collect($datos['lineas'] ?? [])
+            ->filter(fn ($linea) => is_array($linea) && ((int) ($linea['min_psk_id'] ?? 0) > 0))
+            ->groupBy(fn ($linea) => (int) $linea['min_psk_id'])
+            ->map(function (Collection $grupo, int|string $skuId): array {
+                return [
+                    'min_psk_id' => (int) $skuId,
+                    'min_cantidad' => (int) $grupo->sum(fn ($linea) => (int) ($linea['min_cantidad'] ?? 0)),
+                ];
+            })
+            ->filter(fn ($linea) => (int) ($linea['min_cantidad'] ?? 0) > 0)
+            ->values()
+            ->all();
+
+        if (empty($lineas)) {
+            throw ValidationException::withMessages([
+                'lineas' => 'Debes agregar al menos un producto para registrar la salida.',
+            ]);
+        }
+
+        return $lineas;
     }
 
     private function validarAlmacenPerteneceSucursal(int $sucursalId, int $almacenId): void
@@ -1922,6 +2196,309 @@ class InventarioBaseService
         return 'INV-' . now()->format('YmdHis') . '-' . Str::upper(Str::random(6));
     }
 
+    private function crearFolioRecepcion(): string
+    {
+        return 'RCM-' . now()->format('YmdHis') . '-' . Str::upper(Str::random(6));
+    }
+
+    private function fechaActualSistema(): \Illuminate\Support\Carbon
+    {
+        return now(config('app.timezone', 'America/Mexico_City'));
+    }
+
+    private function resolverRecepcionEditable(int $recepcionId): ?RecepcionMercancia
+    {
+        if ($recepcionId <= 0) {
+            return null;
+        }
+
+        return RecepcionMercancia::query()->lockForUpdate()->findOrFail($recepcionId);
+    }
+
+    private function validarRecepcionEditable(RecepcionMercancia $recepcion): void
+    {
+        if ($recepcion->rme_estado === RecepcionMercancia::ESTADO_FINALIZADO) {
+            throw ValidationException::withMessages([
+                'recepcion' => 'La recepción ya fue finalizada y solo puede consultarse.',
+            ]);
+        }
+
+        if ($recepcion->rme_estado === RecepcionMercancia::ESTADO_CANCELADO) {
+            throw ValidationException::withMessages([
+                'recepcion' => 'La recepción ya fue cancelada y no puede editarse.',
+            ]);
+        }
+    }
+
+    private function mapearDatosRecepcion(array $datos): array
+    {
+        return [
+            'rme_scl_id' => !empty($datos['min_scl_id']) ? (int) $datos['min_scl_id'] : null,
+            'rme_alm_id' => !empty($datos['min_alm_id']) ? (int) $datos['min_alm_id'] : null,
+            'rme_prv_id' => !empty($datos['min_prv_id']) ? (int) $datos['min_prv_id'] : null,
+            'rme_dominante_atr_id' => !empty($datos['dominante_atr_id']) ? (int) $datos['dominante_atr_id'] : null,
+            'rme_documento_tipo' => $datos['min_documento_tipo'] ?? null,
+            'rme_documento_referencia' => $datos['min_documento_referencia'] ?? null,
+            'rme_descuento_tipo' => $datos['min_descuento_tipo'] ?? 'ninguno',
+            'rme_descuento_valor' => isset($datos['min_descuento_valor']) ? round((float) $datos['min_descuento_valor'], 2) : 0,
+            'rme_flete_total' => isset($datos['min_flete_total']) ? round((float) $datos['min_flete_total'], 2) : 0,
+            'rme_iva_porcentaje' => isset($datos['min_iva_porcentaje']) ? round((float) $datos['min_iva_porcentaje'], 2) : 0,
+            'rme_fecha_captura' => $datos['min_fecha_movimiento'] ?? $this->fechaActualSistema(),
+            'rme_fecha_emision' => $datos['min_fecha_emision'] ?? null,
+            'rme_motivo_texto' => $datos['min_motivo_texto'] ?? null,
+            'rme_observaciones' => $datos['min_observaciones'] ?? null,
+            'rme_payload' => is_array($datos['payload'] ?? null) ? $datos['payload'] : null,
+        ];
+    }
+
+    private function sincronizarDetalleRecepcion(RecepcionMercancia $recepcion, array $lineas, ?int $usuarioId): void
+    {
+        DB::table('tbl_recepcion_mercancia_detalle_rmd')
+            ->where('rmd_rme_id', $recepcion->rme_id)
+            ->delete();
+
+        $normalizadas = $this->normalizarLineasRecepcion($lineas, false);
+        foreach ($normalizadas as $linea) {
+            RecepcionMercanciaDetalle::query()->create([
+                'rmd_rme_id' => $recepcion->rme_id,
+                'rmd_prd_id' => $linea['prd_id'] ?: null,
+                'rmd_psk_id' => $linea['min_psk_id'],
+                'rmd_cantidad' => $linea['min_cantidad'],
+                'rmd_precio_unitario' => $linea['min_precio_unitario'],
+                'rmd_payload' => $linea['payload'] ?? null,
+                'rmd_created_by_usr_id' => $usuarioId,
+                'rmd_updated_by_usr_id' => $usuarioId,
+            ]);
+        }
+    }
+
+    private function normalizarLineasRecepcion(array $lineas, bool $soloPositivas): Collection
+    {
+        return collect($lineas)
+            ->map(function ($linea) {
+                return [
+                    'prd_id' => (int) ($linea['prd_id'] ?? 0),
+                    'min_psk_id' => (int) ($linea['min_psk_id'] ?? 0),
+                    'min_cantidad' => round((float) ($linea['min_cantidad'] ?? 0), 2),
+                    'min_precio_unitario' => round((float) ($linea['min_precio_unitario'] ?? 0), 2),
+                    'payload' => is_array($linea['payload'] ?? null) ? $linea['payload'] : null,
+                ];
+            })
+            ->filter(fn ($linea) => $linea['prd_id'] > 0 && $linea['min_psk_id'] > 0)
+            ->when($soloPositivas, fn ($items) => $items->filter(fn ($linea) => $linea['min_cantidad'] > 0))
+            ->values();
+    }
+
+    private function agruparLineasRecepcionPorProducto(Collection $lineas, array $datos): array
+    {
+        return $lineas
+            ->groupBy('prd_id')
+            ->map(function (Collection $lineasProducto, $productoId) use ($datos) {
+                return [
+                    'prd_id' => (int) $productoId,
+                    'min_scl_id' => (int) $datos['min_scl_id'],
+                    'min_alm_id' => (int) $datos['min_alm_id'],
+                    'min_fecha_movimiento' => $datos['min_fecha_movimiento'],
+                    'min_fecha_emision' => $datos['min_fecha_emision'] ?? null,
+                    'min_documento_tipo' => $datos['min_documento_tipo'] ?? 'entrada_normal',
+                    'min_documento_referencia' => $datos['min_documento_referencia'] ?? null,
+                    'min_motivo_texto' => $datos['min_motivo_texto'] ?? 'Recepción de mercancía manual',
+                    'min_observaciones' => $datos['min_observaciones'] ?? null,
+                    'min_prv_id' => $datos['min_prv_id'] ?? null,
+                    'min_descuento_tipo' => $datos['min_descuento_tipo'] ?? 'ninguno',
+                    'min_descuento_valor' => $datos['min_descuento_valor'] ?? 0,
+                    'min_flete_total' => $datos['min_flete_total'] ?? 0,
+                    'min_iva_porcentaje' => $datos['min_iva_porcentaje'] ?? 0,
+                    'dominante_atr_id' => $datos['dominante_atr_id'] ?? null,
+                    'lineas' => $lineasProducto->map(fn ($linea) => [
+                        'min_psk_id' => $linea['min_psk_id'],
+                        'min_cantidad' => $linea['min_cantidad'],
+                        'min_precio_unitario' => $linea['min_precio_unitario'],
+                    ])->values()->all(),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    private function registrarEntradaProductoLote(
+        Request $request,
+        array $datos,
+        ?int $recepcionId = null,
+        bool $registrarAuditoria = true,
+    ): array {
+        $producto = Producto::query()
+            ->with([
+                'atributos' => fn ($q) => $q
+                    ->where('atr_deleted', false)
+                    ->whereNull('atr_deleted_at')
+                    ->where('atr_estatus', 'activo')
+                    ->orderBy('atr_nombre'),
+            ])
+            ->where('prd_deleted', false)
+            ->whereNull('prd_deleted_at')
+            ->where('prd_estatus', 'activo')
+            ->findOrFail((int) $datos['prd_id']);
+
+        $lineas = collect($datos['lineas'] ?? [])
+            ->map(fn ($linea) => [
+                'min_psk_id' => (int) ($linea['min_psk_id'] ?? 0),
+                'min_cantidad' => round((float) ($linea['min_cantidad'] ?? 0), 2),
+                'min_precio_unitario' => round((float) ($linea['min_precio_unitario'] ?? 0), 2),
+            ])
+            ->filter(fn ($linea) => $linea['min_cantidad'] > 0)
+            ->values();
+
+        $skuIdsPermitidos = ProductoSku::query()
+            ->where('psk_prd_id', $producto->prd_id)
+            ->where('psk_deleted', false)
+            ->whereNull('psk_deleted_at')
+            ->where('psk_estatus', 'activo')
+            ->pluck('psk_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $noPermitidos = $lineas
+            ->pluck('min_psk_id')
+            ->reject(fn ($skuId) => in_array((int) $skuId, $skuIdsPermitidos, true))
+            ->values()
+            ->all();
+
+        if (!empty($noPermitidos)) {
+            throw ValidationException::withMessages([
+                'lineas' => 'Se detectaron variantes que no pertenecen al producto seleccionado.',
+            ]);
+        }
+
+        $dominanteAtrId = Arr::has($datos, 'dominante_atr_id') ? (int) $datos['dominante_atr_id'] : null;
+        $guardarPredeterminado = filter_var($datos['dominante_guardar_predeterminado'] ?? false, FILTER_VALIDATE_BOOL);
+        if ($guardarPredeterminado && $producto->prd_tipo === 'variable') {
+            if (empty($dominanteAtrId)) {
+                $dominanteAtrId = (int) ($producto->atributos->first()?->atr_id ?? 0);
+            }
+
+            if ($dominanteAtrId > 0) {
+                $this->guardarPreferenciaDominante($request, (int) $producto->prd_id, (int) $datos['min_scl_id'], $dominanteAtrId);
+            }
+        }
+
+        $tipoEntrada = (string) ($datos['min_documento_tipo'] ?? 'inventario_inicial');
+        $documentoTipo = $this->resolverDocumentoTipoEntrada($tipoEntrada);
+
+        $movimientos = [];
+        $subtotal = round((float) $lineas->sum(fn ($linea) => ((float) $linea['min_cantidad']) * ((float) $linea['min_precio_unitario'])), 2);
+        $descuentoTipo = (string) ($datos['min_descuento_tipo'] ?? 'ninguno');
+        $descuentoValor = round((float) ($datos['min_descuento_valor'] ?? 0), 2);
+        $fleteTotal = round((float) ($datos['min_flete_total'] ?? 0), 2);
+        $ivaPorcentaje = max(0, round((float) ($datos['min_iva_porcentaje'] ?? 16), 2));
+
+        $descuentoMonto = 0.0;
+        if ($descuentoTipo === 'porcentaje') {
+            $descuentoMonto = round($subtotal * ($descuentoValor / 100), 2);
+        } elseif ($descuentoTipo === 'importe') {
+            $descuentoMonto = min($subtotal, $descuentoValor);
+        }
+        $baseSinIva = max(0, round($subtotal - $descuentoMonto + $fleteTotal, 2));
+        $ivaTotal = $tipoEntrada === 'compra_factura'
+            ? round($baseSinIva * ($ivaPorcentaje / 100), 2)
+            : 0.0;
+        $totalDocumento = round($baseSinIva + $ivaTotal, 2);
+
+        $totalPiezas = max(0.01, (float) $lineas->sum(fn ($linea) => (float) $linea['min_cantidad']));
+        foreach ($lineas as $linea) {
+            $subtotalLinea = round(((float) $linea['min_cantidad']) * ((float) $linea['min_precio_unitario']), 2);
+            $proporcion = $subtotal > 0
+                ? ($subtotalLinea / max(0.01, $subtotal))
+                : (((float) $linea['min_cantidad']) / $totalPiezas);
+            $descuentoLinea = round($descuentoMonto * $proporcion, 2);
+            $fleteLinea = round($fleteTotal * $proporcion, 2);
+            $baseLinea = round(max(0, $subtotalLinea - $descuentoLinea + $fleteLinea), 2);
+            $ivaLinea = $tipoEntrada === 'compra_factura'
+                ? round($baseLinea * ($ivaPorcentaje / 100), 2)
+                : 0.0;
+            $totalLinea = round($baseLinea + $ivaLinea, 2);
+
+            $movimientos[] = $this->registrarMovimientoInterno(
+                request: $request,
+                datos: [
+                    'min_psk_id' => $linea['min_psk_id'],
+                    'min_scl_id' => $datos['min_scl_id'],
+                    'min_alm_id' => $datos['min_alm_id'],
+                    'min_cantidad' => $linea['min_cantidad'],
+                    'min_fecha_movimiento' => $datos['min_fecha_movimiento'],
+                    'min_fecha_emision' => $datos['min_fecha_emision'] ?? null,
+                    'min_documento_referencia' => $datos['min_documento_referencia'] ?? null,
+                    'min_descuento_tipo' => $descuentoTipo,
+                    'min_descuento_valor' => $descuentoValor,
+                    'min_flete_total' => $fleteTotal,
+                    'min_motivo_texto' => $datos['min_motivo_texto'],
+                    'min_observaciones' => $datos['min_observaciones'] ?? null,
+                    'min_prv_id' => $datos['min_prv_id'] ?? null,
+                    'min_rme_id' => $recepcionId,
+                    'min_precio_unitario' => $linea['min_precio_unitario'],
+                    'min_subtotal_linea' => $subtotalLinea,
+                    'min_descuento_linea' => $descuentoLinea,
+                    'min_flete_linea' => $fleteLinea,
+                    'min_iva_porcentaje' => $ivaPorcentaje,
+                    'min_iva_linea' => $ivaLinea,
+                    'min_total_linea' => $totalLinea,
+                ],
+                tmiClave: 'inventario.entrada',
+                documentoTipo: $documentoTipo,
+                signo: 1,
+                movimientoOrigenId: null,
+                reversaDeId: null,
+                esReversa: false,
+            );
+        }
+
+        if ($registrarAuditoria) {
+            $eventoAuditoria = $tipoEntrada === 'inventario_inicial'
+                ? 'inventario_base.inicial.masivo'
+                : 'inventario_base.entrada.masivo';
+
+            $this->auditoriaService->registrarAccion(
+                $request,
+                $eventoAuditoria,
+                'tbl_movimientos_inventario_min',
+                (string) $producto->prd_id,
+                [
+                    'producto' => $producto->prd_codigo,
+                    'lineas' => count($movimientos),
+                    'sucursal' => (int) $datos['min_scl_id'],
+                    'almacen' => (int) $datos['min_alm_id'],
+                    'tipo_entrada' => $tipoEntrada,
+                    'proveedor_id' => (int) ($datos['min_prv_id'] ?? 0),
+                    'fecha_emision' => (string) ($datos['min_fecha_emision'] ?? ''),
+                    'subtotal' => $subtotal,
+                    'descuento_tipo' => $descuentoTipo,
+                    'descuento_valor' => $descuentoValor,
+                    'descuento_monto' => $descuentoMonto,
+                    'flete_total' => $fleteTotal,
+                    'iva_porcentaje' => $ivaPorcentaje,
+                    'iva_total' => $ivaTotal,
+                    'total_documento' => $totalDocumento,
+                    'recepcion_id' => $recepcionId,
+                ]
+            );
+        }
+
+        return [
+            'total' => count($movimientos),
+            'folios' => collect($movimientos)->map(fn ($mov) => $mov->min_folio)->values()->all(),
+        ];
+    }
+
+    private function resolverDocumentoTipoEntrada(string $tipoEntrada): string
+    {
+        return match ($tipoEntrada) {
+            'compra_remision' => 'remision',
+            'compra_factura' => 'factura',
+            'entrada_normal' => 'entrada_normal',
+            default => 'inventario_inicial',
+        };
+    }
+
     private function sincronizarExistenciaSucursal(int $skuId, int $sucursalId, ?int $usuarioId): void
     {
         $total = (float) ExistenciaAlmacen::query()
@@ -1953,6 +2530,52 @@ class InventarioBaseService
             'exs_created_by_usr_id' => $usuarioId,
             'exs_updated_by_usr_id' => $usuarioId,
         ]);
+    }
+
+    private function resolverPeriodoKardexDetalle(string $periodo, array $filtros = []): array
+    {
+        $hoy = now();
+
+        if ($periodo === 'rango') {
+            $fechaInicio = trim((string) ($filtros['fecha_inicio'] ?? ''));
+            $fechaFin = trim((string) ($filtros['fecha_fin'] ?? ''));
+
+            if ($fechaInicio === '' || $fechaFin === '') {
+                throw ValidationException::withMessages([
+                    'fecha_inicio' => 'Debes capturar fecha inicial y final para el rango.',
+                ]);
+            }
+
+            $inicio = Carbon::parse($fechaInicio)->startOfDay();
+            $fin = Carbon::parse($fechaFin)->endOfDay();
+
+            if ($inicio->gt($fin)) {
+                throw ValidationException::withMessages([
+                    'fecha_inicio' => 'La fecha inicial no puede ser mayor a la fecha final.',
+                ]);
+            }
+
+            return [$inicio, $fin];
+        }
+
+        return match ($periodo) {
+            'ultimos_3_meses' => [$hoy->copy()->subMonthsNoOverflow(2)->startOfMonth(), $hoy->copy()->endOfDay()],
+            'este_anio' => [$hoy->copy()->startOfYear(), $hoy->copy()->endOfDay()],
+            'ultimos_3_anios' => [$hoy->copy()->subYearsNoOverflow(2)->startOfYear(), $hoy->copy()->endOfDay()],
+            default => [$hoy->copy()->startOfMonth(), $hoy->copy()->endOfDay()],
+        };
+    }
+
+    private function esAtributoTalla(string $nombre, string $clave = ''): bool
+    {
+        $texto = Str::lower(Str::ascii(trim($nombre . ' ' . $clave)));
+        return str_contains($texto, 'talla') || str_contains($texto, 'tamano') || str_contains($texto, 'medida');
+    }
+
+    private function esAtributoColor(string $nombre, string $clave = ''): bool
+    {
+        $texto = Str::lower(Str::ascii(trim($nombre . ' ' . $clave)));
+        return str_contains($texto, 'color');
     }
 
     private function esc(string $valor): string

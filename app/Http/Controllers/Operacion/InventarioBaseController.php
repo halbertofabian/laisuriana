@@ -4,20 +4,32 @@ namespace App\Http\Controllers\Operacion;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Operacion\Inventario\CancelarMovimientoInventarioRequest;
+use App\Http\Requests\Operacion\Inventario\ConfirmRecepcionMercanciaRequest;
 use App\Http\Requests\Operacion\Inventario\CorregirMovimientoInventarioRequest;
+use App\Http\Requests\Operacion\Inventario\ListExistenciaMatrizRequest;
+use App\Http\Requests\Operacion\Inventario\ShowKardexDetalleRequest;
 use App\Http\Requests\Operacion\Inventario\StoreEntradaInventarioRequest;
 use App\Http\Requests\Operacion\Inventario\StoreInventarioInicialRequest;
 use App\Http\Requests\Operacion\Inventario\StoreInventarioInicialMasivoRequest;
 use App\Http\Requests\Operacion\Inventario\StoreMinimoInventarioRequest;
+use App\Http\Requests\Operacion\Inventario\StoreRecepcionMercanciaDraftRequest;
 use App\Http\Requests\Operacion\Inventario\StoreSalidaInventarioRequest;
+use App\Models\ProductoSku;
+use App\Services\Operacion\EscaneoProductoService;
+use App\Services\Operacion\ExistenciaMatrizService;
 use App\Services\Operacion\InventarioBaseService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class InventarioBaseController extends Controller
 {
-    public function __construct(private readonly InventarioBaseService $inventarioService)
-    {
+    public function __construct(
+        private readonly InventarioBaseService $inventarioService,
+        private readonly ExistenciaMatrizService $existenciaMatrizService,
+        private readonly EscaneoProductoService $escaneoProductoService,
+    ) {
     }
 
     public function index()
@@ -32,7 +44,191 @@ class InventarioBaseController extends Controller
 
     public function existenciasNegativas()
     {
-        return $this->renderInventarioBase(false, 'existencias_negativas');
+        return view('operacion.inventario_base.existencias_negativas', [
+            'opciones' => $this->inventarioService->opcionesBase(),
+        ]);
+    }
+
+    public function dataExistenciasNegativas(ListExistenciaMatrizRequest $request): JsonResponse
+    {
+        $filtros = $request->only([
+            'prd_id',
+            'prd_mrc_id',
+            'prd_mdl_id',
+            'prd_lna_id',
+            'prd_ctg_id',
+            'buscar',
+        ]);
+
+        $buscarDatatable = trim((string) $request->input('search.value', ''));
+        if ($buscarDatatable !== '') {
+            $filtros['buscar'] = $buscarDatatable;
+        }
+
+        $resultado = $this->existenciaMatrizService->paginarDataTable(
+            filtros: $filtros,
+            start: (int) $request->integer('start', 0),
+            length: (int) $request->integer('length', 10),
+            orderColumn: (int) $request->input('order.0.column', 0),
+            orderDir: (string) $request->input('order.0.dir', 'asc'),
+            soloNegativos: true,
+        );
+
+        return response()->json([
+            'draw' => (int) $request->integer('draw', 1),
+            'recordsTotal' => (int) $resultado['recordsTotal'],
+            'recordsFiltered' => (int) $resultado['recordsFiltered'],
+            'data' => $resultado['data'],
+        ]);
+    }
+
+    public function existenciasMatriz()
+    {
+        return view('operacion.inventario_base.existencias_matriz', [
+            'opciones' => $this->inventarioService->opcionesBase(),
+        ]);
+    }
+
+    public function exportarExcelExistenciasMatriz(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $filtros = $request->only(['prd_mrc_id', 'prd_mdl_id', 'prd_lna_id', 'prd_ctg_id', 'prd_id', 'buscar']);
+        $filas   = $this->existenciaMatrizService->exportarTodos($filtros);
+
+        $fileName = 'existencias-matriz-' . now()->format('Ymd-His') . '.csv';
+
+        $headers = [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$fileName}\"",
+            'Pragma'              => 'no-cache',
+            'Cache-Control'       => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires'             => '0',
+        ];
+
+        return response()->streamDownload(function () use ($filas): void {
+            $handle = fopen('php://output', 'w');
+            // BOM UTF-8 para compatibilidad con Excel en Windows
+            fwrite($handle, "\xEF\xBB\xBF");
+
+            fputcsv($handle, ['Marca', 'Modelo', 'Línea', 'Concepto', 'Producto', 'Color', 'Tallas', 'Total Art.', 'Precio Unit.', 'Costo Unit.', 'Total Importe']);
+
+            foreach ($filas as $fila) {
+                $tallasStr = collect($fila['tallas'] ?? [])
+                    ->map(fn ($t) => ($t['talla'] ?? 'Base') . ':' . ($t['existencia'] === null ? 'N/D' : number_format((float) $t['existencia'], 0, '.', '')))
+                    ->implode(' / ');
+
+                fputcsv($handle, [
+                    $fila['marca_nombre']          ?? '',
+                    $fila['modelo_nombre']          ?? '',
+                    $fila['linea_nombre']           ?? '',
+                    $fila['concepto_nombre']        ?? '',
+                    ($fila['producto_codigo'] ?? '') . ' - ' . ($fila['producto_nombre'] ?? ''),
+                    $fila['color_nombre']           ?? '',
+                    $tallasStr,
+                    $fila['total_articulos']        ?? 0,
+                    $fila['precio_unitario']        ?? 0,
+                    $fila['costo_unitario']         ?? 0,
+                    $fila['total_importe_precio']   ?? 0,
+                ]);
+            }
+
+            fclose($handle);
+        }, $fileName, $headers);
+    }
+
+    public function exportarPdfExistenciasMatriz(Request $request): \Illuminate\Http\Response
+    {
+        $filtros = $request->only(['prd_mrc_id', 'prd_mdl_id', 'prd_lna_id', 'prd_ctg_id', 'prd_id', 'buscar']);
+        $filas   = $this->existenciaMatrizService->exportarTodos($filtros);
+
+        $filas = collect($filas);
+        $total_art  = $filas->sum(fn ($f) => (float) ($f['total_articulos'] ?? 0));
+        $total_imp  = $filas->sum(fn ($f) => (float) ($f['total_importe_precio'] ?? 0));
+
+        $filas = $filas->all();
+
+        $rowsHtml = '';
+        $rowIdx   = 0;
+        foreach ($filas as $fila) {
+            $tallasStr = collect($fila['tallas'] ?? [])
+                ->map(fn ($t) => '<b>' . htmlspecialchars($t['talla'] ?? 'Base') . '</b>:' . ($t['existencia'] === null ? '<i>N/D</i>' : number_format((float) $t['existencia'], 0, '.', '')))
+                ->implode(' &nbsp;');
+
+            $bg = ($rowIdx % 2 === 0) ? '#f8fafc' : '#ffffff';
+            $rowIdx++;
+
+            $rowsHtml .= '<tr style="background:' . $bg . '">'
+                . '<td>' . htmlspecialchars($fila['marca_nombre'] ?? '-') . '</td>'
+                . '<td>' . htmlspecialchars($fila['modelo_nombre'] ?? '-') . '</td>'
+                . '<td>' . htmlspecialchars($fila['linea_nombre'] ?? '-') . '</td>'
+                . '<td>' . htmlspecialchars($fila['concepto_nombre'] ?? '-') . '</td>'
+                . '<td>' . htmlspecialchars(($fila['producto_codigo'] ?? '') . ' ' . ($fila['producto_nombre'] ?? '')) . '</td>'
+                . '<td>' . htmlspecialchars($fila['color_nombre'] ?? '-') . '</td>'
+                . '<td style="font-size:7px">' . $tallasStr . '</td>'
+                . '<td style="text-align:right">' . number_format((float) ($fila['total_articulos'] ?? 0), 2) . '</td>'
+                . '<td style="text-align:right">$ ' . number_format((float) ($fila['precio_unitario'] ?? 0), 2) . '</td>'
+                . '<td style="text-align:right">$ ' . number_format((float) ($fila['costo_unitario'] ?? 0), 2) . '</td>'
+                . '<td style="text-align:right">$ ' . number_format((float) ($fila['total_importe_precio'] ?? 0), 2) . '</td>'
+                . '</tr>';
+        }
+
+        $fechaGen  = now()->format('d/m/Y H:i:s');
+        $totalRows = count($filas);
+
+        $html = '
+        <style>
+            body { font-family: helvetica; font-size: 8px; color: #1e293b; }
+            h2 { font-size: 12px; color: #1e3a5f; margin: 0 0 2px 0; }
+            .meta { font-size: 7px; color: #64748b; margin-bottom: 6px; }
+            table { border-collapse: collapse; width: 100%; }
+            th { background: #1e3a5f; color: #fff; font-size: 7.5px; padding: 4px 3px; text-align: left; }
+            td { font-size: 7.5px; padding: 3px; border-bottom: 1px solid #e2e8f0; }
+            .footer { font-size: 6.5px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 3px; margin-top: 6px; }
+        </style>
+        <h2>Existencias Matriz</h2>
+        <div class="meta">' . $totalRows . ' registros &bull; Generado: ' . $fechaGen . '</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Marca</th><th>Modelo</th><th>Línea</th><th>Concepto</th>
+                    <th>Producto</th><th>Color</th><th>Tallas</th>
+                    <th style="text-align:right">Total Art.</th>
+                    <th style="text-align:right">Precio</th>
+                    <th style="text-align:right">Costo</th>
+                    <th style="text-align:right">Total $</th>
+                </tr>
+            </thead>
+            <tbody>' . $rowsHtml . '</tbody>
+            <tfoot>
+                <tr style="background:#f1f5f9">
+                    <td colspan="7"><b>TOTAL</b></td>
+                    <td style="text-align:right"><b>' . number_format($total_art, 2) . '</b></td>
+                    <td colspan="2"></td>
+                    <td style="text-align:right"><b>$ ' . number_format($total_imp, 2) . '</b></td>
+                </tr>
+            </tfoot>
+        </table>
+        <div class="footer">La I. Suriana &bull; Documento de uso interno &bull; ' . $fechaGen . '</div>';
+
+        $pdf = new \TCPDF('L', 'mm', 'A4', true, 'UTF-8', false, false);
+        $pdf->SetCreator(config('app.name', 'La Suriana Retail'));
+        $pdf->SetAuthor((string) ($request->user()?->name ?? config('app.name')));
+        $pdf->SetTitle('Existencias Matriz');
+        $pdf->setPrintHeader(false);
+        $pdf->setPrintFooter(false);
+        $pdf->SetMargins(7, 7, 7);
+        $pdf->SetAutoPageBreak(true, 10);
+        $pdf->SetFont('helvetica', '', 8);
+        $pdf->AddPage();
+        $pdf->writeHTML($html, true, false, true, false, '');
+
+        $fileName = 'existencias-matriz-' . now()->format('Ymd-His') . '.pdf';
+        $content  = $pdf->Output('', 'S');
+
+        return response($content, 200, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => "attachment; filename=\"{$fileName}\"",
+            'Content-Length'      => strlen($content),
+        ]);
     }
 
     public function entradas()
@@ -45,6 +241,11 @@ class InventarioBaseController extends Controller
         return $this->renderInventarioBase(false, 'recibir');
     }
 
+    public function recepciones()
+    {
+        return $this->renderInventarioBase(false, 'recepciones');
+    }
+
     public function salidas()
     {
         return $this->renderInventarioBase(false, 'salidas');
@@ -53,6 +254,13 @@ class InventarioBaseController extends Controller
     public function kardex()
     {
         return $this->renderInventarioBase(false, 'kardex');
+    }
+
+    public function kardexDetalle(ShowKardexDetalleRequest $request, int $sku)
+    {
+        return view('operacion.inventario_base.kardex_detalle', [
+            'detalle' => $this->inventarioService->obtenerKardexDetalleSku($sku, $request->validated()),
+        ]);
     }
 
     public function negativosPorSesion()
@@ -113,6 +321,38 @@ class InventarioBaseController extends Controller
         $registros = $this->inventarioService->listarExistencias($filtros);
 
         return response()->json(['data' => $registros]);
+    }
+
+    public function dataExistenciasMatriz(ListExistenciaMatrizRequest $request): JsonResponse
+    {
+        $filtros = $request->only([
+            'prd_id',
+            'prd_mrc_id',
+            'prd_mdl_id',
+            'prd_lna_id',
+            'prd_ctg_id',
+            'buscar',
+        ]);
+
+        $buscarDatatable = trim((string) $request->input('search.value', ''));
+        if ($buscarDatatable !== '') {
+            $filtros['buscar'] = $buscarDatatable;
+        }
+
+        $resultado = $this->existenciaMatrizService->paginarDataTable(
+            filtros: $filtros,
+            start: (int) $request->integer('start', 0),
+            length: (int) $request->integer('length', 10),
+            orderColumn: (int) $request->input('order.0.column', 0),
+            orderDir: (string) $request->input('order.0.dir', 'asc'),
+        );
+
+        return response()->json([
+            'draw' => (int) $request->integer('draw', 1),
+            'recordsTotal' => (int) $resultado['recordsTotal'],
+            'recordsFiltered' => (int) $resultado['recordsFiltered'],
+            'data' => $resultado['data'],
+        ]);
     }
 
     public function dataProductosBase(Request $request): JsonResponse
@@ -231,6 +471,24 @@ class InventarioBaseController extends Controller
         return response()->json(['data' => $registros]);
     }
 
+    public function dataRecepcionesMercancia(Request $request): JsonResponse
+    {
+        $registros = $this->inventarioService->listarRecepcionesMercancia($request->only([
+            'estado',
+            'fecha_desde',
+            'fecha_hasta',
+        ]));
+
+        return response()->json(['data' => $registros]);
+    }
+
+    public function showRecepcionMercancia(int $recepcion): JsonResponse
+    {
+        return response()->json([
+            'data' => $this->inventarioService->obtenerRecepcionMercancia($recepcion),
+        ]);
+    }
+
     public function disponibilidad(Request $request): JsonResponse
     {
         $datos = $request->validate([
@@ -251,6 +509,93 @@ class InventarioBaseController extends Controller
 
         return response()->json([
             'message' => 'Disponibilidad consultada correctamente.',
+            'data' => $resultado,
+        ]);
+    }
+
+    public function resolverSalida(Request $request): JsonResponse
+    {
+        $datos = $request->validate([
+            'q' => ['nullable', 'string', 'max:120'],
+            'min_psk_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('tbl_producto_skus_psk', 'psk_id')->where(fn ($query) => $query
+                    ->where('psk_deleted', false)
+                    ->whereNull('psk_deleted_at')
+                    ->where('psk_estatus', 'activo')),
+            ],
+            'min_scl_id' => ['required', 'integer'],
+            'min_alm_id' => ['required', 'integer'],
+        ]);
+
+        $consulta = trim((string) ($datos['q'] ?? ''));
+        $skuId = (int) ($datos['min_psk_id'] ?? 0);
+
+        if ($consulta === '' && $skuId <= 0) {
+            throw ValidationException::withMessages([
+                'q' => 'Debes capturar un código o seleccionar un SKU.',
+            ]);
+        }
+
+        if ($skuId > 0) {
+            $sku = ProductoSku::query()
+                ->with([
+                    'producto:prd_id,prd_codigo,prd_codigo_barras,prd_nombre,prd_umd_id',
+                    'producto.unidad:umd_id,umd_nombre,umd_codigo',
+                ])
+                ->where('psk_id', $skuId)
+                ->where('psk_estatus', 'activo')
+                ->first();
+
+            if (!$sku) {
+                return response()->json([
+                    'message' => 'El SKU seleccionado ya no está disponible.',
+                ], 404);
+            }
+
+            $resultado = [
+                'psk_id' => (int) $sku->psk_id,
+                'psk_codigo' => (string) $sku->psk_codigo,
+                'psk_codigo_barras' => (string) ($sku->psk_codigo_barras ?? ''),
+                'psk_nombre' => (string) ($sku->psk_nombre ?? ''),
+                'producto' => [
+                    'prd_id' => (int) ($sku->producto?->prd_id ?? 0),
+                    'prd_codigo' => (string) ($sku->producto?->prd_codigo ?? ''),
+                    'prd_nombre' => (string) ($sku->producto?->prd_nombre ?? ''),
+                ],
+                'unidad' => [
+                    'umd_nombre' => (string) ($sku->producto?->unidad?->umd_nombre ?? ''),
+                    'umd_codigo' => (string) ($sku->producto?->unidad?->umd_codigo ?? ''),
+                ],
+            ];
+        } else {
+            $resultado = $this->escaneoProductoService->buscar($consulta);
+
+            if (!$resultado) {
+                return response()->json([
+                    'message' => 'No encontramos coincidencias para el código enviado.',
+                ], 404);
+            }
+
+            $sku = ProductoSku::query()
+                ->with(['producto.unidad:umd_id,umd_nombre,umd_codigo'])
+                ->find($resultado['psk_id']);
+
+            $resultado['unidad'] = [
+                'umd_nombre' => (string) ($sku?->producto?->unidad?->umd_nombre ?? ''),
+                'umd_codigo' => (string) ($sku?->producto?->unidad?->umd_codigo ?? ''),
+            ];
+        }
+
+        $resultado['existencia'] = (float) ($this->inventarioService->disponibilidad(
+            (int) $resultado['psk_id'],
+            (int) $datos['min_scl_id'],
+            (int) $datos['min_alm_id'],
+        )['existencia'] ?? 0);
+
+        return response()->json([
+            'message' => 'Producto localizado correctamente.',
             'data' => $resultado,
         ]);
     }
@@ -296,6 +641,53 @@ class InventarioBaseController extends Controller
         ]);
     }
 
+    public function storeRecepcionMercanciaDraft(StoreRecepcionMercanciaDraftRequest $request): JsonResponse
+    {
+        $recepcion = $this->inventarioService->guardarRecepcionMercanciaBorrador($request, $request->validated());
+
+        return response()->json([
+            'message' => 'Borrador guardado correctamente.',
+            'data' => [
+                'rme_id' => $recepcion->rme_id,
+                'rme_folio' => $recepcion->rme_folio,
+                'rme_estado' => $recepcion->rme_estado,
+            ],
+        ]);
+    }
+
+    public function confirmRecepcionMercancia(ConfirmRecepcionMercanciaRequest $request): JsonResponse
+    {
+        $resultado = $this->inventarioService->confirmarRecepcionMercancia($request, $request->validated());
+        $recepcion = $resultado['recepcion'];
+
+        return response()->json([
+            'message' => 'Recepción registrada correctamente.',
+            'data' => [
+                'rme_id' => $recepcion->rme_id,
+                'rme_folio' => $recepcion->rme_folio,
+                'rme_estado' => $recepcion->rme_estado,
+                'folios' => $resultado['folios'],
+            ],
+        ]);
+    }
+
+    public function cancelarRecepcionMercancia(Request $request, int $recepcion): JsonResponse
+    {
+        $datos = $request->validate([
+            'motivo' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $registro = $this->inventarioService->cancelarRecepcionMercancia($request, $recepcion, (string) ($datos['motivo'] ?? ''));
+
+        return response()->json([
+            'message' => 'Recepción cancelada correctamente.',
+            'data' => [
+                'rme_id' => $registro->rme_id,
+                'rme_estado' => $registro->rme_estado,
+            ],
+        ]);
+    }
+
     public function storeEntrada(StoreEntradaInventarioRequest $request): JsonResponse
     {
         $movimiento = $this->inventarioService->registrarEntrada($request, $request->validated());
@@ -308,7 +700,22 @@ class InventarioBaseController extends Controller
 
     public function storeSalida(StoreSalidaInventarioRequest $request): JsonResponse
     {
-        $movimiento = $this->inventarioService->registrarSalida($request, $request->validated());
+        $datos = $request->validated();
+
+        if (!empty($datos['lineas'])) {
+            $resultado = $this->inventarioService->registrarSalidaLote($request, $datos);
+
+            return response()->json([
+                'message' => 'Salida de inventario registrada correctamente.',
+                'data' => [
+                    'total_lineas' => count($resultado['movimientos']),
+                    'min_ids' => collect($resultado['movimientos'])->pluck('min_id')->values()->all(),
+                    'folios' => collect($resultado['movimientos'])->pluck('min_folio')->values()->all(),
+                ],
+            ]);
+        }
+
+        $movimiento = $this->inventarioService->registrarSalida($request, $datos);
 
         return response()->json([
             'message' => 'Salida de inventario registrada correctamente.',
@@ -393,6 +800,17 @@ class InventarioBaseController extends Controller
     public function verReporteEntradasPdf(int $reporte)
     {
         $pdf = $this->inventarioService->descargarReporteEntradasPdfDesdeBitacora(request(), $reporte);
+
+        return response($pdf['content'], 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $pdf['file_name'] . '"',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate',
+        ]);
+    }
+
+    public function verReporteRecepcionMercanciaPdf(int $recepcion)
+    {
+        $pdf = $this->inventarioService->descargarReporteRecepcionMercanciaPdf(request(), $recepcion);
 
         return response($pdf['content'], 200, [
             'Content-Type' => 'application/pdf',
