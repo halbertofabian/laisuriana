@@ -42,6 +42,7 @@
                 <thead>
                     <tr>
                         <th>Cliente</th>
+                        <th>Desc.</th>
                         <th>Contacto</th>
                         <th>Documentos</th>
                         <th>Dirección</th>
@@ -119,6 +120,7 @@
         tbody.innerHTML = rows.map((row) => `
             <tr>
                 <td><div class="fw-semibold">${esc(row.nombre_completo)}</div><small class="text-body-secondary">${esc(row.cli_razon_social || '')}</small></td>
+                <td>${row.cli_descuento_default ? esc(row.cli_descuento_default) + '%' : '—'}</td>
                 <td><div>${esc(row.cli_telefono || '—')}</div><small class="text-body-secondary">${esc(row.cli_email || row.cli_whatsapp || '')}</small></td>
                 <td><div>RFC: ${esc(row.cli_rfc || '—')}</div><small class="text-body-secondary">CURP: ${esc(row.cli_curp || '—')}</small></td>
                 <td>${esc(row.direccion || 'Sin dirección')}</td>

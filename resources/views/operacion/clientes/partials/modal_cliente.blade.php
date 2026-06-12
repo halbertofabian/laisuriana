@@ -354,6 +354,13 @@
                             </select>
                         </div>
                     </div>
+                    <div class="col-md-6 cli-field">
+                        <label class="form-label">Descuento %</label>
+                        <div class="cli-input-wrap">
+                            <i class="ti tabler-percentage cli-icon"></i>
+                            <input type="number" class="form-control" name="cli_descuento_default" id="cli_descuento_default" min="1" max="100" step="1" placeholder="1 a 100">
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

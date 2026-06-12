@@ -36,8 +36,8 @@ class StoreClienteRequest extends FormRequest
             'cli_num_ext' => ['nullable', 'string', 'max:30'],
             'cli_num_int' => ['nullable', 'string', 'max:30'],
             'cli_referencias' => ['nullable', 'string'],
+            'cli_descuento_default' => ['nullable', 'integer', 'min:1', 'max:100'],
             'cli_estatus' => ['required', Rule::in(['activo', 'inactivo'])],
         ];
     }
 }
-

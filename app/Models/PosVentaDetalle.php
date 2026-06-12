@@ -27,6 +27,7 @@ class PosVentaDetalle extends Model
         'pvd_descuento_porcentaje',
         'pvd_descuento_importe',
         'pvd_importe',
+        'pvd_usr_id',
         'pvd_created_by_usr_id',
         'pvd_updated_by_usr_id',
     ];
@@ -50,5 +51,10 @@ class PosVentaDetalle extends Model
     public function sku()
     {
         return $this->belongsTo(ProductoSku::class, 'pvd_psk_id', 'psk_id');
+    }
+
+    public function vendedor()
+    {
+        return $this->belongsTo(Usuario::class, 'pvd_usr_id', 'usr_id');
     }
 }

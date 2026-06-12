@@ -76,6 +76,151 @@
         .variant-modal__row:hover { background: var(--ls-surface-2); }
         .variant-modal__name { font-size: .82rem; font-weight: 700; color: var(--ls-text-primary); display: block; }
         .variant-modal__meta { font-size: .74rem; color: var(--ls-text-muted); display: block; margin-top: .1rem; }
+        .pos-inline-disc-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: .3rem;
+            border: 1px solid var(--ls-border);
+            background: #fff;
+            color: var(--ls-text-primary);
+            border-radius: 999px;
+            font-size: .74rem;
+            font-weight: 700;
+            padding: .28rem .55rem;
+            transition: .18s ease;
+        }
+        .pos-inline-disc-btn:hover {
+            border-color: var(--ls-accent);
+            color: var(--ls-accent);
+            background: var(--ls-accent-light);
+        }
+        .pos-inline-disc-btn--active {
+            border-color: rgba(220, 53, 69, .18);
+            color: var(--ls-danger);
+            background: rgba(220, 53, 69, .08);
+        }
+        .pos-discount-btn[disabled],
+        .pos-inline-disc-btn[disabled] {
+            opacity: .55;
+            cursor: not-allowed;
+        }
+        .pos-discount-hint {
+            margin-top: .45rem;
+            font-size: .72rem;
+            color: var(--ls-text-muted);
+            line-height: 1.35;
+        }
+        .disc-modal__card {
+            width: min(520px, 94vw);
+            background: #fff;
+            border-radius: 22px;
+            border: none;
+            overflow: hidden;
+            box-shadow: 0 28px 72px rgba(10,37,64,.22), 0 4px 16px rgba(10,37,64,.08);
+        }
+        .disc-modal__head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .9rem;
+            padding: 1.15rem 1.4rem 1rem;
+            background: #fff;
+            border-bottom: 1px solid #eef0f6;
+        }
+        .disc-modal__title {
+            margin: 0;
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: #0a2540;
+            letter-spacing: -.01em;
+        }
+        .disc-modal__close {
+            width: 38px;
+            height: 38px;
+            border: 0;
+            border-radius: 12px;
+            background: #f1f4f9;
+            color: #64748b;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: .18s ease;
+        }
+        .disc-modal__close:hover {
+            background: #e2e8f0;
+            color: #1e293b;
+        }
+        .disc-modal__body {
+            padding: 1.2rem 1.4rem 1.35rem;
+            background: #f8fafc;
+        }
+        .disc-modal__product {
+            background: #fff;
+            border: 1px solid #eef0f6;
+            border-radius: 16px;
+            padding: .95rem 1rem;
+            box-shadow: 0 1px 4px rgba(10,37,64,.04);
+        }
+        .disc-modal__name {
+            font-size: .98rem;
+            font-weight: 800;
+            color: #0f2744;
+            line-height: 1.3;
+        }
+        .disc-modal__copy {
+            margin-top: .25rem;
+            font-size: .8rem;
+            color: #74839a;
+        }
+        .disc-modal__field {
+            margin-top: 1rem;
+            background: #fff;
+            border: 1px solid #eef0f6;
+            border-radius: 16px;
+            padding: .95rem 1rem;
+        }
+        .disc-modal__label {
+            display: block;
+            font-size: .78rem;
+            font-weight: 800;
+            color: #5e718f;
+            letter-spacing: .05em;
+            text-transform: uppercase;
+            margin-bottom: .6rem;
+        }
+        .disc-modal__input {
+            width: 100%;
+            height: 48px;
+            border-radius: 12px;
+            border: 1.5px solid #dce5f4;
+            padding: 0 .95rem;
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #0f2744;
+            background: #fff;
+            transition: .18s ease;
+        }
+        .disc-modal__input:focus {
+            outline: none;
+            border-color: #635bff;
+            box-shadow: 0 0 0 3px rgba(99,91,255,.12);
+        }
+        .disc-modal__actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: .6rem;
+            margin-top: 1rem;
+        }
+        .disc-modal__btn {
+            height: 42px;
+            border-radius: 12px;
+            padding: 0 1rem;
+            font-size: .86rem;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+        }
         .cash-summary__grid {
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1068,6 +1213,7 @@
                     <thead>
                         <tr>
                             <th style="padding-left:0.9rem">Descripción</th>
+                            <th style="min-width:130px">Vendedor</th>
                             <th style="min-width:80px">Precio</th>
                             <th style="min-width:110px">Cant.</th>
                             <th style="min-width:60px">Desc.</th>
@@ -1078,7 +1224,7 @@
                     <tbody>
                         <template x-if="items.length === 0">
                             <tr>
-                                <td colspan="6">
+                                <td colspan="7">
                                     <div class="pos-ticket__empty">
                                         <i class="ti tabler-shopping-cart pos-ticket__empty-icon"></i>
                                         <div class="pos-ticket__empty-text">
@@ -1093,6 +1239,9 @@
                                 <td style="padding-left:0.9rem">
                                     <div class="pos-ticket__desc" x-text="item.nombre"></div>
                                     <div class="pos-ticket__sku" x-text="item.sku"></div>
+                                </td>
+                                <td>
+                                    <span class="pos-ticket__sku" x-text="item.vendedor || '—'"></span>
                                 </td>
                                 <td>
                                     <span class="pos-ticket__price" x-text="fmt(item.precio)"></span>
@@ -1115,13 +1264,14 @@
                                     </div>
                                 </td>
                                 <td>
-                                    <template x-if="item.descuento > 0">
-                                        <span style="color:var(--ls-danger);font-weight:600;font-size:.8rem"
-                                              x-text="'-' + item.descuento + '%'"></span>
-                                    </template>
-                                    <template x-if="item.descuento === 0">
-                                        <span style="color:var(--ls-text-muted)">—</span>
-                                    </template>
+                                    <button
+                                        class="pos-inline-disc-btn"
+                                        :class="item.descuento > 0 ? 'pos-inline-disc-btn--active' : ''"
+                                        @click="abrirDescuentoItem(idx)"
+                                        :disabled="descuentoGlobal > 0">
+                                        <i class="ti tabler-percentage" style="font-size:.72rem"></i>
+                                        <span x-text="item.descuento > 0 ? item.descuento + '%' : 'Agregar'"></span>
+                                    </button>
                                 </td>
                                 <td>
                                     <span class="pos-ticket__importe" x-text="fmt(itemImporte(item))"></span>
@@ -1162,13 +1312,16 @@
                           :class="descuento > 0 ? 'pos-panel__val--danger' : 'pos-panel__val--muted'"
                           x-text="descuento > 0 ? '-' + fmt(descuento) : fmt(0)"></span>
                 </div>
-                <button class="pos-discount-btn" @click="aplicarDescuentoGlobal()">
+                <button class="pos-discount-btn" @click="aplicarDescuentoGlobal()" :disabled="tieneDescuentosPorProducto()">
                     <i class="ti tabler-percentage" style="font-size:.75rem"></i>
                     Descuento global
                 </button>
+                <div class="pos-discount-hint" x-show="tieneDescuentosPorProducto()" x-cloak>
+                    Quita los descuentos por producto para usar uno global.
+                </div>
             </div>
 
-            {{-- TOTAL --}}
+            {{-- Total --}}
             <div class="pos-total-block">
                 <div class="pos-total-block__lbl">Total</div>
                 <div class="pos-total-block__amount">
@@ -1668,6 +1821,48 @@
         </div>
     </div>
 
+    <div x-cloak x-show="mostrarModalDescuentoItem" class="variant-modal" @keydown.escape.window="cerrarDescuentoItem()">
+        <div class="disc-modal__card">
+            <div class="disc-modal__head">
+                <h3 class="disc-modal__title">Descuento</h3>
+                <button type="button" class="disc-modal__close" @click="cerrarDescuentoItem()" title="Cerrar">
+                    <i class="ti tabler-x"></i>
+                </button>
+            </div>
+            <div class="disc-modal__body">
+                <div class="disc-modal__product">
+                    <div class="disc-modal__name" x-text="descuentoItemNombre"></div>
+                    <div class="disc-modal__copy">Captura un porcentaje entre 0 y 100.</div>
+                </div>
+
+                <div class="disc-modal__field">
+                    <label class="disc-modal__label">Porcentaje</label>
+                    <input
+                        x-ref="descuentoItemInput"
+                        type="number"
+                        class="disc-modal__input"
+                        min="0"
+                        max="100"
+                        step="1"
+                        x-model="descuentoItemValor"
+                        @keydown.enter.prevent="guardarDescuentoItem()"
+                    >
+                </div>
+
+                <div class="disc-modal__actions">
+                    <button type="button" class="btn btn-outline-secondary disc-modal__btn" @click="limpiarDescuentoItem()">
+                        <i class="ti tabler-eraser"></i>
+                        Quitar
+                    </button>
+                    <button type="button" class="btn btn-primary disc-modal__btn" @click="guardarDescuentoItem()">
+                        <i class="ti tabler-device-floppy"></i>
+                        Guardar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div x-cloak x-show="mostrarModalCaja" class="caja-gate">
         <div class="caja-gate__card">
 
@@ -1778,6 +1973,7 @@ function posApp() {
     const estadoInicial = @json($estado ?? []);
     const almacenesVentaInicial = @json($almacenesVenta ?? []);
     const usuarioActualId = {{ (int) (auth()->user()->usr_id ?? 0) }};
+    const usuarioActualNombre = @json((string) (auth()->user()->usr_nombre ?? auth()->user()->usr_usuario ?? 'Sin vendedor'));
     const rutaBuscarProducto = '{{ route('operacion.escaneo_productos.buscar') }}';
     const rutaBuscarPedidoFolio = '{{ route('operacion.pedidos_piso.folio.buscar') }}';
     const rutaBuscarClientes = '{{ route('pos.clientes.buscar') }}';
@@ -1824,6 +2020,7 @@ function posApp() {
         mostrarModalPago: false,
         mostrarModalResumenCaja: false,
         mostrarModalTickets: false,
+        mostrarModalDescuentoItem: false,
         puedeCrearCliente: !!puedeCrearCliente,
         guardandoClienteNuevo: false,
         cobrandoVenta: false,
@@ -1848,6 +2045,7 @@ function posApp() {
             razon_social: '',
             fecha_nacimiento: '',
             estatus: 'activo',
+            descuento_default: '',
             telefono: '',
             whatsapp: '',
             email: '',
@@ -1869,6 +2067,9 @@ function posApp() {
         sugerenciaClienteActivaIndex: -1,
         timerBusquedaCliente: null,
         notas:         '',
+        descuentoItemIndex: -1,
+        descuentoItemValor: '',
+        descuentoItemNombre: '',
 
         // ── Ticket ───────────────────────────────────────────────
         items:               [],
@@ -2105,6 +2306,7 @@ function posApp() {
                 razon_social: '',
                 fecha_nacimiento: '',
                 estatus: 'activo',
+                descuento_default: '',
                 telefono: '',
                 whatsapp: '',
                 email: '',
@@ -2227,12 +2429,17 @@ function posApp() {
             const c = this.sugerenciasCliente[idx];
             this.clienteSeleccionado = c;
             this.queryCliente = c.nombre || '';
+            this.aplicarDescuentoCliente(c);
             this.cerrarSugerenciasCliente();
             this.mostrarModalClientes = false;
         },
         cerrarSugerenciasCliente() {
             this.mostrarSugerenciasCliente = false;
             this.sugerenciaClienteActivaIndex = -1;
+        },
+        aplicarDescuentoCliente(cliente) {
+            const porcentaje = Number(cliente?.descuento_default ?? 0);
+            this.descuentoGlobal = porcentaje > 0 ? Math.min(100, Math.max(1, porcentaje)) : 0;
         },
         async guardarClienteDesdePos() {
             if (!this.puedeCrearCliente || this.guardandoClienteNuevo) return;
@@ -2253,6 +2460,7 @@ function posApp() {
                 cli_apellido_materno: String(fd.get('cli_apellido_materno') || '').trim() || null,
                 cli_razon_social: String(fd.get('cli_razon_social') || '').trim() || null,
                 cli_fecha_nacimiento: String(fd.get('cli_fecha_nacimiento') || '').trim() || null,
+                cli_descuento_default: String(fd.get('cli_descuento_default') || '').trim() || null,
                 cli_telefono: String(fd.get('cli_telefono') || '').trim() || null,
                 cli_whatsapp: String(fd.get('cli_whatsapp') || '').trim() || null,
                 cli_email: String(fd.get('cli_email') || '').trim() || null,
@@ -2292,7 +2500,15 @@ function posApp() {
                 }
 
                 const nombreCompleto = [body.cli_nombre, body.cli_apellido_paterno, body.cli_apellido_materno].filter(Boolean).join(' ');
-                this.clienteSeleccionado = { cli_id: 0, nombre: nombreCompleto, telefono: body.cli_telefono || '', email: body.cli_email || '', rfc: body.cli_rfc || '' };
+                this.clienteSeleccionado = {
+                    cli_id: Number(json?.data?.cli_id || 0),
+                    nombre: nombreCompleto,
+                    telefono: body.cli_telefono || '',
+                    email: body.cli_email || '',
+                    rfc: body.cli_rfc || '',
+                    descuento_default: body.cli_descuento_default ? Number(body.cli_descuento_default) : null,
+                };
+                this.aplicarDescuentoCliente(this.clienteSeleccionado);
                 this.queryCliente = nombreCompleto;
                 this.cerrarModalClientes();
                 this.cerrarSugerenciasCliente();
@@ -2529,6 +2745,8 @@ function posApp() {
         aplicarPedidoEnTicket(pedido, cerrarModalPedido = false) {
             this.items = (pedido.detalle || []).map((d) => ({
                 pskId: d.ppd_psk_id,
+                usrId: Number(d.ppd_usr_id || 0),
+                vendedor: d.capturista || 'Sin vendedor',
                 nombre: d.nombre || d.sku,
                 sku: d.sku,
                 codigoBarras: '',
@@ -2617,6 +2835,8 @@ function posApp() {
             if (!item?.psk_id) return;
             this.agregarItem({
                 pskId: item.psk_id,
+                usrId: usuarioActualId,
+                vendedor: usuarioActualNombre,
                 nombre: item.psk_nombre || item.producto?.prd_nombre || item.psk_codigo,
                 sku: item.psk_codigo,
                 codigoBarras: item.psk_codigo_barras || item.producto?.prd_codigo_barras || '',
@@ -2637,13 +2857,59 @@ function posApp() {
         },
 
         agregarItem(producto) {
-            const existe = this.items.find(i => i.pskId === producto.pskId || i.sku === producto.sku);
+            const existe = this.items.find(i =>
+                (i.pskId === producto.pskId || i.sku === producto.sku)
+                && Number(i.usrId || 0) === Number(producto.usrId || 0)
+            );
             if (existe) {
                 existe.cantidad++;
                 this.recalcular();
             } else {
                 this.items.push({ ...producto });
             }
+        },
+        tieneDescuentosPorProducto() {
+            return this.items.some((item) => Number(item.descuento || 0) > 0);
+        },
+        abrirDescuentoItem(idx) {
+            if (this.descuentoGlobal > 0) {
+                AppUI.showMessage('Aviso', 'Quita el descuento global para usar descuento por producto.', 'warning');
+                return;
+            }
+            const item = this.items[idx];
+            if (!item) return;
+            this.descuentoItemIndex = idx;
+            this.descuentoItemNombre = item.nombre || item.sku || 'Producto';
+            this.descuentoItemValor = String(Number(item.descuento || 0));
+            this.mostrarModalDescuentoItem = true;
+            this.$nextTick(() => this.$refs.descuentoItemInput?.focus());
+        },
+        cerrarDescuentoItem() {
+            this.mostrarModalDescuentoItem = false;
+            this.descuentoItemIndex = -1;
+            this.descuentoItemValor = '';
+            this.descuentoItemNombre = '';
+        },
+        guardarDescuentoItem() {
+            if (this.descuentoItemIndex < 0 || !this.items[this.descuentoItemIndex]) {
+                this.cerrarDescuentoItem();
+                return;
+            }
+            const valor = Math.min(100, Math.max(0, Number(this.descuentoItemValor || 0)));
+            if (Number.isNaN(valor)) {
+                AppUI.showMessage('Aviso', 'Captura un porcentaje válido.', 'warning');
+                return;
+            }
+            this.items[this.descuentoItemIndex].descuento = valor;
+            this.recalcular();
+            this.cerrarDescuentoItem();
+        },
+        limpiarDescuentoItem() {
+            if (this.descuentoItemIndex >= 0 && this.items[this.descuentoItemIndex]) {
+                this.items[this.descuentoItemIndex].descuento = 0;
+                this.recalcular();
+            }
+            this.cerrarDescuentoItem();
         },
 
         quitarItem(idx)  { this.items.splice(idx, 1); },
@@ -2675,6 +2941,9 @@ function posApp() {
                 this.pedidoCargado = null;
                 this.ventaAlmacenId = '';
                 this.ventaAlmacenNombre = '';
+                this.clienteSeleccionado = null;
+                this.queryCliente = '';
+                this.descuentoGlobal = 0;
                 this.aplicarAlmacenPorSesion();
                 this.$refs.productoInput?.focus();
             }
@@ -2705,6 +2974,7 @@ function posApp() {
             this.items               = v.items;
             this.notas               = v.notas;
             this.clienteSeleccionado = v.cliente;
+            this.descuentoGlobal     = Number(v.descuentoGlobal || v.cliente?.descuento_default || 0);
             this.ventasEspera.splice(idx, 1);
         },
 
@@ -2856,6 +3126,7 @@ function posApp() {
                 monto_tarjeta: Number(montoTarjeta || 0),
                 items: this.items.map((i) => ({
                     psk_id: Number(i.pskId),
+                    usr_id: Number(i.usrId || usuarioActualId || 0),
                     cantidad: Number(i.cantidad || 0),
                     precio: Number(i.precio || 0),
                     descuento: Number(i.descuento || 0),
@@ -2910,6 +3181,10 @@ function posApp() {
             return encontrado?.alm_nombre || '';
         },
         aplicarDescuentoGlobal() {
+            if (this.tieneDescuentosPorProducto()) {
+                AppUI.showMessage('Aviso', 'Quita primero los descuentos por producto.', 'warning');
+                return;
+            }
             const pct = prompt('Descuento global (%):');
             if (pct !== null && !isNaN(pct)) {
                 this.descuentoGlobal = Math.min(100, Math.max(0, parseFloat(pct)));

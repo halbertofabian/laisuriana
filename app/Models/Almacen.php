@@ -53,4 +53,11 @@ class Almacen extends Model
     {
         return $this->hasMany(MovimientoInventario::class, 'min_alm_id', 'alm_id');
     }
+
+    public function productosPermitidos()
+    {
+        return $this->belongsToMany(Producto::class, 'tbl_producto_almacenes_pra', 'pra_alm_id', 'pra_prd_id')
+            ->wherePivot('pra_deleted', false)
+            ->wherePivotNull('pra_deleted_at');
+    }
 }

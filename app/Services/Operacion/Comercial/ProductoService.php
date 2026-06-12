@@ -3,8 +3,10 @@
 namespace App\Services\Operacion\Comercial;
 
 use App\Models\Atributo;
+use App\Models\Almacen;
 use App\Models\Producto;
 use App\Models\ProductoAtributo;
+use App\Models\ProductoAlmacen;
 use App\Models\ProductoCorrida;
 use App\Models\ProductoCorridaValor;
 use App\Models\ProductoSku;
@@ -36,6 +38,7 @@ class ProductoService
                 'categoria:ctg_id,ctg_nombre',
                 'unidad:umd_id,umd_nombre,umd_codigo',
                 'atributos:atr_id,atr_nombre',
+                'almacenesPermitidos:alm_id,alm_scl_id,alm_nombre',
             ])
             ->withCount([
                 'skus as skus_total' => fn ($query) => $query->where('psk_deleted', false)->whereNull('psk_deleted_at'),
@@ -60,6 +63,7 @@ class ProductoService
         $producto = Producto::query()
             ->with([
                 'atributos:atr_id,atr_nombre',
+                'almacenesPermitidos:alm_id,alm_scl_id,alm_nombre',
                 'corridas' => fn ($query) => $query
                     ->where('prc_deleted', false)
                     ->whereNull('prc_deleted_at')
@@ -126,6 +130,7 @@ class ProductoService
             }
 
             $this->sincronizarAtributosProducto($request, $producto->prd_id, $configuracion['atributo_ids']);
+            $this->sincronizarAlmacenesProducto($request, $producto->prd_id, $datos['almacen_ids'] ?? []);
             $this->sincronizarCorridasProducto($request, $producto->prd_id, $configuracion['corridas']);
             $resumenSkus = $this->sincronizarSkusGenerados($request, $producto, $configuracion);
 
@@ -188,6 +193,7 @@ class ProductoService
             ]);
 
             $this->sincronizarAtributosProducto($request, $producto->prd_id, $configuracion['atributo_ids']);
+            $this->sincronizarAlmacenesProducto($request, $producto->prd_id, $datos['almacen_ids'] ?? []);
             $this->sincronizarCorridasProducto($request, $producto->prd_id, $configuracion['corridas']);
             $resumenSkus = $this->sincronizarSkusGenerados($request, $producto->fresh(), $configuracion);
             $this->sincronizarEstatusSkusPorProducto($request, $producto->prd_id, $producto->prd_estatus);
@@ -278,10 +284,68 @@ class ProductoService
             'lineas' => \App\Models\Linea::query()->where('lna_estatus', 'activo')->orderBy('lna_nombre')->get(['lna_id', 'lna_nombre']),
             'categorias' => \App\Models\Categoria::query()->where('ctg_estatus', 'activo')->orderBy('ctg_nombre')->get(['ctg_id', 'ctg_nombre']),
             'unidades' => \App\Models\UnidadMedida::query()->where('umd_estatus', 'activo')->orderByDesc('umd_es_predeterminada')->orderBy('umd_nombre')->get(['umd_id', 'umd_nombre', 'umd_codigo', 'umd_es_predeterminada']),
+            'almacenes' => Almacen::query()->with('sucursal:scl_id,scl_nombre')->where('alm_estatus', 'activo')->orderBy('alm_scl_id')->orderBy('alm_nombre')->get(['alm_id', 'alm_scl_id', 'alm_nombre']),
             'proveedores' => \App\Models\Proveedor::query()->where('prv_estatus', 'activo')->orderBy('prv_nombre_empresa')->get(['prv_id', 'prv_nombre_empresa']),
             'atributos' => \App\Models\Atributo::query()->where('atr_estatus', 'activo')->orderBy('atr_nombre')->get(['atr_id', 'atr_nombre']),
             'productos' => Producto::query()->where('prd_estatus', 'activo')->orderBy('prd_nombre')->get(['prd_id', 'prd_nombre', 'prd_codigo']),
         ];
+    }
+
+    private function sincronizarAlmacenesProducto(Request $request, int $productoId, array $almacenIds): void
+    {
+        $almacenIds = collect($almacenIds)
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        $existentes = Almacen::query()
+            ->whereIn('alm_id', $almacenIds)
+            ->where('alm_estatus', 'activo')
+            ->pluck('alm_id')
+            ->map(fn ($id) => (int) $id)
+            ->values();
+
+        if ($existentes->count() !== $almacenIds->count()) {
+            throw ValidationException::withMessages([
+                'almacen_ids' => 'Uno o más almacenes seleccionados no están disponibles.',
+            ]);
+        }
+
+        ProductoAlmacen::query()
+            ->where('pra_prd_id', $productoId)
+            ->whereNotIn('pra_alm_id', $existentes->all())
+            ->where('pra_deleted', false)
+            ->whereNull('pra_deleted_at')
+            ->update([
+                'pra_deleted' => true,
+                'pra_deleted_at' => now(),
+                'pra_updated_by_usr_id' => optional($request->user())->usr_id,
+                'pra_updated_at' => now(),
+            ]);
+
+        foreach ($existentes as $almacenId) {
+            $registro = ProductoAlmacen::query()
+                ->where('pra_prd_id', $productoId)
+                ->where('pra_alm_id', (int) $almacenId)
+                ->first();
+
+            if ($registro) {
+                $registro->forceFill([
+                    'pra_deleted' => false,
+                    'pra_deleted_at' => null,
+                    'pra_updated_by_usr_id' => optional($request->user())->usr_id,
+                ])->save();
+                continue;
+            }
+
+            ProductoAlmacen::query()->create([
+                'pra_prd_id' => $productoId,
+                'pra_alm_id' => (int) $almacenId,
+                'pra_created_by_usr_id' => optional($request->user())->usr_id,
+                'pra_updated_by_usr_id' => optional($request->user())->usr_id,
+            ]);
+        }
     }
 
     public function atributosPermitidosProducto(int $productoId)

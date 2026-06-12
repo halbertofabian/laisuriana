@@ -101,4 +101,11 @@ class Producto extends Model
     {
         return $this->hasMany(ProductoCorrida::class, 'prc_prd_id', 'prd_id');
     }
+
+    public function almacenesPermitidos()
+    {
+        return $this->belongsToMany(Almacen::class, 'tbl_producto_almacenes_pra', 'pra_prd_id', 'pra_alm_id')
+            ->wherePivot('pra_deleted', false)
+            ->wherePivotNull('pra_deleted_at');
+    }
 }

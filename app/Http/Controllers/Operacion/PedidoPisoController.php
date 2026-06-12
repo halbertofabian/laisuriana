@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Operacion;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Operacion\StorePedidoPisoRequest;
+use App\Models\PedidoPiso;
 use App\Services\Operacion\EscaneoProductoService;
 use App\Services\Operacion\PedidoPisoService;
 use Illuminate\Http\JsonResponse;
@@ -19,11 +20,28 @@ class PedidoPisoController extends Controller
 
     public function index()
     {
+        $opciones = $this->pedidoPisoService->opcionesBase();
+        $usuario = auth()->user();
+        $defaultSucursalId = $usuario?->sucursales()
+            ->orderBy('tbl_sucursales_scl.scl_nombre')
+            ->value('tbl_sucursales_scl.scl_id');
+
+        if (!$defaultSucursalId && $opciones['sucursales']->count() === 1) {
+            $defaultSucursalId = (int) $opciones['sucursales']->first()->scl_id;
+        }
+
         return view('operacion.pedidos_piso.index', [
-            'opciones' => $this->pedidoPisoService->opcionesBase(),
+            'opciones' => $opciones,
+            'defaultSucursalId' => $defaultSucursalId ? (int) $defaultSucursalId : null,
+            'usuarioActual' => [
+                'usr_id' => (int) (auth()->user()?->usr_id ?? 0),
+                'usr_nombre' => (string) (auth()->user()?->usr_nombre ?? 'Sin usuario'),
+            ],
             'permisosUI' => [
                 'crear' => auth()->user()?->tienePermiso('pedido_piso.crear') ?? false,
                 'ver' => auth()->user()?->tienePermiso('pedido_piso.ver') ?? false,
+                'eliminar' => (auth()->user()?->tienePermiso('pedido_piso.eliminar') ?? false)
+                    || (auth()->user()?->tienePermiso('pedido_piso.crear') ?? false),
             ],
         ]);
     }
@@ -57,6 +75,8 @@ class PedidoPisoController extends Controller
             'data' => [
                 'pdp_id' => $r->pdp_id,
                 'pdp_folio' => $r->pdp_folio,
+                'pdp_scl_id' => (int) $r->pdp_scl_id,
+                'pdp_alm_id' => (int) $r->pdp_alm_id,
                 'pdp_estatus' => $r->pdp_estatus,
                 'pdp_total' => (float) $r->pdp_total,
                 'pdp_observaciones' => $r->pdp_observaciones,
@@ -70,6 +90,9 @@ class PedidoPisoController extends Controller
                     'cantidad' => (float) $d->ppd_cantidad,
                     'precio' => (float) $d->ppd_precio_unitario,
                     'importe' => (float) $d->ppd_importe,
+                    'ppd_usr_id' => (int) ($d->ppd_usr_id ?? 0),
+                    'capturista' => $d->capturista?->usr_nombre,
+                    'permite_decimal' => (bool) ($d->sku?->producto && strtoupper(trim((string) ($d->sku->producto->unidad?->umd_codigo ?? ''))) === 'M'),
                 ])->values(),
             ],
         ]);
@@ -88,6 +111,28 @@ class PedidoPisoController extends Controller
         ]);
     }
 
+    public function update(StorePedidoPisoRequest $request, int $pedido): JsonResponse
+    {
+        $pedidoActualizado = $this->pedidoPisoService->actualizar($request, $pedido, $request->validated());
+
+        return response()->json([
+            'message' => 'Pedido actualizado correctamente.',
+            'data' => [
+                'pdp_id' => $pedidoActualizado->pdp_id,
+                'pdp_folio' => $pedidoActualizado->pdp_folio,
+            ],
+        ]);
+    }
+
+    public function eliminar(Request $request, int $pedido): JsonResponse
+    {
+        $this->pedidoPisoService->eliminar($request, $pedido);
+
+        return response()->json([
+            'message' => 'Pedido eliminado correctamente.',
+        ]);
+    }
+
     public function buscarProductos(Request $request): JsonResponse
     {
         $datos = $request->validate([
@@ -96,6 +141,58 @@ class PedidoPisoController extends Controller
 
         return response()->json([
             'data' => $this->escaneoProductoService->sugerencias((string) $datos['q'], 15),
+        ]);
+    }
+
+    public function resolverProductoAlmacen(Request $request): JsonResponse
+    {
+        $datos = $request->validate([
+            'psk_id' => ['required', 'integer', 'exists:tbl_producto_skus_psk,psk_id'],
+            'pdp_scl_id' => ['required', 'integer', 'exists:tbl_sucursales_scl,scl_id'],
+        ]);
+
+        $resultado = $this->pedidoPisoService->resolverSkuAlmacen(
+            (int) $datos['psk_id'],
+            (int) $datos['pdp_scl_id']
+        );
+
+        if (!$resultado['valido']) {
+            return response()->json([
+                'message' => $resultado['message'],
+                'data' => $resultado,
+            ], 422);
+        }
+
+        return response()->json([
+            'message' => $resultado['message'],
+            'data' => $resultado,
+        ]);
+    }
+
+    public function validarProductoAlmacen(Request $request): JsonResponse
+    {
+        $datos = $request->validate([
+            'psk_id' => ['required', 'integer', 'exists:tbl_producto_skus_psk,psk_id'],
+            'pdp_scl_id' => ['required', 'integer', 'exists:tbl_sucursales_scl,scl_id'],
+            'pdp_alm_id' => ['required', 'integer', 'exists:tbl_almacenes_alm,alm_id'],
+        ]);
+
+        $resultado = $this->pedidoPisoService->validarSkuParaAlmacen(
+            (int) $datos['psk_id'],
+            (int) $datos['pdp_scl_id'],
+            (int) $datos['pdp_alm_id']
+        );
+
+        if (!$resultado['valido']) {
+            return response()->json([
+                'message' => $resultado['message'],
+                'data' => $resultado,
+            ], 422);
+        }
+
+        return response()->json([
+            'message' => $resultado['message'],
+            'data' => $resultado,
         ]);
     }
 
@@ -140,8 +237,77 @@ class PedidoPisoController extends Controller
                     'cantidad' => (float) $d->ppd_cantidad,
                     'precio' => (float) $d->ppd_precio_unitario,
                     'importe' => (float) $d->ppd_importe,
+                    'ppd_usr_id' => (int) ($d->ppd_usr_id ?? 0),
+                    'capturista' => $d->capturista?->usr_nombre,
                 ])->values(),
             ],
+        ]);
+    }
+
+    public function ticket(PedidoPiso $pedido)
+    {
+        $pedido->load([
+            'sucursal:scl_id,scl_nombre',
+            'almacen:alm_id,alm_nombre',
+        ]);
+
+        $pdf = new \TCPDF('P', 'mm', [80, 95], true, 'UTF-8', false, false);
+        $pdf->SetCreator(config('app.name', 'La Suriana'));
+        $pdf->SetAuthor((string) ($pedido->usuario?->usr_nombre ?? 'Pedido piso'));
+        $pdf->SetTitle('Pedido ' . $pedido->pdp_folio);
+        $pdf->setPrintHeader(false);
+        $pdf->setPrintFooter(false);
+        $pdf->SetMargins(5, 5, 5);
+        $pdf->SetAutoPageBreak(true, 4);
+        $pdf->AddPage();
+
+        $barcodeStyle = [
+            'position' => '',
+            'align' => 'C',
+            'stretch' => false,
+            'fitwidth' => true,
+            'cellfitalign' => '',
+            'border' => false,
+            'padding' => 0,
+            'fgcolor' => [0, 0, 0],
+            'bgcolor' => false,
+            'text' => false,
+            'font' => 'helvetica',
+            'fontsize' => 7,
+        ];
+
+        $html = '<div style="text-align:center;font-size:12px;font-weight:bold;">' . e((string) ($pedido->sucursal?->scl_nombre ?? 'Sucursal')) . '</div>';
+        $html .= '<div style="text-align:center;font-size:7px;color:#666;margin-top:2px;">Pedido de piso</div>';
+        $html .= '<hr/>';
+        $html .= '<table cellspacing="0" cellpadding="2" style="font-size:8px;width:100%;">';
+        $html .= '<tr><td width="28%"><b>Sucursal</b></td><td width="72%" align="right">' . e((string) ($pedido->sucursal?->scl_nombre ?? 'Sin sucursal')) . '</td></tr>';
+        $html .= '<tr><td width="28%"><b>Almacén</b></td><td width="72%" align="right">' . e((string) ($pedido->almacen?->alm_nombre ?? 'Sin almacén')) . '</td></tr>';
+        $html .= '<tr><td width="28%"><b>Folio</b></td><td width="72%" align="right">' . e((string) $pedido->pdp_folio) . '</td></tr>';
+        $html .= '</table>';
+        $html .= '<div style="text-align:center;font-size:7px;color:#666;margin-top:6px;">Presenta este ticket en caja</div>';
+
+        $pdf->writeHTML($html, true, false, true, false, '');
+
+        $barcodeY = max(42, $pdf->GetY() + 4);
+        $pdf->write1DBarcode(
+            (string) $pedido->pdp_folio,
+            'C128',
+            8,
+            $barcodeY,
+            64,
+            14,
+            0.33,
+            $barcodeStyle,
+            'N'
+        );
+        $pdf->SetFont('helvetica', 'B', 8);
+        $pdf->SetXY(5, $barcodeY + 15);
+        $pdf->Cell(70, 4, (string) $pedido->pdp_folio, 0, 1, 'C');
+
+        return response($pdf->Output('', 'S'), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="pedido-' . $pedido->pdp_folio . '.pdf"',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
         ]);
     }
 }

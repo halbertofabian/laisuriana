@@ -41,6 +41,7 @@ class Cliente extends Model
         'cli_num_ext',
         'cli_num_int',
         'cli_referencias',
+        'cli_descuento_default',
         'cli_estatus',
         'cli_created_by_usr_id',
         'cli_updated_by_usr_id',
@@ -50,6 +51,7 @@ class Cliente extends Model
     {
         return [
             'cli_fecha_nacimiento' => 'date',
+            'cli_descuento_default' => 'integer',
             'cli_deleted' => 'boolean',
             'cli_created_at' => 'datetime',
             'cli_updated_at' => 'datetime',
@@ -57,4 +59,3 @@ class Cliente extends Model
         ];
     }
 }
-

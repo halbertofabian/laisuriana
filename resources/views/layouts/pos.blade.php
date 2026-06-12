@@ -653,29 +653,30 @@
 
         /* Total big block */
         .pos-total-block {
-            padding: 0.8rem 0.85rem 0.75rem;
+            padding: 1rem 0.85rem 0.95rem;
             border-bottom: 1px solid var(--ls-border);
             background: linear-gradient(135deg, rgba(26,158,109,.04) 0%, transparent 80%);
+            text-align: center;
         }
 
         .pos-total-block__lbl {
-            font-size: 0.63rem;
-            font-weight: 700;
-            letter-spacing: 0.1em;
+            font-size: 0.7rem;
+            font-weight: 800;
+            letter-spacing: 0.14em;
             text-transform: uppercase;
             color: var(--ls-success);
-            margin-bottom: 0.15rem;
+            margin-bottom: 0.3rem;
         }
 
         .pos-total-block__amount {
-            font-size: 2.1rem;
+            font-size: 2.95rem;
             font-weight: 800;
             color: var(--ls-success);
-            line-height: 1;
-            letter-spacing: -0.03em;
+            line-height: .95;
+            letter-spacing: -0.05em;
         }
 
-        .pos-total-block__amount span { font-size: 1.1rem; font-weight: 600; vertical-align: top; margin-top: 0.3rem; display: inline-block; }
+        .pos-total-block__amount span { font-size: 1.35rem; font-weight: 700; vertical-align: top; margin-top: 0.35rem; display: inline-block; }
 
         .pos-discount-btn {
             display: inline-flex;
@@ -746,7 +747,6 @@
             align-items: center;
             gap: 0.3rem;
         }
-
         .pos-bottom__center {
             display: flex;
             align-items: center;

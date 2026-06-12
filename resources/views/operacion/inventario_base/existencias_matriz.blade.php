@@ -108,6 +108,12 @@
         }
         .em-size-pill--zero .em-size-pill__val { color: var(--ls-warning); }
 
+        .em-size-pill--new {
+            border-color: rgba(37, 99, 235, .28);
+            background: rgba(37, 99, 235, .08);
+        }
+        .em-size-pill--new .em-size-pill__val { color: #2563eb; }
+
         .em-size-pill--na {
             border-style: dashed;
             opacity: .6;
@@ -245,6 +251,23 @@
         <div class="em-filter-bar">
             <div class="row g-3">
                 <div class="col-md-2">
+                    <label class="form-label" for="flt-scl">Sucursal</label>
+                    <select id="flt-scl" class="form-select js-select2-basic">
+                        @foreach($opciones['sucursales'] as $sucursal)
+                            <option value="{{ $sucursal->scl_id }}" @selected((int) $sucursal->scl_id === (int) ($defaultSucursalId ?? 0))>{{ $sucursal->scl_nombre }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label" for="flt-alm">Almacén</label>
+                    <select id="flt-alm" class="form-select js-select2-basic">
+                        <option value="">Todos</option>
+                        @foreach($opciones['almacenes'] as $almacen)
+                            <option value="{{ $almacen->alm_id }}" data-scl="{{ $almacen->alm_scl_id }}">{{ $almacen->alm_nombre }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2">
                     <label class="form-label" for="flt-mrc">Marca</label>
                     <select id="flt-mrc" class="form-select js-select2-basic">
                         <option value="">Todas</option>
@@ -320,6 +343,7 @@
             <div class="em-legend">
                 <span class="em-legend__item"><span class="em-size-pill em-size-pill--ok" style="pointer-events:none"><span class="em-size-pill__name">TL</span><span class="em-size-pill__sep">:</span><span class="em-size-pill__val">5</span></span>&nbsp;Existencia positiva</span>
                 <span class="em-legend__item"><span class="em-size-pill em-size-pill--zero" style="pointer-events:none"><span class="em-size-pill__name">TL</span><span class="em-size-pill__sep">:</span><span class="em-size-pill__val">0</span></span>&nbsp;Existencia en cero</span>
+                <span class="em-legend__item"><span class="em-size-pill em-size-pill--new" style="pointer-events:none"><span class="em-size-pill__name">TL</span><span class="em-size-pill__sep">:</span><span class="em-size-pill__val">0</span></span>&nbsp;SKU generado sin historial en almacenes</span>
                 <span class="em-legend__item"><span class="em-size-pill em-size-pill--na" style="pointer-events:none"><span class="em-size-pill__name">TL</span><span class="em-size-pill__sep">:</span><span class="em-size-pill__val">N/D</span></span>&nbsp;Sin SKU generado</span>
             </div>
         </div>
@@ -369,7 +393,6 @@
             let selectedRowIdx = null;
             let pendingSelect = null;
             let contextTarget = null;
-
             function getDataRows() {
                 return $('#tbl-existencias-matriz tbody tr').not('.dataTables_empty');
             }
@@ -419,13 +442,20 @@
 
                 return '<div class="em-size-strip">' + tallas.map((item) => {
                     const estado = item.estado || 'sin_sku';
-                    const mod = estado === 'con_existencia' ? 'ok' : (estado === 'cero' ? 'zero' : 'na');
+                    const mod = estado === 'con_existencia'
+                        ? 'ok'
+                        : (estado === 'cero'
+                            ? 'zero'
+                            : (estado === 'sin_historial' ? 'new' : 'na'));
                     const valor = item.existencia === null ? 'N/D' : Number(item.existencia).toFixed(2).replace(/\.00$/, '');
                     const pskId = item.psk_id ? String(item.psk_id) : '';
                     const colorVatId = item.color_vat_id ? String(item.color_vat_id) : '';
                     const tallaKey = item.talla_key ? String(item.talla_key) : '';
+                    const title = estado === 'sin_historial'
+                        ? 'SKU generado sin historial de existencias en almacenes'
+                        : (estado === 'sin_sku' ? 'Sin SKU generado' : '');
 
-                    return `<span class="em-size-pill em-size-pill--${mod}" data-psk-id="${escapeHtml(pskId)}" data-talla="${escapeHtml(item.talla || 'Base')}" data-talla-key="${escapeHtml(tallaKey)}" data-color-vat-id="${escapeHtml(colorVatId)}"><span class="em-size-pill__name">${escapeHtml(item.talla || 'Base')}</span><span class="em-size-pill__sep">:</span><span class="em-size-pill__val">${escapeHtml(valor)}</span></span>`;
+                    return `<span class="em-size-pill em-size-pill--${mod}" title="${escapeHtml(title)}" data-psk-id="${escapeHtml(pskId)}" data-talla="${escapeHtml(item.talla || 'Base')}" data-talla-key="${escapeHtml(tallaKey)}" data-color-vat-id="${escapeHtml(colorVatId)}"><span class="em-size-pill__name">${escapeHtml(item.talla || 'Base')}</span><span class="em-size-pill__sep">:</span><span class="em-size-pill__val">${escapeHtml(valor)}</span></span>`;
                 }).join('') + '</div>';
             }
 
@@ -455,6 +485,29 @@
                 $concepto.trigger('change.select2');
             }
 
+            function syncAlmacenesPorSucursal() {
+                const sucursalId = String($('#flt-scl').val() || '');
+                const $almacen = $('#flt-alm');
+                const actual = String($almacen.val() || '');
+
+                $almacen.find('option').each(function () {
+                    const valor = String($(this).val() || '');
+                    if (!valor) {
+                        $(this).prop('hidden', false);
+                        return;
+                    }
+
+                    const scl = String($(this).data('scl') || '');
+                    $(this).prop('hidden', sucursalId !== '' && scl !== sucursalId);
+                });
+
+                if (actual && $almacen.find(`option[value="${actual}"]:not([hidden])`).length === 0) {
+                    $almacen.val('');
+                }
+
+                $almacen.trigger('change.select2');
+            }
+
             function initSelect2() {
                 $('.js-select2-basic').select2({
                     width: '100%',
@@ -473,6 +526,8 @@
                             return {
                                 q: params.term || '',
                                 page: params.page || 1,
+                                min_scl_id: $('#flt-scl').val(),
+                                min_alm_id: $('#flt-alm').val(),
                                 prd_mrc_id: $('#flt-mrc').val(),
                                 prd_mdl_id: $('#flt-mdl').val(),
                                 prd_lna_id: $('#flt-lna').val(),
@@ -497,6 +552,8 @@
                     ajax: {
                         url: rutas.data,
                         data: function (d) {
+                            d.min_scl_id = $('#flt-scl').val();
+                            d.min_alm_id = $('#flt-alm').val();
                             d.prd_mrc_id = $('#flt-mrc').val();
                             d.prd_mdl_id = $('#flt-mdl').val();
                             d.prd_lna_id = $('#flt-lna').val();
@@ -536,7 +593,10 @@
                 $('#flt-ctg').val('').trigger('change');
                 $('#flt-prd').val(null).trigger('change');
                 $('#flt-buscar').val('');
+                $('#flt-scl').val(@json((string) ($defaultSucursalId ?? ''))).trigger('change');
+                $('#flt-alm').val('').trigger('change');
                 aplicarFiltroConceptosPorLinea();
+                syncAlmacenesPorSucursal();
                 recargarTabla(true);
             }
 
@@ -546,10 +606,14 @@
                 const mdl = $('#flt-mdl').val();
                 const lna = $('#flt-lna').val();
                 const ctg = $('#flt-ctg').val();
+                const scl = $('#flt-scl').val();
+                const alm = $('#flt-alm').val();
                 const prd = $('#flt-prd').val();
                 const prdText = $('#flt-prd').find('option:selected').text().trim();
                 const buscar = $('#flt-buscar').val().trim();
 
+                if (scl) params.set('back_min_scl_id', scl);
+                if (alm) params.set('back_min_alm_id', alm);
                 if (mrc) params.set('back_prd_mrc_id', mrc);
                 if (mdl) params.set('back_prd_mdl_id', mdl);
                 if (lna) params.set('back_prd_lna_id', lna);
@@ -602,6 +666,8 @@
                 setIfPresent('#flt-mdl', 'prd_mdl_id');
                 setIfPresent('#flt-lna', 'prd_lna_id');
                 setIfPresent('#flt-ctg', 'prd_ctg_id');
+                setIfPresent('#flt-scl', 'min_scl_id');
+                setIfPresent('#flt-alm', 'min_alm_id');
 
                 const buscar = params.get('buscar');
                 if (buscar) {
@@ -618,6 +684,7 @@
 
             initSelect2();
             aplicarFiltroConceptosPorLinea();
+            syncAlmacenesPorSucursal();
             aplicarFiltrosDesdeQuery();
             buildTabla();
 
@@ -674,12 +741,17 @@
                 }
             });
 
+            $('#flt-scl').on('change', function () {
+                syncAlmacenesPorSucursal();
+                $('#flt-prd').val(null).trigger('change');
+            });
+
             $('#flt-lna').on('change', function () {
                 aplicarFiltroConceptosPorLinea();
                 $('#flt-prd').val(null).trigger('change');
             });
 
-            $('#flt-mrc, #flt-mdl, #flt-ctg').on('change', function () {
+            $('#flt-alm, #flt-mrc, #flt-mdl, #flt-ctg').on('change', function () {
                 $('#flt-prd').val(null).trigger('change');
             });
 
@@ -697,8 +769,12 @@
                 const mdl = $('#flt-mdl').val();
                 const lna = $('#flt-lna').val();
                 const ctg = $('#flt-ctg').val();
+                const scl = $('#flt-scl').val();
+                const alm = $('#flt-alm').val();
                 const prd = $('#flt-prd').val();
                 const buscar = $('#flt-buscar').val().trim();
+                if (scl)    params.set('min_scl_id', scl);
+                if (alm)    params.set('min_alm_id', alm);
                 if (mrc)    params.set('prd_mrc_id', mrc);
                 if (mdl)    params.set('prd_mdl_id', mdl);
                 if (lna)    params.set('prd_lna_id', lna);

@@ -52,7 +52,7 @@ class ExistenciaMatrizService
         return [
             'recordsTotal' => $total,
             'recordsFiltered' => $filtrado,
-            'data' => $this->hidratarTallas($filas),
+            'data' => $this->hidratarTallas($filas, $filtros),
         ];
     }
 
@@ -76,10 +76,10 @@ class ExistenciaMatrizService
             ->orderBy('color_nombre')
             ->get();
 
-        return $this->hidratarTallas($filas);
+        return $this->hidratarTallas($filas, $filtros);
     }
 
-    private function hidratarTallas(Collection $filas): array
+    private function hidratarTallas(Collection $filas, array $filtros = []): array
     {
         if ($filas->isEmpty()) {
             return [];
@@ -92,7 +92,7 @@ class ExistenciaMatrizService
             ->all();
 
         $tallasPorProducto = $this->resolverTallasPorProducto($productoIds);
-        $existenciasPorFila = $this->resolverExistenciasPorFila($productoIds);
+        $existenciasPorFila = $this->resolverExistenciasPorFila($productoIds, $filtros);
 
         return $filas->map(function ($fila) use ($tallasPorProducto, $existenciasPorFila): array {
             $productoId = (int) $fila->prd_id;
@@ -121,11 +121,14 @@ class ExistenciaMatrizService
                     $celda = $celdas[$talla['key']] ?? null;
                     $existencia = $celda['existencia'] ?? null;
                     $existenciaFloat = (float) $existencia;
+                    $tieneHistorial = (bool) ($celda['tiene_historial'] ?? false);
                     $estado = $celda === null
                         ? 'sin_sku'
-                        : ($existenciaFloat < 0
-                            ? 'negativo'
-                            : ($existenciaFloat > 0 ? 'con_existencia' : 'cero'));
+                        : (!$tieneHistorial
+                            ? 'sin_historial'
+                            : ($existenciaFloat < 0
+                                ? 'negativo'
+                                : ($existenciaFloat > 0 ? 'con_existencia' : 'cero')));
 
                     return [
                         'talla' => $talla['label'],
@@ -261,7 +264,7 @@ class ExistenciaMatrizService
         return $tallas;
     }
 
-    private function resolverExistenciasPorFila(array $productoIds): array
+    private function resolverExistenciasPorFila(array $productoIds, array $filtros = []): array
     {
         $registros = DB::table('tbl_producto_skus_psk as psk')
             ->leftJoinSub($this->subqueryValorAtributoPorSku('color'), 'color', function ($join): void {
@@ -270,8 +273,11 @@ class ExistenciaMatrizService
             ->leftJoinSub($this->subqueryValorAtributoPorSku('talla'), 'talla', function ($join): void {
                 $join->on('talla.psk_id', '=', 'psk.psk_id');
             })
-            ->leftJoinSub($this->subqueryExistenciaGlobalPorSku(), 'inv', function ($join): void {
+            ->leftJoinSub($this->subqueryExistenciaGlobalPorSku($filtros), 'inv', function ($join): void {
                 $join->on('inv.psk_id', '=', 'psk.psk_id');
+            })
+            ->leftJoinSub($this->subqueryHistorialExistenciaPorSku(), 'hist', function ($join): void {
+                $join->on('hist.psk_id', '=', 'psk.psk_id');
             })
             ->whereIn('psk.psk_prd_id', $productoIds)
             ->where('psk.psk_deleted', false)
@@ -293,6 +299,7 @@ class ExistenciaMatrizService
                 'talla.vat_valor as talla_valor',
                 'talla.vat_clave as talla_clave',
                 DB::raw('ROUND(SUM(COALESCE(inv.existencia_total, 0)), 2) as existencia_total'),
+                DB::raw('COALESCE(MAX(hist.tiene_historial), 0) as tiene_historial'),
             ]);
 
         $mapa = [];
@@ -305,6 +312,7 @@ class ExistenciaMatrizService
                 'existencia' => (float) ($item->existencia_total ?? 0),
                 'label' => $item->talla_valor ? (string) $item->talla_valor : 'Base',
                 'color_vat_id' => (int) ($item->color_vat_id ?? 0) ?: null,
+                'tiene_historial' => (int) ($item->tiene_historial ?? 0) === 1,
             ];
         }
 
@@ -322,7 +330,7 @@ class ExistenciaMatrizService
             ->leftJoinSub($this->subqueryValorAtributoPorSku('color'), 'color', function ($join): void {
                 $join->on('color.psk_id', '=', 'psk.psk_id');
             })
-            ->leftJoinSub($this->subqueryExistenciaGlobalPorSku(), 'inv', function ($join): void {
+            ->leftJoinSub($this->subqueryExistenciaGlobalPorSku($filtros), 'inv', function ($join): void {
                 $join->on('inv.psk_id', '=', 'psk.psk_id');
             })
             ->where('psk.psk_deleted', false)
@@ -380,12 +388,27 @@ class ExistenciaMatrizService
         ]);
     }
 
-    private function subqueryExistenciaGlobalPorSku()
+    private function subqueryExistenciaGlobalPorSku(array $filtros = [])
     {
         return DB::table('tbl_existencias_almacen_exa as exa')
             ->select([
                 'exa.exa_psk_id as psk_id',
                 DB::raw('ROUND(SUM(exa.exa_existencia), 2) as existencia_total'),
+            ])
+            ->where('exa.exa_deleted', false)
+            ->whereNull('exa.exa_deleted_at')
+            ->where('exa.exa_estatus', 'activo')
+            ->when(!empty($filtros['min_scl_id']), fn ($q) => $q->where('exa.exa_scl_id', (int) $filtros['min_scl_id']))
+            ->when(!empty($filtros['min_alm_id']), fn ($q) => $q->where('exa.exa_alm_id', (int) $filtros['min_alm_id']))
+            ->groupBy('exa.exa_psk_id');
+    }
+
+    private function subqueryHistorialExistenciaPorSku()
+    {
+        return DB::table('tbl_existencias_almacen_exa as exa')
+            ->select([
+                'exa.exa_psk_id as psk_id',
+                DB::raw('1 as tiene_historial'),
             ])
             ->where('exa.exa_deleted', false)
             ->whereNull('exa.exa_deleted_at')

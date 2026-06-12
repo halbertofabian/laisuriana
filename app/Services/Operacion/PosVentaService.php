@@ -58,6 +58,7 @@ class PosVentaService
 
                 return [
                     'psk_id' => $skuId,
+                    'usr_id' => (int) ($item['usr_id'] ?? 0),
                     'cantidad' => $cantidad,
                     'precio' => $precio,
                     'descuento_porcentaje' => $descuentoPct,
@@ -115,6 +116,7 @@ class PosVentaService
                     'pvd_descuento_porcentaje' => $linea['descuento_porcentaje'],
                     'pvd_descuento_importe' => $linea['descuento_importe'],
                     'pvd_importe' => $linea['importe'],
+                    'pvd_usr_id' => $linea['usr_id'] > 0 ? $linea['usr_id'] : (int) $usuario->usr_id,
                     'pvd_created_by_usr_id' => (int) $usuario->usr_id,
                     'pvd_updated_by_usr_id' => (int) $usuario->usr_id,
                 ]);

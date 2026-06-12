@@ -84,14 +84,25 @@ class InventarioBaseController extends Controller
 
     public function existenciasMatriz()
     {
+        $opciones = $this->inventarioService->opcionesBase();
+        $usuario = auth()->user();
+        $defaultSucursalId = $usuario?->sucursales()
+            ->orderBy('tbl_sucursales_scl.scl_nombre')
+            ->value('tbl_sucursales_scl.scl_id');
+
+        if (!$defaultSucursalId && $opciones['sucursales']->count() === 1) {
+            $defaultSucursalId = (int) $opciones['sucursales']->first()->scl_id;
+        }
+
         return view('operacion.inventario_base.existencias_matriz', [
-            'opciones' => $this->inventarioService->opcionesBase(),
+            'opciones' => $opciones,
+            'defaultSucursalId' => $defaultSucursalId ? (int) $defaultSucursalId : null,
         ]);
     }
 
     public function exportarExcelExistenciasMatriz(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
     {
-        $filtros = $request->only(['prd_mrc_id', 'prd_mdl_id', 'prd_lna_id', 'prd_ctg_id', 'prd_id', 'buscar']);
+        $filtros = $request->only(['prd_mrc_id', 'prd_mdl_id', 'prd_lna_id', 'prd_ctg_id', 'prd_id', 'buscar', 'min_scl_id', 'min_alm_id']);
         $filas   = $this->existenciaMatrizService->exportarTodos($filtros);
 
         $fileName = 'existencias-matriz-' . now()->format('Ymd-His') . '.csv';
@@ -137,7 +148,7 @@ class InventarioBaseController extends Controller
 
     public function exportarPdfExistenciasMatriz(Request $request): \Illuminate\Http\Response
     {
-        $filtros = $request->only(['prd_mrc_id', 'prd_mdl_id', 'prd_lna_id', 'prd_ctg_id', 'prd_id', 'buscar']);
+        $filtros = $request->only(['prd_mrc_id', 'prd_mdl_id', 'prd_lna_id', 'prd_ctg_id', 'prd_id', 'buscar', 'min_scl_id', 'min_alm_id']);
         $filas   = $this->existenciaMatrizService->exportarTodos($filtros);
 
         $filas = collect($filas);
@@ -332,6 +343,8 @@ class InventarioBaseController extends Controller
             'prd_lna_id',
             'prd_ctg_id',
             'buscar',
+            'min_scl_id',
+            'min_alm_id',
         ]);
 
         $buscarDatatable = trim((string) $request->input('search.value', ''));

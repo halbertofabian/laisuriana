@@ -61,4 +61,19 @@ class PosVenta extends Model
             ->where('pvd_deleted', false)
             ->whereNull('pvd_deleted_at');
     }
+
+    public function almacen()
+    {
+        return $this->belongsTo(Almacen::class, 'psv_alm_id', 'alm_id');
+    }
+
+    public function cliente()
+    {
+        return $this->belongsTo(Cliente::class, 'psv_cli_id', 'cli_id');
+    }
+
+    public function vendedor()
+    {
+        return $this->belongsTo(Usuario::class, 'psv_usr_id', 'usr_id');
+    }
 }

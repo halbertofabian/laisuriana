@@ -12,6 +12,7 @@ use App\Http\Controllers\Operacion\InventarioBaseController;
 use App\Http\Controllers\Operacion\PedidoPisoController;
 use App\Http\Controllers\Operacion\PuntoVentaController;
 use App\Http\Controllers\Operacion\SucursalAlmacenController;
+use App\Http\Controllers\Operacion\TicketPersonalizacionController;
 use App\Http\Controllers\Seguridad\BitacoraController;
 use App\Http\Controllers\Seguridad\PermisoController;
 use App\Http\Controllers\Seguridad\RolController;
@@ -178,6 +179,11 @@ Route::middleware('auth')->group(function () {
             Route::delete('/tipos-almacen/{tipo_almacen}', [SucursalAlmacenController::class, 'eliminarTipoAlmacen'])->name('tipos.destroy')->middleware('permiso:tipo_almacen.eliminar');
         });
 
+        Route::prefix('ticket-personalizacion')->name('ticket_personalizacion.')->group(function () {
+            Route::get('/', [TicketPersonalizacionController::class, 'index'])->name('index')->middleware('permiso:caja.ver');
+            Route::put('/', [TicketPersonalizacionController::class, 'update'])->name('update')->middleware('permiso:caja.editar');
+        });
+
         Route::prefix('checklist-entregables')->name('checklist_entregables.')->group(function () {
             Route::get('/', [ChecklistEntregableController::class, 'index'])->name('index')->middleware('permiso:checklist_entregables.ver');
             Route::get('/data', [ChecklistEntregableController::class, 'data'])->name('data')->middleware('permiso:checklist_entregables.ver');
@@ -270,9 +276,14 @@ Route::middleware('auth')->group(function () {
             Route::get('/', [PedidoPisoController::class, 'index'])->name('index')->middleware('permiso:pedido_piso.ver');
             Route::get('/data', [PedidoPisoController::class, 'data'])->name('data')->middleware('permiso:pedido_piso.ver');
             Route::get('/productos/buscar', [PedidoPisoController::class, 'buscarProductos'])->name('productos.buscar')->middleware('permiso:pedido_piso.ver');
+            Route::get('/productos/resolver', [PedidoPisoController::class, 'resolverProductoAlmacen'])->name('productos.resolver')->middleware('permiso:pedido_piso.ver');
+            Route::get('/productos/validar', [PedidoPisoController::class, 'validarProductoAlmacen'])->name('productos.validar')->middleware('permiso:pedido_piso.ver');
             Route::get('/buscar-por-folio', [PedidoPisoController::class, 'buscarPorFolio'])->name('folio.buscar')->middleware('permiso:pedido_piso.ver');
+            Route::get('/{pedido}/ticket', [PedidoPisoController::class, 'ticket'])->name('ticket')->middleware('permiso:pedido_piso.ver');
             Route::get('/{pedido}', [PedidoPisoController::class, 'show'])->name('show')->middleware('permiso:pedido_piso.ver');
             Route::post('/', [PedidoPisoController::class, 'store'])->name('store')->middleware('permiso:pedido_piso.crear');
+            Route::put('/{pedido}', [PedidoPisoController::class, 'update'])->name('update')->middleware('permiso:pedido_piso.crear');
+            Route::delete('/{pedido}', [PedidoPisoController::class, 'eliminar'])->name('destroy')->middleware('permiso:pedido_piso.crear');
         });
 
         Route::prefix('ventas')->name('ventas.')->group(function () {

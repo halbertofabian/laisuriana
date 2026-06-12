@@ -733,7 +733,7 @@
 
                         {{-- Red y gestión --}}
                         @if(auth()->user()?->tienePermiso('sucursal.ver') || auth()->user()?->tienePermiso('almacen.ver') || auth()->user()?->tienePermiso('tipo_almacen.ver') || auth()->user()?->tienePermiso('caja.ver') || auth()->user()?->tienePermiso('cliente.ver'))
-                            <li class="menu-item has-sub {{ request()->routeIs('operacion.sucursales_almacenes.*') || request()->routeIs('operacion.cajas.*') || request()->routeIs('operacion.clientes.*') ? 'open active' : '' }}">
+                            <li class="menu-item has-sub {{ request()->routeIs('operacion.sucursales_almacenes.*') || request()->routeIs('operacion.cajas.*') || request()->routeIs('operacion.clientes.*') || request()->routeIs('operacion.ticket_personalizacion.*') ? 'open active' : '' }}">
                                 <a href="javascript:void(0);" class="menu-link menu-toggle">
                                     <i class="menu-icon icon-base ti tabler-building-warehouse"></i>
                                     <div>Red y gestión</div>
@@ -771,6 +771,13 @@
                                         <li class="menu-item {{ request()->routeIs('operacion.clientes.*') ? 'active' : '' }}">
                                             <a href="{{ route('operacion.clientes.index') }}" class="menu-link">
                                                 <div>Clientes</div>
+                                            </a>
+                                        </li>
+                                    @endif
+                                    @if(auth()->user()?->tienePermiso('caja.ver'))
+                                        <li class="menu-item {{ request()->routeIs('operacion.ticket_personalizacion.*') ? 'active' : '' }}">
+                                            <a href="{{ route('operacion.ticket_personalizacion.index') }}" class="menu-link">
+                                                <div>Personalizar ticket</div>
                                             </a>
                                         </li>
                                     @endif

@@ -43,6 +43,7 @@ class ClienteController extends Controller
                 'cli_email' => $c->cli_email,
                 'cli_rfc' => $c->cli_rfc,
                 'cli_curp' => $c->cli_curp,
+                'cli_descuento_default' => $c->cli_descuento_default,
                 'direccion' => trim(implode(', ', array_filter([$c->cli_colonia, $c->cli_municipio, $c->cli_estado]))),
                 'cli_estatus' => $c->cli_estatus,
             ];
@@ -122,4 +123,3 @@ class ClienteController extends Controller
         return response()->json(['data' => $rows]);
     }
 }
-

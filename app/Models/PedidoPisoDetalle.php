@@ -25,6 +25,7 @@ class PedidoPisoDetalle extends Model
         'ppd_cantidad',
         'ppd_precio_unitario',
         'ppd_importe',
+        'ppd_usr_id',
         'ppd_created_by_usr_id',
         'ppd_updated_by_usr_id',
     ];
@@ -46,5 +47,10 @@ class PedidoPisoDetalle extends Model
     public function sku()
     {
         return $this->belongsTo(ProductoSku::class, 'ppd_psk_id', 'psk_id');
+    }
+
+    public function capturista()
+    {
+        return $this->belongsTo(Usuario::class, 'ppd_usr_id', 'usr_id');
     }
 }

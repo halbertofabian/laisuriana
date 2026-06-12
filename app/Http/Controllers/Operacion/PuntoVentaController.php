@@ -8,6 +8,7 @@ use App\Models\Almacen;
 use App\Models\Cliente;
 use App\Models\PosVenta;
 use App\Models\Caja;
+use App\Models\PosTicketConfiguracion;
 use App\Services\Operacion\PosCajaSesionService;
 use App\Services\Operacion\PosVentaService;
 use Illuminate\Http\JsonResponse;
@@ -129,6 +130,7 @@ class PuntoVentaController extends Controller
                     'telefono' => (string) ($c->cli_telefono ?? ''),
                     'email' => (string) ($c->cli_email ?? ''),
                     'rfc' => (string) ($c->cli_rfc ?? ''),
+                    'descuento_default' => $c->cli_descuento_default !== null ? (int) $c->cli_descuento_default : null,
                 ];
             })
             ->values();
@@ -234,10 +236,21 @@ class PuntoVentaController extends Controller
 
     public function ticket(PosVenta $venta)
     {
-        $venta->load(['detalle.sku:psk_id,psk_codigo,psk_nombre']);
+        $venta->load([
+            'almacen:alm_id,alm_nombre',
+            'cliente:cli_id,cli_nombre,cli_apellido_paterno,cli_apellido_materno,cli_razon_social',
+            'vendedor:usr_id,usr_nombre,usr_usuario',
+            'detalle.sku:psk_id,psk_codigo,psk_nombre',
+            'detalle.vendedor:usr_id,usr_nombre,usr_usuario',
+        ]);
+        $ticketConfig = PosTicketConfiguracion::query()->first();
 
         $lineas = max(1, (int) $venta->detalle->count());
-        $alto = max(120, min(420, 95 + ($lineas * 9)));
+        $altoBase = 165 + ($lineas * 12);
+        $altoEncabezado = $ticketConfig?->ptc_texto_encabezado ? min(32, 8 + (int) ceil(mb_strlen((string) $ticketConfig->ptc_texto_encabezado) / 34) * 4) : 0;
+        $altoPie = $ticketConfig?->ptc_texto_pie ? min(34, 8 + (int) ceil(mb_strlen((string) $ticketConfig->ptc_texto_pie) / 34) * 4) : 0;
+        $altoLogo = $ticketConfig?->ptc_logo_path ? 24 : 0;
+        $alto = max(185, min(620, $altoBase + $altoEncabezado + $altoPie + $altoLogo));
 
         $pdf = new \TCPDF('P', 'mm', [80, $alto], true, 'UTF-8', false, false);
         $pdf->SetCreator(config('app.name', 'La Suriana'));
@@ -253,20 +266,72 @@ class PuntoVentaController extends Controller
         $fmt = static fn ($v) => number_format((float) $v, 2, '.', ',');
         $metodo = strtoupper((string) ($venta->psv_metodo_pago ?? ''));
         $fecha = optional($venta->psv_fecha_cobro)->format('d/m/Y H:i') ?? now()->format('d/m/Y H:i');
+        $clienteNombre = trim((string) ($venta->cliente?->cli_razon_social
+            ?: implode(' ', array_filter([
+                $venta->cliente?->cli_nombre,
+                $venta->cliente?->cli_apellido_paterno,
+                $venta->cliente?->cli_apellido_materno,
+            ]))));
+        $articulosVendidos = (int) round($venta->detalle->sum(fn ($d) => (float) $d->pvd_cantidad));
+        $vendedores = $venta->detalle
+            ->map(fn ($d) => trim((string) ($d->vendedor?->usr_nombre ?: $d->vendedor?->usr_usuario ?: '')))
+            ->filter()
+            ->unique()
+            ->values();
+        if ($vendedores->isEmpty()) {
+            $fallback = trim((string) ($venta->vendedor?->usr_nombre ?: $venta->vendedor?->usr_usuario ?: ''));
+            if ($fallback !== '') {
+                $vendedores = collect([$fallback]);
+            }
+        }
 
-        $html = '<div style="text-align:center;font-size:11px;font-weight:bold;">LA SURIANA</div>';
-        $html .= '<div style="text-align:center;font-size:8px;">Ticket ' . e($venta->psv_folio) . '</div>';
+        $barcodeStyle = [
+            'position' => '',
+            'align' => 'C',
+            'stretch' => false,
+            'fitwidth' => true,
+            'cellfitalign' => '',
+            'border' => false,
+            'padding' => 0,
+            'fgcolor' => [0, 0, 0],
+            'bgcolor' => false,
+            'text' => false,
+            'font' => 'helvetica',
+            'fontsize' => 7,
+        ];
+
+        if ($ticketConfig?->ptc_logo_path) {
+            $logoFile = storage_path('app/public/' . $ticketConfig->ptc_logo_path);
+            if (is_file($logoFile)) {
+                $pdf->Image($logoFile, 24, 5, 32, 16, '', '', '', false, 300, '', false, false, 0, false, false, false);
+                $pdf->Ln(18);
+            }
+        }
+
+        $html = '<div style="text-align:center;font-size:11px;font-weight:bold;">' . e((string) config('app.name', 'La Suriana')) . '</div>';
+        if ($ticketConfig?->ptc_texto_encabezado) {
+            $html .= '<div style="font-size:7px;line-height:1.5;margin-top:3px;text-align:center;">' . nl2br(e((string) $ticketConfig->ptc_texto_encabezado)) . '</div>';
+        }
         $html .= '<div style="font-size:7px;margin-top:3px;">Fecha: ' . e($fecha) . '<br/>Método: ' . e($metodo) . '</div>';
         $html .= '<hr/>';
+        $html .= '<table cellspacing="0" cellpadding="1" style="font-size:7px;width:100%;margin-bottom:2px;">';
+        $html .= '<tr><td width="34%"><b>Almacén</b></td><td width="66%" align="right">' . e((string) ($venta->almacen?->alm_nombre ?? 'Sin almacén')) . '</td></tr>';
+        $html .= '<tr><td width="34%"><b>Cliente</b></td><td width="66%" align="right">' . e($clienteNombre !== '' ? $clienteNombre : 'Mostrador') . '</td></tr>';
+        $html .= '<tr><td width="34%"><b>Artículos</b></td><td width="66%" align="right">' . e((string) $articulosVendidos) . '</td></tr>';
+        $html .= '<tr><td width="34%"><b>Vendedor' . ($vendedores->count() > 1 ? 'es' : '') . '</b></td><td width="66%" align="right">' . e($vendedores->isNotEmpty() ? $vendedores->implode(', ') : 'Sin vendedor') . '</td></tr>';
+        $html .= '</table>';
+        $html .= '<hr/>';
         $html .= '<table cellspacing="0" cellpadding="2" style="font-size:7px;width:100%;">';
-        $html .= '<tr><th align="left" width="58%">Producto</th><th align="right" width="14%">Cant</th><th align="right" width="28%">Imp</th></tr>';
+        $html .= '<tr><th align="left" width="46%">Producto</th><th align="left" width="24%">Vendedor</th><th align="right" width="10%">Cant</th><th align="right" width="20%">Imp</th></tr>';
         foreach ($venta->detalle as $d) {
             $nombre = (string) ($d->sku?->psk_nombre ?: ('SKU ' . $d->pvd_psk_id));
             $skuCodigo = (string) ($d->sku?->psk_codigo ?: ('ID-' . $d->pvd_psk_id));
+            $vendedorLinea = trim((string) ($d->vendedor?->usr_nombre ?: $d->vendedor?->usr_usuario ?: ''));
             $html .= '<tr>';
-            $html .= '<td width="58%">' . e($nombre) . '<br/><span style="font-size:6px;color:#555;">SKU: ' . e($skuCodigo) . '</span></td>';
-            $html .= '<td align="right" width="14%">' . e($fmt($d->pvd_cantidad)) . '</td>';
-            $html .= '<td align="right" width="28%">$' . e($fmt($d->pvd_importe)) . '</td>';
+            $html .= '<td width="46%">' . e($nombre) . '<br/><span style="font-size:6px;color:#555;">SKU: ' . e($skuCodigo) . '</span></td>';
+            $html .= '<td width="24%">' . e($vendedorLinea !== '' ? $vendedorLinea : '—') . '</td>';
+            $html .= '<td align="right" width="10%">' . e($fmt($d->pvd_cantidad)) . '</td>';
+            $html .= '<td align="right" width="20%">$' . e($fmt($d->pvd_importe)) . '</td>';
             $html .= '</tr>';
         }
         $html .= '</table>';
@@ -278,9 +343,28 @@ class PuntoVentaController extends Controller
         $html .= '<tr><td>Pagado</td><td align="right">$' . e($fmt($venta->psv_pagado)) . '</td></tr>';
         $html .= '<tr><td>Cambio</td><td align="right">$' . e($fmt($venta->psv_cambio)) . '</td></tr>';
         $html .= '</table>';
-        $html .= '<div style="text-align:center;font-size:7px;margin-top:5px;">Gracias por su compra</div>';
+        $html .= '<div style="text-align:center;font-size:7px;line-height:1.5;margin-top:5px;">'
+            . nl2br(e((string) ($ticketConfig?->ptc_texto_pie ?: 'Gracias por su compra')))
+            . '</div>';
 
         $pdf->writeHTML($html, true, false, true, false, '');
+
+        $barcodeY = $pdf->GetY() + 2;
+        $barcodeHeight = 10;
+        $pdf->write1DBarcode(
+            (string) $venta->psv_folio,
+            'C128',
+            8,
+            $barcodeY,
+            64,
+            $barcodeHeight,
+            0.33,
+            $barcodeStyle,
+            'N'
+        );
+        $pdf->SetFont('helvetica', '', 7);
+        $pdf->SetXY(4, $barcodeY + $barcodeHeight + 1);
+        $pdf->Cell(72, 3.5, (string) $venta->psv_folio, 0, 1, 'C');
 
         return response($pdf->Output('', 'S'), 200, [
             'Content-Type' => 'application/pdf',

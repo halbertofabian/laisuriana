@@ -1147,6 +1147,18 @@
                                             <div class="col-md-4"><label class="form-label">Línea <span class="text-danger">*</span></label><select class="form-select" name="prd_lna_id" id="prd_lna_id" required><option value="">Selecciona una línea</option>@foreach($opciones['lineas'] as $item)<option value="{{ $item->lna_id }}">{{ $item->lna_nombre }}</option>@endforeach</select></div>
                                             <div class="col-md-4"><label class="form-label">Concepto</label><select class="form-select" name="prd_ctg_id" id="prd_ctg_id"><option value="">Selecciona un concepto</option>@foreach($opciones['categorias'] as $item)<option value="{{ $item->ctg_id }}">{{ $item->ctg_nombre }}</option>@endforeach</select></div>
                                             <div class="col-md-4"><label class="form-label">Unidad de venta <span class="text-danger">*</span></label><select class="form-select" name="prd_umd_id" id="prd_umd_id" required><option value="">Selecciona una unidad</option>@foreach($opciones['unidades'] as $item)<option value="{{ $item->umd_id }}"{{ $item->umd_es_predeterminada ? ' data-predeterminada="1"' : '' }}>{{ $item->umd_nombre }} ({{ $item->umd_codigo }}){{ $item->umd_es_predeterminada ? ' ★' : '' }}</option>@endforeach</select></div>
+                                            <div class="col-12">
+                                                <label class="form-label">Almacenes permitidos <span class="text-danger">*</span></label>
+                                                <div id="prd-almacenes-checklist" class="cc-attr-grid">
+                                                    @foreach($opciones['almacenes'] as $item)
+                                                        <label class="cc-attr-option">
+                                                            <input class="form-check-input me-2" type="checkbox" name="almacen_ids[]" value="{{ $item->alm_id }}">
+                                                            <span class="fw-semibold">{{ $item->alm_nombre }}</span>
+                                                            <small class="d-block text-body-secondary">{{ $item->sucursal?->scl_nombre }}</small>
+                                                        </label>
+                                                    @endforeach
+                                                </div>
+                                            </div>
                                             <div class="col-md-2"><label class="form-label">Código de barras</label><input type="text" class="form-control" name="prd_codigo_barras" id="prd_codigo_barras" maxlength="80" placeholder="Opcional"></div>
                                             <div class="col-md-2"><label class="form-label">Clave fiscal (SAT)</label><input type="text" class="form-control" name="prd_clave_sat" id="prd_clave_sat" maxlength="20" placeholder="Opcional"></div>
                                             <div class="col-12">
@@ -2690,6 +2702,7 @@
         $('#prd_imagen_reset').val('0');
         $('#prd_imagen_archivo').val('');
         $('#prd_imagen_url').val('');
+        $('#prd-almacenes-checklist input[type="checkbox"]').prop('checked', false).closest('.cc-attr-option').removeClass('is-selected');
         $('#prd_tipo_variable').prop('checked', true);
         $('#prd_tipo_simple').prop('checked', false);
         $('#prd_estatus').val('activo');
@@ -3799,6 +3812,10 @@
         $(this).closest('.cc-attr-option').toggleClass('is-selected', $(this).is(':checked'));
     });
 
+    $(document).on('change', '#prd-almacenes-checklist input[type="checkbox"]', function () {
+        $(this).closest('.cc-attr-option').toggleClass('is-selected', $(this).is(':checked'));
+    });
+
     $(document).on('click', '[data-action="edit-atributo"]', function () {
         const id = $(this).data('id');
         $.getJSON(rutas.atributoShow(id)).done(function (resp) {
@@ -3873,6 +3890,12 @@
             $('#prd_lna_id').val(String(d.prd_lna_id || ''));
             actualizarSelectCategoria(d.prd_lna_id, d.prd_ctg_id);
             $('#prd_umd_id').val(String(d.prd_umd_id || ''));
+            $('#prd-almacenes-checklist input[type="checkbox"]').each(function () {
+                const almacenId = parseInt($(this).val(), 10);
+                const checked = (d.almacen_ids || []).includes(almacenId);
+                $(this).prop('checked', checked);
+                $(this).closest('.cc-attr-option').toggleClass('is-selected', checked);
+            });
             $('#prd_estatus').val(d.prd_estatus || 'activo');
             if ((d.prd_tipo || 'simple') === 'variable') {
                 $('#prd_tipo_variable').prop('checked', true);

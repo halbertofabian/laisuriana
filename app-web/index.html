@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>La Suriana | Demo Web</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <section id="login-screen" class="screen screen--active">
+        <div class="login-layout">
+          <div class="login-aside">
+            <div class="brand-pill">
+              <span class="brand-pill__dot"></span>
+              Demo comercial
+            </div>
+
+            <div class="brand-block">
+              <div class="brand-logo">LS</div>
+              <div>
+                <h1>La Suriana</h1>
+                <p>Venta de piso con captura guiada de pedidos por almacén.</p>
+              </div>
+            </div>
+
+            <div class="hero-copy">
+              <h2>Presenta el flujo futuro del vendedor sin depender todavía del backend.</h2>
+              <p>
+                Esta demo web traduce la propuesta móvil a una interfaz ejecutiva:
+                moderna, clara y lista para enseñar la experiencia al cliente.
+              </p>
+            </div>
+
+            <div class="hero-metrics">
+              <article class="metric-card">
+                <strong>+18%</strong>
+                <span>Mayor velocidad de captura</span>
+              </article>
+              <article class="metric-card">
+                <strong>3 vistas</strong>
+                <span>Pedido, Home e Inventario</span>
+              </article>
+            </div>
+          </div>
+
+          <div class="login-panel">
+            <div class="panel-card">
+              <div class="panel-card__header">
+                <span class="eyebrow">Acceso demo</span>
+                <h3>Iniciar sesión</h3>
+                <p>El acceso es visual. No hay autenticación real en esta etapa.</p>
+              </div>
+
+              <form id="login-form" class="form-stack">
+                <label class="field">
+                  <span>Usuario o correo</span>
+                  <input type="text" placeholder="ventas@lasuriana.mx" />
+                </label>
+
+                <label class="field">
+                  <span>Contraseña</span>
+                  <input type="password" placeholder="••••••••••" />
+                </label>
+
+                <div class="form-meta">
+                  <label class="check-row">
+                    <input type="checkbox" checked />
+                    <span>Recordar sesión</span>
+                  </label>
+                  <button type="button" class="text-button">Soporte</button>
+                </div>
+
+                <button type="submit" class="primary-button">Entrar al dashboard</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="dashboard-screen" class="screen">
+        <div class="dashboard-layout">
+          <aside class="sidebar">
+            <div class="sidebar__brand">
+              <div class="brand-logo brand-logo--small">LS</div>
+              <div>
+                <strong>La Suriana</strong>
+                <span>Demo venta de piso</span>
+              </div>
+            </div>
+
+            <nav class="sidebar__nav">
+              <button class="nav-link is-active" data-view="home">
+                <span class="nav-link__icon">⌂</span>
+                <span>Home</span>
+              </button>
+              <button class="nav-link" data-view="pedido">
+                <span class="nav-link__icon">▣</span>
+                <span>Pedido</span>
+              </button>
+              <button class="nav-link" data-view="inventario">
+                <span class="nav-link__icon">◫</span>
+                <span>Inventario</span>
+              </button>
+            </nav>
+
+            <div class="sidebar__footer">
+              <button id="logout-button" class="secondary-button secondary-button--full">
+                Salir de la demo
+              </button>
+            </div>
+          </aside>
+
+          <main class="workspace">
+            <header class="topbar">
+              <div>
+                <span class="eyebrow" id="view-eyebrow">Home</span>
+                <h2 id="view-title">Panel comercial</h2>
+              </div>
+              <div class="topbar__user">
+                <div class="avatar">CG</div>
+                <div>
+                  <strong>Carlos Gómez</strong>
+                  <span>Vendedor de piso</span>
+                </div>
+              </div>
+            </header>
+
+            <section id="view-home" class="view view--active">
+              <div class="hero-card">
+                <div>
+                  <span class="eyebrow eyebrow--light">Resumen del día</span>
+                  <h3>La operación viene por arriba del promedio semanal</h3>
+                  <p>
+                    El home está diseñado como tablero de arranque para vendedor:
+                    visibilidad rápida, pedidos en curso y acceso inmediato a captura.
+                  </p>
+                </div>
+                <button class="primary-button" data-view-target="pedido">Iniciar nuevo pedido</button>
+              </div>
+
+              <div class="stats-grid">
+                <article class="stat-card">
+                  <strong>08</strong>
+                  <span>Pedidos en curso</span>
+                </article>
+                <article class="stat-card">
+                  <strong>$82,400</strong>
+                  <span>Venta proyectada</span>
+                </article>
+                <article class="stat-card">
+                  <strong>03</strong>
+                  <span>Pedidos por validar</span>
+                </article>
+              </div>
+
+              <div class="content-grid">
+                <article class="surface-card">
+                  <div class="card-heading">
+                    <div>
+                      <span class="eyebrow">Actividad</span>
+                      <h4>Pedidos recientes</h4>
+                    </div>
+                    <button class="text-button">Ver todos</button>
+                  </div>
+
+                  <div class="list-stack">
+                    <div class="list-item">
+                      <div>
+                        <strong>PD-2048</strong>
+                        <p>Constructora del Norte · Almacén Central</p>
+                      </div>
+                      <span class="badge">En captura</span>
+                    </div>
+                    <div class="list-item">
+                      <div>
+                        <strong>PD-2047</strong>
+                        <p>Ferretería San Jorge · Almacén Sur</p>
+                      </div>
+                      <span class="badge badge--neutral">Separación</span>
+                    </div>
+                    <div class="list-item">
+                      <div>
+                        <strong>PD-2046</strong>
+                        <p>Acabados Rivera · Almacén Norte</p>
+                      </div>
+                      <span class="badge badge--warning">Pendiente</span>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="surface-card">
+                  <div class="card-heading">
+                    <div>
+                      <span class="eyebrow">Acciones</span>
+                      <h4>Atajos de operación</h4>
+                    </div>
+                  </div>
+
+                  <div class="shortcut-grid">
+                    <button class="shortcut-card" data-view-target="pedido">
+                      <strong>Nuevo pedido</strong>
+                      <span>Captura guiada por cliente</span>
+                    </button>
+                    <button class="shortcut-card" data-view-target="inventario">
+                      <strong>Consultar inventario</strong>
+                      <span>Disponibilidad por almacén</span>
+                    </button>
+                    <button class="shortcut-card">
+                      <strong>Clientes</strong>
+                      <span>Próxima fase</span>
+                    </button>
+                    <button class="shortcut-card">
+                      <strong>Reportes</strong>
+                      <span>Próxima fase</span>
+                    </button>
+                  </div>
+                </article>
+              </div>
+            </section>
+
+            <section id="view-pedido" class="view">
+              <div class="content-grid content-grid--wide">
+                <article class="surface-card">
+                  <div class="card-heading">
+                    <div>
+                      <span class="eyebrow">Cliente</span>
+                      <h4>Seleccionar comprador</h4>
+                    </div>
+                    <span class="badge badge--info">Mock data</span>
+                  </div>
+
+                  <label class="field field--embedded">
+                    <span>Buscar cliente</span>
+                    <input type="text" placeholder="Nombre o razón social" />
+                  </label>
+
+                  <div class="list-stack">
+                    <button class="selection-card selection-card--active">
+                      <div>
+                        <strong>Constructora del Norte</strong>
+                        <p>RFC CDN120312AA1</p>
+                      </div>
+                      <span class="badge">Actual</span>
+                    </button>
+                    <button class="selection-card">
+                      <div>
+                        <strong>Ferretería San Jorge</strong>
+                        <p>RFC FSJ040521MM2</p>
+                      </div>
+                    </button>
+                    <button class="selection-card">
+                      <div>
+                        <strong>Acabados Rivera</strong>
+                        <p>RFC ARI980112LU3</p>
+                      </div>
+                    </button>
+                  </div>
+                </article>
+
+                <article class="surface-card">
+                  <div class="card-heading">
+                    <div>
+                      <span class="eyebrow">Estrategia futura</span>
+                      <h4>Separación por almacén</h4>
+                    </div>
+                  </div>
+
+                  <div class="notice-box">
+                    Si el cliente elige productos de varios almacenes, el sistema
+                    generará un pedido independiente por cada almacén involucrado.
+                  </div>
+
+                  <div class="warehouse-stack">
+                    <div class="warehouse-card">
+                      <div>
+                        <strong>Almacén Central</strong>
+                        <p>6 productos · Monterrey</p>
+                      </div>
+                      <span class="badge">Orden 1</span>
+                    </div>
+                    <div class="warehouse-card">
+                      <div>
+                        <strong>Almacén Norte</strong>
+                        <p>2 productos · Saltillo</p>
+                      </div>
+                      <span class="badge badge--neutral">Orden 2</span>
+                    </div>
+                    <div class="warehouse-card warehouse-card--ghost">
+                      <div>
+                        <strong>Almacén Sur</strong>
+                        <p>Sin productos asignados</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button class="primary-button primary-button--full">Agregar productos al pedido</button>
+                </article>
+              </div>
+            </section>
+
+            <section id="view-inventario" class="view">
+              <article class="surface-card">
+                <div class="card-heading">
+                  <div>
+                    <span class="eyebrow">Inventario</span>
+                    <h4>Consulta rápida de existencias</h4>
+                  </div>
+                  <span class="badge badge--info">Demo</span>
+                </div>
+
+                <div class="toolbar">
+                  <label class="field field--embedded field--grow">
+                    <span>Buscar producto</span>
+                    <input type="text" placeholder="Nombre o SKU" />
+                  </label>
+
+                  <div class="chip-row">
+                    <button class="chip chip--active">Todos</button>
+                    <button class="chip">Central</button>
+                    <button class="chip">Norte</button>
+                    <button class="chip">Sur</button>
+                  </div>
+                </div>
+
+                <div class="inventory-grid">
+                  <article class="inventory-card">
+                    <div class="inventory-card__top">
+                      <div>
+                        <strong>Cemento gris 50 kg</strong>
+                        <p>SKU CEM-050 · Almacén Central</p>
+                      </div>
+                      <span class="badge">Disponible</span>
+                    </div>
+                    <div class="progress"><span style="width: 88%"></span></div>
+                    <small>240 bolsas</small>
+                  </article>
+
+                  <article class="inventory-card">
+                    <div class="inventory-card__top">
+                      <div>
+                        <strong>Varilla 3/8 x 6 m</strong>
+                        <p>SKU VAR-038 · Almacén Norte</p>
+                      </div>
+                      <span class="badge badge--warning">Stock bajo</span>
+                    </div>
+                    <div class="progress"><span style="width: 28%"></span></div>
+                    <small>18 piezas</small>
+                  </article>
+
+                  <article class="inventory-card">
+                    <div class="inventory-card__top">
+                      <div>
+                        <strong>Pintura vinílica 19 L</strong>
+                        <p>SKU PIN-190 · Almacén Sur</p>
+                      </div>
+                      <span class="badge">Disponible</span>
+                    </div>
+                    <div class="progress"><span style="width: 61%"></span></div>
+                    <small>62 cubetas</small>
+                  </article>
+                </div>
+              </article>
+            </section>
+          </main>
+        </div>
+      </section>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

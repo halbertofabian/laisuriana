@@ -1,0 +1,45 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --app-primary: #243b63;
+  --app-primary-strong: #182742;
+  --app-accent: #c96f2d;
+  --app-accent-soft: #f1d4bc;
+  --app-bg: #fbfaf8;
+  --app-surface: #ffffff;
+  --app-ink: #1f2a3b;
+  --app-muted: #667285;
+  --app-muted-strong: #7e6147;
+
+  --ion-color-primary: var(--app-primary);
+  --ion-color-primary-rgb: 36, 59, 99;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-shade: #1d314f;
+  --ion-color-primary-tint: #3d5276;
+
+  --ion-color-success: #2f9e73;
+  --ion-color-success-rgb: 47, 158, 115;
+  --ion-color-success-contrast: #ffffff;
+
+  --ion-color-warning: #d1892e;
+  --ion-color-warning-rgb: 209, 137, 46;
+  --ion-color-warning-contrast: #ffffff;
+
+  --ion-color-danger: #cf5f52;
+  --ion-color-danger-rgb: 207, 95, 82;
+  --ion-color-danger-contrast: #ffffff;
+
+  --ion-color-tertiary: #8b6b4f;
+  --ion-color-tertiary-rgb: 139, 107, 79;
+  --ion-color-tertiary-contrast: #ffffff;
+
+  --ion-background-color: var(--app-bg);
+  --ion-text-color: var(--app-ink);
+  --ion-font-family: 'Manrope', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --ion-toolbar-background: transparent;
+  --ion-item-background: transparent;
+  --ion-card-background: var(--app-surface);
+  --ion-tab-bar-background: rgba(255, 250, 245, 0.96);
+  --ion-tab-bar-color: #7b8595;
+  --ion-tab-bar-color-selected: var(--app-primary);
+}

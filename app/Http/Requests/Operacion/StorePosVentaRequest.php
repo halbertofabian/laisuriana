@@ -35,6 +35,7 @@ class StorePosVentaRequest extends FormRequest
             'items.*.cantidad' => ['required', 'numeric', 'gt:0'],
             'items.*.precio' => ['nullable', 'numeric', 'min:0'],
             'items.*.descuento' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'items.*.usr_id' => ['nullable', 'integer', 'exists:tbl_usuarios_usr,usr_id'],
         ];
     }
 
