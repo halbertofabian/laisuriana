@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Desktop\OperacionCatalogoComercialController;
+use App\Http\Controllers\Desktop\OperacionGestionConfiguracionesController;
 use App\Http\Controllers\Demo\DataTableDemoController;
 use App\Http\Controllers\Operacion\CatalogoComercialController;
 use App\Http\Controllers\Operacion\CajaController;
@@ -64,6 +66,171 @@ Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/desktop/dashboard', [DashboardController::class, 'desktop'])->name('desktop.dashboard');
+    Route::get('/desktop/usuarios', [DashboardController::class, 'desktopUsuarios'])->name('desktop.usuarios');
+    Route::get('/desktop/roles', [DashboardController::class, 'desktopRoles'])->name('desktop.roles');
+    Route::get('/desktop/permisos', [DashboardController::class, 'desktopPermisos'])->name('desktop.permisos');
+    Route::get('/desktop/bitacora', [DashboardController::class, 'desktopBitacora'])->name('desktop.bitacora');
+    Route::prefix('desktop/operacion/catalogo-comercial')->name('desktop.operacion.catalogo_comercial.')->group(function () {
+        Route::get('/', [OperacionCatalogoComercialController::class, 'index'])->name('index')->middleware('permiso:catalogo_comercial.ver');
+        Route::get('/catalogos-base', [OperacionCatalogoComercialController::class, 'base'])->name('base.index')->middleware('permiso:catalogo_comercial.ver');
+        Route::get('/atributos', [OperacionCatalogoComercialController::class, 'atributos'])->name('atributos.index')->middleware('permiso:catalogo_comercial.ver');
+        Route::get('/atributos/data', [OperacionCatalogoComercialController::class, 'dataAtributos'])->name('atributos.data')->middleware('permiso:catalogo_comercial.ver');
+        Route::get('/atributos/{atributo}', [OperacionCatalogoComercialController::class, 'showAtributo'])->name('atributos.show')->middleware('permiso:catalogo_comercial.ver');
+        Route::post('/atributos', [OperacionCatalogoComercialController::class, 'storeAtributo'])->name('atributos.store')->middleware('permiso:catalogo_comercial.crear');
+        Route::put('/atributos/{atributo}', [OperacionCatalogoComercialController::class, 'updateAtributo'])->name('atributos.update')->middleware('permiso:catalogo_comercial.editar');
+        Route::patch('/atributos/{atributo}/estatus', [OperacionCatalogoComercialController::class, 'cambiarEstatusAtributo'])->name('atributos.estatus')->middleware('permiso:catalogo_comercial.inactivar');
+        Route::delete('/atributos/{atributo}', [OperacionCatalogoComercialController::class, 'eliminarAtributo'])->name('atributos.destroy')->middleware('permiso:catalogo_comercial.eliminar');
+        Route::get('/productos', [OperacionCatalogoComercialController::class, 'productos'])->name('productos.index')->middleware('permiso:catalogo_comercial.ver');
+        Route::get('/productos/data', [OperacionCatalogoComercialController::class, 'dataProductos'])->name('productos.data')->middleware('permiso:catalogo_comercial.ver');
+        Route::post('/productos/imagen-temporal/iniciar', [OperacionCatalogoComercialController::class, 'iniciarCargaTemporalProducto'])->name('productos.imagen_temporal.iniciar')->middleware('permiso:catalogo_comercial.ver');
+        Route::get('/productos/imagen-temporal/{token}/estado', [OperacionCatalogoComercialController::class, 'estadoCargaTemporalProducto'])->name('productos.imagen_temporal.estado')->middleware('permiso:catalogo_comercial.ver');
+        Route::get('/productos/imagen-movil/{token}', [OperacionCatalogoComercialController::class, 'vistaCargaMovilProducto'])->name('productos.imagen_movil')->middleware('permiso:catalogo_comercial.ver');
+        Route::post('/productos/imagen-movil/{token}', [OperacionCatalogoComercialController::class, 'subirImagenMovilProducto'])->name('productos.imagen_movil.store')->middleware('permiso:catalogo_comercial.ver');
+        Route::get('/productos/nuevo', [OperacionCatalogoComercialController::class, 'crearProducto'])->name('productos.create')->middleware('permiso:catalogo_comercial.crear');
+        Route::get('/productos/{producto}/editar', [OperacionCatalogoComercialController::class, 'editarProducto'])->name('productos.edit')->middleware('permiso:catalogo_comercial.editar');
+        Route::get('/productos/{producto}', [OperacionCatalogoComercialController::class, 'showProducto'])->name('productos.show')->middleware('permiso:catalogo_comercial.ver');
+        Route::post('/productos', [OperacionCatalogoComercialController::class, 'storeProducto'])->name('productos.store')->middleware('permiso:catalogo_comercial.crear');
+        Route::put('/productos/{producto}', [OperacionCatalogoComercialController::class, 'updateProducto'])->name('productos.update')->middleware('permiso:catalogo_comercial.editar');
+        Route::patch('/productos/{producto}/estatus', [OperacionCatalogoComercialController::class, 'cambiarEstatusProducto'])->name('productos.estatus')->middleware('permiso:catalogo_comercial.inactivar');
+        Route::delete('/productos/{producto}', [OperacionCatalogoComercialController::class, 'eliminarProducto'])->name('productos.destroy')->middleware('permiso:catalogo_comercial.eliminar');
+        Route::get('/skus', [OperacionCatalogoComercialController::class, 'skus'])->name('skus.index')->middleware('permiso:catalogo_comercial.ver');
+        Route::get('/skus/data', [OperacionCatalogoComercialController::class, 'dataSkus'])->name('skus.data')->middleware('permiso:catalogo_comercial.ver');
+        Route::get('/skus/agrupados', [OperacionCatalogoComercialController::class, 'dataSkusAgrupados'])->name('skus.agrupados')->middleware('permiso:catalogo_comercial.ver');
+        Route::get('/skus/filtros', [OperacionCatalogoComercialController::class, 'filtrosSkus'])->name('skus.filtros')->middleware('permiso:catalogo_comercial.ver');
+        Route::get('/skus/matriz', [OperacionCatalogoComercialController::class, 'matrizSkus'])->name('skus.matriz')->middleware('permiso:catalogo_comercial.ver');
+        Route::get('/skus/{sku}', [OperacionCatalogoComercialController::class, 'showSku'])->name('skus.show')->middleware('permiso:catalogo_comercial.ver');
+        Route::put('/skus/{sku}', [OperacionCatalogoComercialController::class, 'updateSku'])->name('skus.update')->middleware('permiso:catalogo_comercial.editar');
+        Route::patch('/skus/{sku}/estatus', [OperacionCatalogoComercialController::class, 'cambiarEstatusSku'])->name('skus.estatus')->middleware('permiso:catalogo_comercial.inactivar');
+        Route::delete('/skus/{sku}', [OperacionCatalogoComercialController::class, 'eliminarSku'])->name('skus.destroy')->middleware('permiso:catalogo_comercial.eliminar');
+        Route::get('/proveedores', [OperacionCatalogoComercialController::class, 'proveedores'])->name('proveedores.index')->middleware('permiso:catalogo_comercial.ver');
+        Route::get('/etiquetado', [OperacionCatalogoComercialController::class, 'etiquetado'])->name('etiquetado.index')->middleware('permiso:catalogo_comercial.ver');
+
+        Route::get('/catalogos/{tipo}/data', [OperacionCatalogoComercialController::class, 'dataCatalogoBase'])->name('catalogos.data')->middleware('permiso:catalogo_comercial.ver');
+        Route::get('/catalogos/{tipo}/{id}', [OperacionCatalogoComercialController::class, 'showCatalogoBase'])->name('catalogos.show')->middleware('permiso:catalogo_comercial.ver');
+        Route::post('/catalogos/{tipo}', [OperacionCatalogoComercialController::class, 'storeCatalogoBase'])->name('catalogos.store')->middleware('permiso:catalogo_comercial.crear');
+        Route::put('/catalogos/{tipo}/{id}', [OperacionCatalogoComercialController::class, 'updateCatalogoBase'])->name('catalogos.update')->middleware('permiso:catalogo_comercial.editar');
+        Route::patch('/catalogos/{tipo}/{id}/estatus', [OperacionCatalogoComercialController::class, 'cambiarEstatusCatalogoBase'])->name('catalogos.estatus')->middleware('permiso:catalogo_comercial.inactivar');
+        Route::delete('/catalogos/{tipo}/{id}', [OperacionCatalogoComercialController::class, 'eliminarCatalogoBase'])->name('catalogos.destroy')->middleware('permiso:catalogo_comercial.eliminar');
+
+        Route::get('/modelos/data', [OperacionCatalogoComercialController::class, 'dataModelos'])->name('modelos.data')->middleware('permiso:catalogo_comercial.ver');
+        Route::get('/modelos/{modelo}', [OperacionCatalogoComercialController::class, 'showModelo'])->name('modelos.show')->middleware('permiso:catalogo_comercial.ver');
+        Route::post('/modelos', [OperacionCatalogoComercialController::class, 'storeModelo'])->name('modelos.store')->middleware('permiso:catalogo_comercial.crear');
+        Route::put('/modelos/{modelo}', [OperacionCatalogoComercialController::class, 'updateModelo'])->name('modelos.update')->middleware('permiso:catalogo_comercial.editar');
+        Route::patch('/modelos/{modelo}/estatus', [OperacionCatalogoComercialController::class, 'cambiarEstatusModelo'])->name('modelos.estatus')->middleware('permiso:catalogo_comercial.inactivar');
+        Route::delete('/modelos/{modelo}', [OperacionCatalogoComercialController::class, 'eliminarModelo'])->name('modelos.destroy')->middleware('permiso:catalogo_comercial.eliminar');
+
+        Route::get('/valores-atributo/data', [OperacionCatalogoComercialController::class, 'dataValoresAtributo'])->name('valores.data')->middleware('permiso:catalogo_comercial.ver');
+        Route::get('/valores-atributo/{valor}', [OperacionCatalogoComercialController::class, 'showValorAtributo'])->name('valores.show')->middleware('permiso:catalogo_comercial.ver');
+        Route::post('/valores-atributo', [OperacionCatalogoComercialController::class, 'storeValorAtributo'])->name('valores.store')->middleware('permiso:catalogo_comercial.crear');
+        Route::put('/valores-atributo/{valor}', [OperacionCatalogoComercialController::class, 'updateValorAtributo'])->name('valores.update')->middleware('permiso:catalogo_comercial.editar');
+        Route::patch('/valores-atributo/{valor}/estatus', [OperacionCatalogoComercialController::class, 'cambiarEstatusValorAtributo'])->name('valores.estatus')->middleware('permiso:catalogo_comercial.inactivar');
+        Route::delete('/valores-atributo/{valor}', [OperacionCatalogoComercialController::class, 'eliminarValorAtributo'])->name('valores.destroy')->middleware('permiso:catalogo_comercial.eliminar');
+    });
+    Route::prefix('desktop/operacion/gestion-configuraciones')->name('desktop.operacion.gestion_configuraciones.')->group(function () {
+        Route::get('/', [OperacionGestionConfiguracionesController::class, 'index'])->name('index');
+
+        Route::get('/sucursales', [OperacionGestionConfiguracionesController::class, 'sucursales'])
+            ->name('sucursales.index')
+            ->middleware('permiso:sucursal.ver');
+        Route::get('/sucursales/data', [OperacionGestionConfiguracionesController::class, 'dataSucursales'])
+            ->name('sucursales.data')
+            ->middleware('permiso:sucursal.ver');
+        Route::get('/sucursales/{sucursal}', [OperacionGestionConfiguracionesController::class, 'showSucursal'])
+            ->name('sucursales.show')
+            ->middleware('permiso:sucursal.ver');
+        Route::post('/sucursales', [OperacionGestionConfiguracionesController::class, 'storeSucursal'])
+            ->name('sucursales.store')
+            ->middleware('permiso:sucursal.crear');
+        Route::put('/sucursales/{sucursal}', [OperacionGestionConfiguracionesController::class, 'updateSucursal'])
+            ->name('sucursales.update')
+            ->middleware('permiso:sucursal.editar');
+        Route::patch('/sucursales/{sucursal}/estatus', [OperacionGestionConfiguracionesController::class, 'cambiarEstatusSucursal'])
+            ->name('sucursales.estatus')
+            ->middleware('permiso:sucursal.inactivar');
+
+        Route::get('/almacenes', [OperacionGestionConfiguracionesController::class, 'almacenes'])
+            ->name('almacenes.index')
+            ->middleware('permiso:almacen.ver');
+        Route::get('/almacenes/data', [OperacionGestionConfiguracionesController::class, 'dataAlmacenes'])
+            ->name('almacenes.data')
+            ->middleware('permiso:almacen.ver');
+        Route::get('/almacenes/{almacen}', [OperacionGestionConfiguracionesController::class, 'showAlmacen'])
+            ->name('almacenes.show')
+            ->middleware('permiso:almacen.ver');
+        Route::post('/almacenes', [OperacionGestionConfiguracionesController::class, 'storeAlmacen'])
+            ->name('almacenes.store')
+            ->middleware('permiso:almacen.crear');
+        Route::put('/almacenes/{almacen}', [OperacionGestionConfiguracionesController::class, 'updateAlmacen'])
+            ->name('almacenes.update')
+            ->middleware('permiso:almacen.editar');
+        Route::patch('/almacenes/{almacen}/estatus', [OperacionGestionConfiguracionesController::class, 'cambiarEstatusAlmacen'])
+            ->name('almacenes.estatus')
+            ->middleware('permiso:almacen.inactivar');
+        Route::get('/tipos-almacen', [OperacionGestionConfiguracionesController::class, 'tiposAlmacen'])
+            ->name('tipos_almacen.index')
+            ->middleware('permiso:tipo_almacen.ver');
+        Route::get('/tipos-almacen/data', [OperacionGestionConfiguracionesController::class, 'dataTiposAlmacen'])
+            ->name('tipos_almacen.data')
+            ->middleware('permiso:tipo_almacen.ver');
+        Route::get('/tipos-almacen/{tipo_almacen}', [OperacionGestionConfiguracionesController::class, 'showTipoAlmacen'])
+            ->name('tipos_almacen.show')
+            ->middleware('permiso:tipo_almacen.ver');
+        Route::post('/tipos-almacen', [OperacionGestionConfiguracionesController::class, 'storeTipoAlmacen'])
+            ->name('tipos_almacen.store')
+            ->middleware('permiso:tipo_almacen.crear');
+        Route::put('/tipos-almacen/{tipo_almacen}', [OperacionGestionConfiguracionesController::class, 'updateTipoAlmacen'])
+            ->name('tipos_almacen.update')
+            ->middleware('permiso:tipo_almacen.editar');
+        Route::patch('/tipos-almacen/{tipo_almacen}/estatus', [OperacionGestionConfiguracionesController::class, 'cambiarEstatusTipoAlmacen'])
+            ->name('tipos_almacen.estatus')
+            ->middleware('permiso:tipo_almacen.inactivar');
+        Route::get('/cajas', [OperacionGestionConfiguracionesController::class, 'cajas'])
+            ->name('cajas.index')
+            ->middleware('permiso:caja.ver');
+        Route::get('/cajas/data', [OperacionGestionConfiguracionesController::class, 'dataCajas'])
+            ->name('cajas.data')
+            ->middleware('permiso:caja.ver');
+        Route::get('/cajas/{caja}', [OperacionGestionConfiguracionesController::class, 'showCaja'])
+            ->name('cajas.show')
+            ->middleware('permiso:caja.ver');
+        Route::post('/cajas', [OperacionGestionConfiguracionesController::class, 'storeCaja'])
+            ->name('cajas.store')
+            ->middleware('permiso:caja.crear');
+        Route::put('/cajas/{caja}', [OperacionGestionConfiguracionesController::class, 'updateCaja'])
+            ->name('cajas.update')
+            ->middleware('permiso:caja.editar');
+        Route::patch('/cajas/{caja}/estatus', [OperacionGestionConfiguracionesController::class, 'cambiarEstatusCaja'])
+            ->name('cajas.estatus')
+            ->middleware('permiso:caja.inactivar');
+        Route::get('/clientes', [OperacionGestionConfiguracionesController::class, 'clientes'])
+            ->name('clientes.index')
+            ->middleware('permiso:cliente.ver');
+        Route::get('/clientes/data', [OperacionGestionConfiguracionesController::class, 'dataClientes'])
+            ->name('clientes.data')
+            ->middleware('permiso:cliente.ver');
+        Route::get('/clientes/buscar-codigo-postal', [OperacionGestionConfiguracionesController::class, 'buscarCodigoPostal'])
+            ->name('clientes.cp.buscar')
+            ->middleware('permiso:cliente.ver');
+        Route::get('/clientes/{cliente}', [OperacionGestionConfiguracionesController::class, 'showCliente'])
+            ->name('clientes.show')
+            ->middleware('permiso:cliente.ver');
+        Route::post('/clientes', [OperacionGestionConfiguracionesController::class, 'storeCliente'])
+            ->name('clientes.store')
+            ->middleware('permiso:cliente.crear');
+        Route::put('/clientes/{cliente}', [OperacionGestionConfiguracionesController::class, 'updateCliente'])
+            ->name('clientes.update')
+            ->middleware('permiso:cliente.editar');
+        Route::patch('/clientes/{cliente}/estatus', [OperacionGestionConfiguracionesController::class, 'cambiarEstatusCliente'])
+            ->name('clientes.estatus')
+            ->middleware('permiso:cliente.inactivar');
+        Route::get('/personalizar-ticket', [OperacionGestionConfiguracionesController::class, 'personalizarTicket'])
+            ->name('ticket.index')
+            ->middleware('permiso:caja.ver');
+        Route::put('/personalizar-ticket', [OperacionGestionConfiguracionesController::class, 'updatePersonalizarTicket'])
+            ->name('ticket.update')
+            ->middleware('permiso:caja.editar');
+    });
     Route::view('/mobile/descarga-apk', 'mobile.descarga-apk')->name('mobile.descarga-apk');
 
     Route::get('/pos', [PuntoVentaController::class, 'index'])->name('pos.index');

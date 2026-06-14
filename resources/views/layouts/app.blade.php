@@ -682,6 +682,13 @@
                         </a>
                     </li>
 
+                    <li class="menu-item {{ request()->routeIs('desktop.*') ? 'active' : '' }}">
+                        <a href="{{ route('desktop.dashboard') }}" class="menu-link">
+                            <i class="menu-icon icon-base ti tabler-device-desktop"></i>
+                            <div>Nueva versión</div>
+                        </a>
+                    </li>
+
                     {{-- ── SEGURIDAD ────────────────────────────────────── --}}
                     @if(auth()->user()?->tienePermiso('usuario.ver') || auth()->user()?->tienePermiso('rol.ver') || auth()->user()?->tienePermiso('permiso.ver') || auth()->user()?->tienePermiso('seguridad.ver_auditoria'))
                         <li class="menu-header small text-uppercase">

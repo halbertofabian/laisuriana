@@ -418,7 +418,10 @@ class ProductoSkuService
 
     public function obtenerPorId(int $id): ProductoSku
     {
-        return ProductoSku::query()->with('valoresAtributo:vat_id,vat_atr_id,vat_valor')->findOrFail($id);
+        return ProductoSku::query()->with([
+            'valoresAtributo:vat_id,vat_atr_id,vat_valor',
+            'valoresAtributo.atributo:atr_id,atr_nombre,atr_clave',
+        ])->findOrFail($id);
     }
 
     public function obtenerParaEtiqueta(int $id): ProductoSku

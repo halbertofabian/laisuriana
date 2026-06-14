@@ -2304,6 +2304,64 @@
         catalogoState.productoCorridas = limpio;
     }
 
+    function obtenerValoresCorridaUsados(atributoId, excluirUid = null) {
+        const usados = new Set();
+        (catalogoState.productoCorridas || []).forEach((corrida) => {
+            if (Number(corrida?.atr_id || 0) !== Number(atributoId)) return;
+            if (excluirUid && String(corrida?.uid || '') === String(excluirUid)) return;
+            (corrida.valor_ids || []).forEach((valorId) => {
+                usados.add(Number(valorId));
+            });
+        });
+
+        return usados;
+    }
+
+    function obtenerValoresCorridaDisponibles(atributoId, excluirUid = null) {
+        const usados = obtenerValoresCorridaUsados(atributoId, excluirUid);
+        return obtenerValoresAtributoDisponibles(atributoId).filter((valorId) => !usados.has(Number(valorId)));
+    }
+
+    function validarCorridasProducto() {
+        const corridas = catalogoState.productoCorridas || [];
+        if (!corridas.length) {
+            return 'Debes agregar al menos una corrida para producto variable.';
+        }
+
+        const usadosPorAtributo = {};
+
+        for (let idx = 0; idx < corridas.length; idx += 1) {
+            const corrida = corridas[idx] || {};
+            const etiqueta = 'La corrida ' + (idx + 1);
+            const atrId = Number(corrida.atr_id || 0);
+            const valorIds = [...new Set((corrida.valor_ids || []).map((id) => Number(id)).filter((id) => id > 0))];
+            const permitidos = new Set(obtenerValoresAtributoDisponibles(atrId));
+            const stockMin = Number(corrida.stock_minimo || 0);
+            const stockMax = Number(corrida.stock_maximo || 0);
+
+            if (!atrId) return etiqueta + ' debe indicar un atributo objetivo válido.';
+            if (!String(corrida.nombre || '').trim()) return etiqueta + ' debe tener nombre.';
+            if (!valorIds.length) return etiqueta + ' debe incluir al menos un valor.';
+            if (stockMax < stockMin) return etiqueta + ' debe tener stock máximo mayor o igual al stock mínimo.';
+
+            usadosPorAtributo[atrId] = usadosPorAtributo[atrId] || {};
+
+            for (const valorId of valorIds) {
+                if (!permitidos.has(valorId)) {
+                    return etiqueta + ' contiene valores que ya no pertenecen al atributo seleccionado.';
+                }
+
+                if (usadosPorAtributo[atrId][valorId]) {
+                    return 'Un mismo valor de atributo no puede repetirse en más de una corrida.';
+                }
+
+                usadosPorAtributo[atrId][valorId] = true;
+            }
+        }
+
+        return null;
+    }
+
     function sincronizarCorridasDesdeUI() {
         const corridas = [];
         $('#producto-corridas-list .card').each(function (idx) {
@@ -2321,9 +2379,7 @@
                 stock_maximo: Number($card.find('.js-prd-corrida-stock-max').val() || 0),
             });
         });
-        if (corridas.length) {
-            catalogoState.productoCorridas = corridas;
-        }
+        catalogoState.productoCorridas = corridas;
     }
 
     function sincronizarCorridaPorIndice(idx) {
@@ -2447,7 +2503,8 @@
                             attrs.map((id) => {
                                 const atr = catalogoState.atributos.find((a) => Number(a.atr_id) === Number(id));
                                 const selected = Number(catalogoState.productoCorridaAtributoObjetivo || attrs[0]) === Number(id) ? ' selected' : '';
-                                return '<option value="' + id + '"' + selected + '>' + (atr?.atr_nombre || ('Atributo ' + id)) + '</option>';
+                                const disabled = !obtenerValoresCorridaDisponibles(id).length ? ' disabled' : '';
+                                return '<option value="' + id + '"' + selected + disabled + '>' + (atr?.atr_nombre || ('Atributo ' + id)) + '</option>';
                             }).join('') +
                         '</select>' +
                         '<button type="button" class="btn btn-sm btn-outline-primary" id="btn-prd-corrida-add">+ Agregar corrida</button>' +
@@ -3515,12 +3572,12 @@
             AppUI.showMessage('Validación', 'Primero selecciona valores para ese atributo.', 'warning');
             return;
         }
-        const usados = {};
-        (catalogoState.productoCorridas || []).forEach((c) => {
-            if (Number(c.atr_id) !== atrRapido) return;
-            (c.valor_ids || []).forEach((v) => { usados[Number(v)] = true; });
-        });
-        const primerDisponible = valoresDisponibles.find((v) => !usados[Number(v)]) || valoresDisponibles[0];
+        const valoresLibres = obtenerValoresCorridaDisponibles(atrRapido);
+        if (!valoresLibres.length) {
+            AppUI.showMessage('Validación', 'Todos los valores seleccionados para ese atributo ya están asignados a una corrida.', 'warning');
+            return;
+        }
+        const primerDisponible = valoresLibres[0];
         catalogoState.productoCorridas.push({
             uid: Date.now() + '-' + Math.random().toString(36).slice(2),
             nombre: tituloCorridaSugerido(atrRapido),
@@ -3616,8 +3673,9 @@
         if (esVariable) {
             sincronizarCorridasDesdeUI();
             sanitizarCorridasProducto();
-            if (!(catalogoState.productoCorridas || []).length) {
-                AppUI.showMessage('Validación', 'Debes agregar al menos una corrida para producto variable.', 'warning');
+            const errorCorridas = validarCorridasProducto();
+            if (errorCorridas) {
+                AppUI.showMessage('Validación', errorCorridas, 'warning');
                 return;
             }
             formData.delete('corridas');
