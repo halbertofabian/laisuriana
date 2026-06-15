@@ -1,6 +1,6 @@
 @extends('layouts.desktop')
 
-@section('title', 'Existencias')
+@section('title', $pageTitle ?? 'Existencias')
 
 @push('desktop-vendor-styles')
     <link rel="stylesheet" href="{{ asset('vendor-template/assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}" />
@@ -177,6 +177,12 @@
             background: rgba(47, 111, 237, .08);
         }
         .desktop-inv-pill--new .desktop-inv-pill__val { color: var(--brand); }
+        .desktop-inv-pill--neg {
+            border-color: rgba(220, 53, 69, .25);
+            background: rgba(220, 53, 69, .08);
+        }
+        .desktop-inv-pill--neg .desktop-inv-pill__name,
+        .desktop-inv-pill--neg .desktop-inv-pill__val { color: #c62828; }
         .desktop-inv-pill--na {
             border-style: dashed;
             opacity: .68;
@@ -404,7 +410,6 @@
 
 @section('desktop-toolbar')
     <div class="desktop-toolbar__group">
-        @php($activeSubmenu = 'existencias')
         @include('desktop.operacion.inventario._subnav')
         <span class="desktop-toolbar__divider"></span>
         <button type="button" class="desktop-btn desktop-btn--ghost" id="btn-recargar-existencias">
@@ -577,11 +582,12 @@
 @push('desktop-scripts')
     <script>
         (function () {
+            const soloNegativas = @json((bool) ($soloNegativas ?? false));
             const rutas = {
-                data: @json(route('desktop.operacion.inventario.existencias.data')),
+                data: @json($dataRoute ?? route('desktop.operacion.inventario.existencias.data')),
                 productos: @json(route('desktop.operacion.inventario.productos.buscar')),
-                exportarExcel: @json(route('desktop.operacion.inventario.existencias.exportar.excel')),
-                exportarPdf: @json(route('desktop.operacion.inventario.existencias.exportar.pdf')),
+                exportarExcel: @json($exportExcelRoute ?? route('desktop.operacion.inventario.existencias.exportar.excel')),
+                exportarPdf: @json($exportPdfRoute ?? route('desktop.operacion.inventario.existencias.exportar.pdf')),
                 kardexDetalle: @json(url('/desktop/operacion/inventario/kardex/__SKU__/detalle')),
             };
 
@@ -618,20 +624,32 @@
                     return '<span class="desktop-inv-empty">Sin tallas configuradas.</span>';
                 }
 
-                return '<div class="desktop-inv-strip">' + tallas.map(function (item) {
+                const tallasVisibles = soloNegativas
+                    ? tallas.filter(function (item) { return (item.estado || '') === 'negativo'; })
+                    : tallas;
+
+                if (!tallasVisibles.length) {
+                    return '<span class="desktop-inv-empty">Sin variantes negativas.</span>';
+                }
+
+                return '<div class="desktop-inv-strip">' + tallasVisibles.map(function (item) {
                     const estado = item.estado || 'sin_sku';
-                    const mod = estado === 'con_existencia'
-                        ? 'ok'
-                        : (estado === 'cero'
-                            ? 'zero'
-                            : (estado === 'sin_historial' ? 'new' : 'na'));
+                    const mod = estado === 'negativo'
+                        ? 'neg'
+                        : (estado === 'con_existencia'
+                            ? 'ok'
+                            : (estado === 'cero'
+                                ? 'zero'
+                                : (estado === 'sin_historial' ? 'new' : 'na')));
                     const valor = item.existencia === null ? 'N/D' : Number(item.existencia).toFixed(2).replace(/\.00$/, '');
                     const pskId = item.psk_id ? String(item.psk_id) : '';
                     const colorVatId = item.color_vat_id ? String(item.color_vat_id) : '';
                     const tallaKey = item.talla_key ? String(item.talla_key) : '';
-                    const title = estado === 'sin_historial'
-                        ? 'SKU generado sin historial de existencias en almacenes'
-                        : (estado === 'sin_sku' ? 'Sin SKU generado' : '');
+                    const title = estado === 'negativo'
+                        ? 'Existencia negativa detectada'
+                        : (estado === 'sin_historial'
+                            ? 'SKU generado sin historial de existencias en almacenes'
+                            : (estado === 'sin_sku' ? 'Sin SKU generado' : ''));
 
                     return '<span class="desktop-inv-pill desktop-inv-pill--' + mod + '" title="' + escapeHtml(title) + '" data-psk-id="' + escapeHtml(pskId) + '" data-talla="' + escapeHtml(item.talla || 'Base') + '" data-talla-key="' + escapeHtml(tallaKey) + '" data-color-vat-id="' + escapeHtml(colorVatId) + '">' +
                         '<span class="desktop-inv-pill__name">' + escapeHtml(item.talla || 'Base') + '</span>' +
@@ -944,6 +962,9 @@
                 Object.keys(map).forEach(function (key) {
                     if (map[key]) params.set(key, map[key]);
                 });
+                if (soloNegativas) {
+                    params.set('solo_negativas', '1');
+                }
 
                 const qs = params.toString();
                 return qs ? base + '?' + qs : base;

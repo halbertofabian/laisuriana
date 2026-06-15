@@ -307,6 +307,7 @@ class InventarioBaseService
             ->forPage($pagina, $porPagina)
             ->get([
                 'tbl_producto_skus_psk.psk_id',
+                'tbl_producto_skus_psk.psk_prd_id',
                 'tbl_producto_skus_psk.psk_codigo',
                 'tbl_producto_skus_psk.psk_nombre',
                 'prd.prd_nombre',
@@ -315,6 +316,10 @@ class InventarioBaseService
         $resultados = $filas->map(fn ($sku) => [
             'id' => $sku->psk_id,
             'text' => sprintf('%s - %s (%s)', $sku->psk_codigo, $sku->psk_nombre, $sku->prd_nombre),
+            'prd_id' => (int) $sku->psk_prd_id,
+            'sku_codigo' => (string) $sku->psk_codigo,
+            'sku_nombre' => (string) $sku->psk_nombre,
+            'producto_nombre' => (string) $sku->prd_nombre,
         ])->values()->all();
 
         return [
@@ -471,7 +476,7 @@ class InventarioBaseService
             ]);
     }
 
-    public function listarKardex(array $filtros = []): Collection
+    private function queryKardexBase(array $filtros = [])
     {
         return DB::table('tbl_movimientos_inventario_min as min')
             ->join('tbl_tipos_movimiento_inventario_tmi as tmi', 'tmi.tmi_id', '=', 'min.min_tmi_id')
@@ -487,37 +492,129 @@ class InventarioBaseService
             ->when(!empty($filtros['min_psk_id']), fn ($q) => $q->where('min.min_psk_id', (int) $filtros['min_psk_id']))
             ->when(!empty($filtros['fecha_desde']), fn ($q) => $q->whereDate('min.min_fecha_movimiento', '>=', $filtros['fecha_desde']))
             ->when(!empty($filtros['fecha_hasta']), fn ($q) => $q->whereDate('min.min_fecha_movimiento', '<=', $filtros['fecha_hasta']))
+            ->when(!empty($filtros['buscar']), function ($q) use ($filtros): void {
+                $buscar = trim((string) $filtros['buscar']);
+                $q->where(function ($sub) use ($buscar): void {
+                    $sub->where('min.min_folio', 'like', "%{$buscar}%")
+                        ->orWhere('min.min_documento_referencia', 'like', "%{$buscar}%")
+                        ->orWhere('psk.psk_codigo', 'like', "%{$buscar}%")
+                        ->orWhere('psk.psk_nombre', 'like', "%{$buscar}%")
+                        ->orWhere('prd.prd_nombre', 'like', "%{$buscar}%");
+                });
+            });
+    }
+
+    private function selectKardex(): array
+    {
+        return [
+            'min.min_id', 'min.min_folio', 'min.min_psk_id', 'min.min_scl_id', 'min.min_alm_id',
+            'min.min_documento_tipo', 'min.min_documento_referencia', 'min.min_cantidad', 'min.min_signo',
+            'min.min_existencia_antes', 'min.min_existencia_despues', 'min.min_motivo_texto', 'min.min_estatus',
+            'min.min_es_reversa', 'min.min_origen_min_id', 'min.min_reversa_de_min_id', 'min.min_fecha_movimiento',
+            'psk.psk_codigo', 'psk.psk_nombre', 'prd.prd_nombre', 'prd.prd_tipo',
+            'scl.scl_nombre', 'alm.alm_nombre', 'tmi.tmi_nombre', 'tmi.tmi_clase', 'usr.usr_nombre as usuario_nombre',
+        ];
+    }
+
+    public function listarKardex(array $filtros = []): Collection
+    {
+        return $this->queryKardexBase($filtros)
             ->orderByDesc('min.min_fecha_movimiento')
             ->orderByDesc('min.min_id')
             ->limit(1000)
-            ->get([
-                'min.min_id',
-                'min.min_folio',
-                'min.min_psk_id',
-                'min.min_scl_id',
-                'min.min_alm_id',
-                'min.min_documento_tipo',
-                'min.min_documento_referencia',
-                'min.min_cantidad',
-                'min.min_signo',
-                'min.min_existencia_antes',
-                'min.min_existencia_despues',
-                'min.min_motivo_texto',
-                'min.min_estatus',
-                'min.min_es_reversa',
-                'min.min_origen_min_id',
-                'min.min_reversa_de_min_id',
-                'min.min_fecha_movimiento',
-                'psk.psk_codigo',
-                'psk.psk_nombre',
-                'prd.prd_nombre',
-                'prd.prd_tipo',
-                'scl.scl_nombre',
-                'alm.alm_nombre',
-                'tmi.tmi_nombre',
-                'tmi.tmi_clase',
-                'usr.usr_nombre as usuario_nombre',
-            ]);
+            ->get($this->selectKardex());
+    }
+
+    public function paginarKardex(
+        array $filtros = [],
+        int $start = 0,
+        int $length = 50,
+        int $orderColumn = 0,
+        string $orderDir = 'desc',
+    ): array {
+        $start = max(0, $start);
+        $length = max(1, min(250, $length));
+        $orderDir = strtolower($orderDir) === 'asc' ? 'asc' : 'desc';
+
+        $columnasOrden = [
+            0 => 'min.min_fecha_movimiento',
+            1 => 'min.min_folio',
+            2 => 'psk.psk_codigo',
+            3 => 'prd.prd_nombre',
+            4 => 'scl.scl_nombre',
+            5 => 'alm.alm_nombre',
+            6 => 'tmi.tmi_nombre',
+            7 => 'min.min_cantidad',
+            9 => 'min.min_existencia_despues',
+            10 => 'usr.usr_nombre',
+            11 => 'min.min_estatus',
+        ];
+        $orderBy = $columnasOrden[$orderColumn] ?? 'min.min_fecha_movimiento';
+
+        $total = $this->queryKardexBase($filtros)->count();
+
+        $data = $this->queryKardexBase($filtros)
+            ->orderBy($orderBy, $orderDir)
+            ->orderByDesc('min.min_id')
+            ->offset($start)
+            ->limit($length)
+            ->get($this->selectKardex());
+
+        return [
+            'recordsTotal' => $total,
+            'recordsFiltered' => $total,
+            'data' => $data,
+        ];
+    }
+
+    /**
+     * Listado paginado de salidas (movimientos de ajuste manual / merma con signo negativo).
+     */
+    public function paginarSalidas(
+        array $filtros = [],
+        int $start = 0,
+        int $length = 50,
+        int $orderColumn = 0,
+        string $orderDir = 'desc',
+    ): array {
+        $start = max(0, $start);
+        $length = max(1, min(250, $length));
+        $orderDir = strtolower($orderDir) === 'asc' ? 'asc' : 'desc';
+
+        $base = fn () => $this->queryKardexBase($filtros)
+            ->whereIn('min.min_documento_tipo', ['ajuste_manual', 'merma'])
+            ->where('min.min_signo', '<', 0)
+            ->when(!empty($filtros['tipo']), fn ($q) => $q->where('min.min_documento_tipo', (string) $filtros['tipo']));
+
+        $columnasOrden = [
+            0 => 'min.min_fecha_movimiento',
+            1 => 'min.min_folio',
+            2 => 'psk.psk_codigo',
+            3 => 'prd.prd_nombre',
+            4 => 'scl.scl_nombre',
+            5 => 'alm.alm_nombre',
+            6 => 'min.min_documento_tipo',
+            7 => 'min.min_cantidad',
+            8 => 'min.min_existencia_despues',
+            9 => 'usr.usr_nombre',
+            10 => 'min.min_estatus',
+        ];
+        $orderBy = $columnasOrden[$orderColumn] ?? 'min.min_fecha_movimiento';
+
+        $total = $base()->count();
+
+        $data = $base()
+            ->orderBy($orderBy, $orderDir)
+            ->orderByDesc('min.min_id')
+            ->offset($start)
+            ->limit($length)
+            ->get($this->selectKardex());
+
+        return [
+            'recordsTotal' => $total,
+            'recordsFiltered' => $total,
+            'data' => $data,
+        ];
     }
 
     public function obtenerKardexDetalleSku(int $skuId, array $filtros = []): array
@@ -604,7 +701,7 @@ class InventarioBaseService
         ];
     }
 
-    public function listarNegativosPorSesionCaja(array $filtros = []): Collection
+    private function queryNegativosPorSesionCajaBase(array $filtros = [])
     {
         return DB::table('tbl_movimientos_inventario_min as min')
             ->join('tbl_pos_ventas_psv as psv', 'psv.psv_folio', '=', 'min.min_documento_referencia')
@@ -637,35 +734,92 @@ class InventarioBaseService
                         ->orWhere('caj.caj_nombre', 'like', "%{$buscar}%")
                         ->orWhere('usr_vta.usr_nombre', 'like', "%{$buscar}%");
                 });
-            })
+            });
+    }
+
+    private function selectNegativosPorSesionCaja(): array
+    {
+        return [
+            'min.min_id',
+            'min.min_folio',
+            'min.min_fecha_movimiento',
+            'min.min_documento_referencia',
+            'min.min_cantidad',
+            'min.min_existencia_antes',
+            'min.min_existencia_despues',
+            'cse.cse_id',
+            'cse.cse_abierta_at',
+            'cse.cse_cerrada_at',
+            'cse.cse_estatus',
+            'caj.caj_nombre',
+            'scl.scl_nombre',
+            'alm.alm_nombre',
+            'psk.psk_codigo',
+            'psk.psk_nombre',
+            'prd.prd_nombre',
+            'usr_ap.usr_nombre as usuario_apertura',
+            'usr_vta.usr_nombre as usuario_venta',
+            'psv.psv_folio',
+        ];
+    }
+
+    public function listarNegativosPorSesionCaja(array $filtros = []): Collection
+    {
+        return $this->queryNegativosPorSesionCajaBase($filtros)
             ->orderByDesc('min.min_fecha_movimiento')
             ->orderByDesc('min.min_id')
             ->limit(1500)
-            ->get([
-                'min.min_id',
-                'min.min_folio',
-                'min.min_fecha_movimiento',
-                'min.min_documento_referencia',
-                'min.min_cantidad',
-                'min.min_existencia_antes',
-                'min.min_existencia_despues',
-                'cse.cse_id',
-                'cse.cse_abierta_at',
-                'cse.cse_cerrada_at',
-                'cse.cse_estatus',
-                'caj.caj_nombre',
-                'scl.scl_nombre',
-                'alm.alm_nombre',
-                'psk.psk_codigo',
-                'psk.psk_nombre',
-                'prd.prd_nombre',
-                'usr_ap.usr_nombre as usuario_apertura',
-                'usr_vta.usr_nombre as usuario_venta',
-                'psv.psv_folio',
-            ]);
+            ->get($this->selectNegativosPorSesionCaja());
     }
 
-    public function listarBajoMinimo(array $filtros = []): Collection
+    /**
+     * Paginación server-side (LIMIT/OFFSET + COUNT) para el reporte de negativos
+     * por sesión de caja. Mantiene los mismos filtros que el listado completo.
+     */
+    public function paginarNegativosPorSesionCaja(
+        array $filtros = [],
+        int $start = 0,
+        int $length = 50,
+        int $orderColumn = 0,
+        string $orderDir = 'desc',
+    ): array {
+        $start = max(0, $start);
+        $length = max(1, min(250, $length));
+        $orderDir = strtolower($orderDir) === 'asc' ? 'asc' : 'desc';
+
+        $columnasOrden = [
+            0 => 'min.min_fecha_movimiento',
+            1 => 'cse.cse_id',
+            2 => 'caj.caj_nombre',
+            3 => 'scl.scl_nombre',
+            4 => 'alm.alm_nombre',
+            5 => 'psv.psv_folio',
+            6 => 'psk.psk_codigo',
+            7 => 'psk.psk_nombre',
+            8 => 'min.min_cantidad',
+            9 => 'min.min_existencia_antes',
+            10 => 'min.min_existencia_despues',
+            11 => 'usr_vta.usr_nombre',
+        ];
+        $orderBy = $columnasOrden[$orderColumn] ?? 'min.min_fecha_movimiento';
+
+        $total = $this->queryNegativosPorSesionCajaBase($filtros)->count();
+
+        $data = $this->queryNegativosPorSesionCajaBase($filtros)
+            ->orderBy($orderBy, $orderDir)
+            ->orderByDesc('min.min_id')
+            ->offset($start)
+            ->limit($length)
+            ->get($this->selectNegativosPorSesionCaja());
+
+        return [
+            'recordsTotal' => $total,
+            'recordsFiltered' => $total,
+            'data' => $data,
+        ];
+    }
+
+    private function queryBajoMinimoBase(array $filtros = [])
     {
         return DB::table('tbl_minimos_inventario_mni as mni')
             ->join('tbl_existencias_almacen_exa as exa', function ($join): void {
@@ -686,20 +840,69 @@ class InventarioBaseService
             ->whereRaw('exa.exa_existencia < mni.mni_minimo')
             ->when(!empty($filtros['mni_scl_id']), fn ($q) => $q->where('mni.mni_scl_id', (int) $filtros['mni_scl_id']))
             ->when(!empty($filtros['mni_alm_id']), fn ($q) => $q->where('mni.mni_alm_id', (int) $filtros['mni_alm_id']))
+            ->when(!empty($filtros['buscar']), function ($q) use ($filtros): void {
+                $buscar = trim((string) $filtros['buscar']);
+                $q->where(function ($sub) use ($buscar): void {
+                    $sub->where('psk.psk_codigo', 'like', "%{$buscar}%")
+                        ->orWhere('psk.psk_nombre', 'like', "%{$buscar}%")
+                        ->orWhere('prd.prd_nombre', 'like', "%{$buscar}%");
+                });
+            });
+    }
+
+    private function selectBajoMinimo(): array
+    {
+        return [
+            'mni.mni_id', 'mni.mni_minimo', 'exa.exa_existencia',
+            'psk.psk_id', 'psk.psk_codigo', 'psk.psk_nombre', 'prd.prd_nombre',
+            'scl.scl_nombre', 'alm.alm_nombre',
+        ];
+    }
+
+    public function listarBajoMinimo(array $filtros = []): Collection
+    {
+        return $this->queryBajoMinimoBase($filtros)
             ->orderBy('scl.scl_nombre')
             ->orderBy('alm.alm_nombre')
             ->orderBy('psk.psk_nombre')
-            ->get([
-                'mni.mni_id',
-                'mni.mni_minimo',
-                'exa.exa_existencia',
-                'psk.psk_id',
-                'psk.psk_codigo',
-                'psk.psk_nombre',
-                'prd.prd_nombre',
-                'scl.scl_nombre',
-                'alm.alm_nombre',
-            ]);
+            ->get($this->selectBajoMinimo());
+    }
+
+    public function paginarBajoMinimo(
+        array $filtros = [],
+        int $start = 0,
+        int $length = 50,
+        int $orderColumn = 0,
+        string $orderDir = 'asc',
+    ): array {
+        $start = max(0, $start);
+        $length = max(1, min(250, $length));
+        $orderDir = strtolower($orderDir) === 'desc' ? 'desc' : 'asc';
+
+        $columnasOrden = [
+            0 => 'psk.psk_codigo',
+            1 => 'prd.prd_nombre',
+            2 => 'scl.scl_nombre',
+            3 => 'alm.alm_nombre',
+            4 => 'exa.exa_existencia',
+            5 => 'mni.mni_minimo',
+        ];
+        $orderBy = $columnasOrden[$orderColumn] ?? 'psk.psk_codigo';
+
+        $total = $this->queryBajoMinimoBase($filtros)->count();
+
+        $data = $this->queryBajoMinimoBase($filtros)
+            ->orderBy($orderBy, $orderDir)
+            ->orderBy('psk.psk_nombre')
+            ->offset($start)
+            ->limit($length)
+            ->get($this->selectBajoMinimo());
+
+        return [
+            'recordsTotal' => $total,
+            'recordsFiltered' => $total,
+            'data' => $data,
+        ];
     }
 
     public function listarReportesEntradasPdf(array $filtros = []): Collection
@@ -808,6 +1011,93 @@ class InventarioBaseService
                 DB::raw('COALESCE(det.total_articulos, 0) as total_articulos'),
                 DB::raw('COALESCE(det.total_importe, 0) as total_importe'),
             ]);
+    }
+
+    /**
+     * Paginación server-side (LIMIT/OFFSET + COUNT) del listado de recepciones.
+     */
+    public function paginarRecepcionesMercancia(
+        array $filtros = [],
+        int $start = 0,
+        int $length = 50,
+        int $orderColumn = 0,
+        string $orderDir = 'desc',
+    ): array {
+        $start = max(0, $start);
+        $length = max(1, min(250, $length));
+        $orderDir = strtolower($orderDir) === 'asc' ? 'asc' : 'desc';
+
+        $base = fn () => DB::table('tbl_recepciones_mercancia_rme as rme')
+            ->where('rme.rme_deleted', false)
+            ->whereNull('rme.rme_deleted_at')
+            ->when(!empty($filtros['estado']), fn ($q) => $q->where('rme.rme_estado', (string) $filtros['estado']))
+            ->when(!empty($filtros['fecha_desde']), fn ($q) => $q->whereDate('rme.rme_fecha_captura', '>=', $filtros['fecha_desde']))
+            ->when(!empty($filtros['fecha_hasta']), fn ($q) => $q->whereDate('rme.rme_fecha_captura', '<=', $filtros['fecha_hasta']))
+            ->when(!empty($filtros['buscar']), function ($q) use ($filtros): void {
+                $buscar = trim((string) $filtros['buscar']);
+                $q->where(function ($sub) use ($buscar): void {
+                    $sub->where('rme.rme_folio', 'like', "%{$buscar}%")
+                        ->orWhere('rme.rme_documento_referencia', 'like', "%{$buscar}%")
+                        ->orWhereExists(function ($exists) use ($buscar): void {
+                            $exists->selectRaw('1')
+                                ->from('tbl_proveedores_prv as prvx')
+                                ->whereColumn('prvx.prv_id', 'rme.rme_prv_id')
+                                ->where('prvx.prv_nombre_empresa', 'like', "%{$buscar}%");
+                        });
+                });
+            });
+
+        $columnasOrden = [
+            0 => 'rme.rme_fecha_captura',
+            1 => 'rme.rme_folio',
+            2 => 'rme.rme_estado',
+        ];
+        $orderBy = $columnasOrden[$orderColumn] ?? 'rme.rme_fecha_captura';
+
+        $total = $base()->count();
+
+        $detalleSub = DB::table('tbl_recepcion_mercancia_detalle_rmd as rmd')
+            ->selectRaw('rmd_rme_id, COUNT(*) as total_lineas, SUM(rmd_cantidad) as total_articulos, SUM(COALESCE(rmd_cantidad, 0) * COALESCE(rmd_precio_unitario, 0)) as total_importe')
+            ->where('rmd_deleted', false)
+            ->whereNull('rmd_deleted_at')
+            ->groupBy('rmd_rme_id');
+
+        $data = $base()
+            ->leftJoinSub($detalleSub, 'det', fn ($join) => $join->on('det.rmd_rme_id', '=', 'rme.rme_id'))
+            ->leftJoin('tbl_sucursales_scl as scl', 'scl.scl_id', '=', 'rme.rme_scl_id')
+            ->leftJoin('tbl_almacenes_alm as alm', 'alm.alm_id', '=', 'rme.rme_alm_id')
+            ->leftJoin('tbl_proveedores_prv as prv', 'prv.prv_id', '=', 'rme.rme_prv_id')
+            ->leftJoin('tbl_usuarios_usr as usr_creo', 'usr_creo.usr_id', '=', 'rme.rme_created_by_usr_id')
+            ->leftJoin('tbl_usuarios_usr as usr_conf', 'usr_conf.usr_id', '=', 'rme.rme_confirmado_by_usr_id')
+            ->orderBy($orderBy, $orderDir)
+            ->orderByDesc('rme.rme_id')
+            ->offset($start)
+            ->limit($length)
+            ->get([
+                'rme.rme_id',
+                'rme.rme_folio',
+                'rme.rme_estado',
+                'rme.rme_documento_tipo',
+                'rme.rme_documento_referencia',
+                'rme.rme_fecha_captura',
+                'rme.rme_confirmado_at',
+                'rme.rme_cancelado_at',
+                'rme.rme_cancelacion_motivo',
+                'scl.scl_nombre as sucursal_nombre',
+                'alm.alm_nombre as almacen_nombre',
+                'prv.prv_nombre_empresa as proveedor_nombre',
+                'usr_creo.usr_nombre as usuario_creo',
+                'usr_conf.usr_nombre as usuario_confirmo',
+                DB::raw('COALESCE(det.total_lineas, 0) as total_lineas'),
+                DB::raw('COALESCE(det.total_articulos, 0) as total_articulos'),
+                DB::raw('COALESCE(det.total_importe, 0) as total_importe'),
+            ]);
+
+        return [
+            'recordsTotal' => $total,
+            'recordsFiltered' => $total,
+            'data' => $data,
+        ];
     }
 
     public function obtenerRecepcionMercancia(int $recepcionId): array

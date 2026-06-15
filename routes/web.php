@@ -135,22 +135,39 @@ Route::middleware('auth')->group(function () {
         Route::patch('/valores-atributo/{valor}/estatus', [OperacionCatalogoComercialController::class, 'cambiarEstatusValorAtributo'])->name('valores.estatus')->middleware('permiso:catalogo_comercial.inactivar');
         Route::delete('/valores-atributo/{valor}', [OperacionCatalogoComercialController::class, 'eliminarValorAtributo'])->name('valores.destroy')->middleware('permiso:catalogo_comercial.eliminar');
     });
+    Route::get('/desktop/operacion/pedido-piso', [\App\Http\Controllers\Desktop\OperacionPedidoPisoController::class, 'index'])
+        ->name('desktop.operacion.pedido_piso.index')->middleware('permiso:pedido_piso.ver');
     Route::prefix('desktop/operacion/inventario')->name('desktop.operacion.inventario.')->group(function () {
         Route::get('/', [OperacionInventarioController::class, 'index'])->name('index')->middleware('permiso:inventario_base.ver');
         Route::get('/existencias', [OperacionInventarioController::class, 'existencias'])->name('existencias.index')->middleware('permiso:inventario_base.ver');
         Route::get('/existencias/data', [OperacionInventarioController::class, 'dataExistenciasMatriz'])->name('existencias.data')->middleware('permiso:inventario_base.ver');
         Route::get('/existencias/exportar/excel', [OperacionInventarioController::class, 'exportarExcelExistenciasMatriz'])->name('existencias.exportar.excel')->middleware('permiso:inventario_base.ver');
         Route::get('/existencias/exportar/pdf', [OperacionInventarioController::class, 'exportarPdfExistenciasMatriz'])->name('existencias.exportar.pdf')->middleware('permiso:inventario_base.ver');
-        Route::get('/productos/buscar', [OperacionInventarioController::class, 'buscarProductosBase'])->name('productos.buscar')->middleware('permiso:inventario_base.ver');
-        Route::get('/kardex/{sku}/detalle', [OperacionInventarioController::class, 'kardexDetalle'])->name('kardex.detalle')->middleware('permiso:inventario_base.ver');
         Route::get('/existencias-negativas', [OperacionInventarioController::class, 'existenciasNegativas'])->name('existencias_negativas.index')->middleware('permiso:inventario_base.ver');
+        Route::get('/existencias-negativas/data', [OperacionInventarioController::class, 'dataExistenciasNegativas'])->name('existencias_negativas.data')->middleware('permiso:inventario_base.ver');
+        Route::get('/existencias-negativas/exportar/excel', [OperacionInventarioController::class, 'exportarExcelExistenciasNegativas'])->name('existencias_negativas.exportar.excel')->middleware('permiso:inventario_base.ver');
+        Route::get('/existencias-negativas/exportar/pdf', [OperacionInventarioController::class, 'exportarPdfExistenciasNegativas'])->name('existencias_negativas.exportar.pdf')->middleware('permiso:inventario_base.ver');
+        Route::get('/productos/buscar', [OperacionInventarioController::class, 'buscarProductosBase'])->name('productos.buscar')->middleware('permiso:inventario_base.ver');
+        Route::get('/kardex/data', [OperacionInventarioController::class, 'dataKardex'])->name('kardex.data')->middleware('permiso:inventario_base.ver');
+        Route::get('/kardex/{sku}/detalle', [OperacionInventarioController::class, 'kardexDetalle'])->name('kardex.detalle')->middleware('permiso:inventario_base.ver');
         Route::get('/negativos-por-sesion', [OperacionInventarioController::class, 'negativosSesion'])->name('negativos_sesion.index')->middleware('permiso:inventario_base.ver');
+        Route::get('/negativos-por-sesion/data', [OperacionInventarioController::class, 'dataNegativosSesion'])->name('negativos_sesion.data')->middleware('permiso:inventario_base.ver');
         Route::get('/recibir', [OperacionInventarioController::class, 'recibir'])->name('recibir.index')->middleware('permiso:inventario_base.ver');
+        Route::get('/recibir/productos/buscar', [OperacionInventarioController::class, 'buscarProductosRecibir'])->name('recibir.productos.buscar')->middleware('permiso:inventario_base.ver');
+        Route::get('/recibir/productos/{producto}/matriz', [OperacionInventarioController::class, 'matrizRecibir'])->name('recibir.productos.matriz')->middleware('permiso:inventario_base.ver');
+        Route::post('/recibir/borrador', [OperacionInventarioController::class, 'storeRecibirBorrador'])->name('recibir.borrador')->middleware('permiso:inventario_base.entrada');
+        Route::post('/recibir/confirmar', [OperacionInventarioController::class, 'confirmarRecibir'])->name('recibir.confirmar')->middleware('permiso:inventario_base.entrada');
         Route::get('/recepciones', [OperacionInventarioController::class, 'recepciones'])->name('recepciones.index')->middleware('permiso:inventario_base.ver');
+        Route::get('/recepciones/data', [OperacionInventarioController::class, 'dataRecepciones'])->name('recepciones.data')->middleware('permiso:inventario_base.ver');
+        Route::get('/recepciones/{recepcion}', [OperacionInventarioController::class, 'showRecepcion'])->name('recepciones.show')->middleware('permiso:inventario_base.ver');
+        Route::get('/recepciones/{recepcion}/reporte-pdf', [OperacionInventarioController::class, 'reportePdfRecepcion'])->name('recepciones.reporte_pdf')->middleware('permiso:inventario_base.ver');
+        Route::post('/recepciones/{recepcion}/cancelar', [OperacionInventarioController::class, 'cancelarRecepcion'])->name('recepciones.cancelar')->middleware('permiso:inventario_base.cancelar');
         Route::get('/salidas', [OperacionInventarioController::class, 'salidas'])->name('salidas.index')->middleware('permiso:inventario_base.ver');
+        Route::get('/salidas/data', [OperacionInventarioController::class, 'dataSalidas'])->name('salidas.data')->middleware('permiso:inventario_base.ver');
+        Route::get('/salidas/registrar', [OperacionInventarioController::class, 'salidasRegistrar'])->name('salidas.registrar')->middleware('permiso:inventario_base.salida');
         Route::get('/kardex', [OperacionInventarioController::class, 'kardex'])->name('kardex.index')->middleware('permiso:inventario_base.ver');
         Route::get('/minimos', [OperacionInventarioController::class, 'minimos'])->name('minimos.index')->middleware('permiso:inventario_base.ver');
-        Route::get('/reportes', [OperacionInventarioController::class, 'reportes'])->name('reportes.index')->middleware('permiso:inventario_base.ver');
+        Route::get('/minimos/bajo/data', [OperacionInventarioController::class, 'dataBajoMinimo'])->name('minimos.bajo.data')->middleware('permiso:inventario_base.ver');
     });
     Route::prefix('desktop/operacion/gestion-configuraciones')->name('desktop.operacion.gestion_configuraciones.')->group(function () {
         Route::get('/', [OperacionGestionConfiguracionesController::class, 'index'])->name('index');

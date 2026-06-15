@@ -594,8 +594,10 @@
                     ? '¿Deseas activar este cliente?'
                     : '¿Deseas inactivar este cliente?';
 
-                if (!window.confirm(promptText)) return;
-                cambiarEstatus(id, estatus);
+                DesktopUI.confirm({ title: 'Confirmar', message: promptText }).then(function (ok) {
+                    if (!ok) return;
+                    cambiarEstatus(id, estatus);
+                });
             });
 
             $form.on('submit', function (event) {

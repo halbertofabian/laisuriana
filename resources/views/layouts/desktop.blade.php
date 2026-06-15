@@ -646,6 +646,9 @@
         @keyframes dxslide { from { transform: translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
         .desktop-feedback.is-success { border-left-color: var(--success); }
         .desktop-feedback.is-error { border-left-color: var(--danger); }
+        /* Contenedor para toasts dinámicos (apilados) */
+        #dx-toast-wrap { position: fixed; right: 18px; bottom: 18px; z-index: var(--z-toast); display: flex; flex-direction: column-reverse; gap: 10px; pointer-events: none; }
+        #dx-toast-wrap .desktop-feedback { position: static; pointer-events: auto; }
 
         /* ====================== RESPONSIVE ====================== */
         .nav-scrim { display: none; }
@@ -747,6 +750,10 @@
                     <span class="nav-item__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.97 12.92A2 2 0 0 0 2 14.63v3.24a2 2 0 0 0 .97 1.71l3 1.8a2 2 0 0 0 2.06 0L12 19v-5.5l-5-3-4.03 2.42Z"/><path d="m7 16.5-4.74-2.85M7 16.5l5-3M7 16.5v5.17"/><path d="M12 13.5V19l3.97 2.38a2 2 0 0 0 2.06 0l3-1.8a2 2 0 0 0 .97-1.71v-3.24a2 2 0 0 0-.97-1.71L17 10.5l-5 3Z"/><path d="m17 16.5-5-3M17 16.5l4.74-2.85M17 16.5v5.17"/><path d="M7.97 4.42A2 2 0 0 0 7 6.13v4.37l5 3 5-3V6.13a2 2 0 0 0-.97-1.71l-3-1.8a2 2 0 0 0-2.06 0l-3 1.8Z"/><path d="M12 8 7.26 5.15M12 8l4.74-2.85M12 13.5V8"/></svg></span>
                     <span class="nav-item__label">Inventario</span>
                 </a>
+                <a href="{{ route('desktop.operacion.pedido_piso.index') }}" class="nav-item {{ request()->routeIs('desktop.operacion.pedido_piso.*') ? 'is-active' : '' }}">
+                    <span class="nav-item__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg></span>
+                    <span class="nav-item__label">Pedido de piso</span>
+                </a>
                 <span class="nav-item is-disabled">
                     <span class="nav-item__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 3-3 3 3 5-6"/></svg></span>
                     <span class="nav-item__label">Ventas</span>
@@ -781,6 +788,8 @@
             <div>{{ session('error') }}</div>
         </div>
     @endif
+
+    <div id="dx-toast-wrap"></div>
 
     <script src="{{ $templateAssetBase }}/vendor/libs/jquery/jquery.js"></script>
     <script>
@@ -867,6 +876,87 @@
                     }, 180);
                 }, 3200);
             });
+        })();
+    </script>
+
+    <script>
+        /* DesktopUI: toasts + confirm/prompt Fluent (reemplaza alert/confirm/prompt nativos) */
+        (function () {
+            function el(html) { const d = document.createElement('div'); d.innerHTML = html.trim(); return d.firstChild; }
+            const wrap = document.getElementById('dx-toast-wrap');
+
+            function toast(message, type, title) {
+                type = type || 'info';
+                const icon = type === 'success'
+                    ? '<path d="M20 6 9 17l-5-5"/>'
+                    : type === 'error'
+                        ? '<circle cx="12" cy="12" r="10"/><path d="M15 9 9 15"/><path d="m9 9 6 6"/>'
+                        : '<circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>';
+                const color = type === 'success' ? 'var(--success)' : type === 'error' ? 'var(--danger)' : 'var(--brand)';
+                const cls = type === 'success' ? 'is-success' : type === 'error' ? 'is-error' : '';
+                const t = el('<div class="desktop-feedback is-visible ' + cls + '" role="status" aria-live="polite">' +
+                    '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:' + color + ';flex:none;margin-top:1px;">' + icon + '</svg>' +
+                    '<div></div></div>');
+                t.querySelector('div').textContent = (title ? title + ': ' : '') + (message || '');
+                wrap.appendChild(t);
+                setTimeout(function () { t.classList.remove('is-visible'); setTimeout(function () { t.remove(); }, 200); }, 3600);
+            }
+
+            let dlg, titleEl, msgEl, fieldEl, inputEl, okBtn, resolver, mode;
+            function ensure() {
+                if (dlg) return;
+                dlg = el('<div class="desktop-modal" id="dx-dialog" aria-hidden="true">' +
+                    '<div class="desktop-modal__dialog" style="max-width:460px;">' +
+                    '<div class="desktop-modal__head"><div class="desktop-modal__title"></div>' +
+                    '<button type="button" class="desktop-modal__close" data-dx-cancel aria-label="Cerrar">&times;</button></div>' +
+                    '<div class="desktop-modal__body"><p style="margin:0 0 12px;font-size:.86rem;color:var(--text-2);" data-dx-msg></p>' +
+                    '<div class="desktop-field" data-dx-field hidden><textarea data-dx-input rows="2"></textarea></div></div>' +
+                    '<div class="desktop-modal__foot"><div class="desktop-modal__foot-group">' +
+                    '<button type="button" class="desktop-btn desktop-btn--default" data-dx-cancel>Cancelar</button>' +
+                    '<button type="button" class="desktop-btn desktop-btn--primary" data-dx-ok>Aceptar</button></div></div>' +
+                    '</div></div>');
+                document.body.appendChild(dlg);
+                titleEl = dlg.querySelector('.desktop-modal__title');
+                msgEl = dlg.querySelector('[data-dx-msg]');
+                fieldEl = dlg.querySelector('[data-dx-field]');
+                inputEl = dlg.querySelector('[data-dx-input]');
+                okBtn = dlg.querySelector('[data-dx-ok]');
+                dlg.addEventListener('click', function (e) {
+                    if (e.target === dlg || e.target.closest('[data-dx-cancel]')) finish(mode === 'prompt' ? null : false);
+                });
+                okBtn.addEventListener('click', function () { finish(mode === 'prompt' ? (inputEl.value || '') : true); });
+                document.addEventListener('keydown', function (e) {
+                    if (!dlg.classList.contains('is-open')) return;
+                    if (e.key === 'Escape') finish(mode === 'prompt' ? null : false);
+                    else if (e.key === 'Enter' && mode === 'confirm') finish(true);
+                });
+            }
+            function finish(val) {
+                dlg.classList.remove('is-open'); dlg.setAttribute('aria-hidden', 'true');
+                const r = resolver; resolver = null; if (r) r(val);
+            }
+            function open(opts, m) {
+                ensure(); mode = m;
+                opts = (typeof opts === 'string') ? { message: opts } : (opts || {});
+                titleEl.textContent = opts.title || (m === 'confirm' ? 'Confirmar' : 'Capturar dato');
+                msgEl.textContent = opts.message || '';
+                msgEl.style.display = opts.message ? '' : 'none';
+                fieldEl.hidden = (m !== 'prompt');
+                if (m === 'prompt') { inputEl.value = opts.value || ''; inputEl.setAttribute('placeholder', opts.placeholder || ''); }
+                okBtn.textContent = opts.okText || (m === 'confirm' ? 'Confirmar' : 'Aceptar');
+                okBtn.classList.toggle('desktop-btn--danger', !!opts.danger);
+                okBtn.classList.toggle('desktop-btn--primary', !opts.danger);
+                dlg.classList.add('is-open'); dlg.setAttribute('aria-hidden', 'false');
+                setTimeout(function () { (m === 'prompt' ? inputEl : okBtn).focus(); }, 50);
+                return new Promise(function (res) { resolver = res; });
+            }
+
+            window.DesktopUI = {
+                toast: toast,
+                message: function (title, message, type) { toast(message, type, title); },
+                confirm: function (opts) { return open(opts, 'confirm'); },
+                prompt: function (opts) { return open(opts, 'prompt'); },
+            };
         })();
     </script>
     @stack('desktop-vendor-scripts')

@@ -408,8 +408,10 @@
             $table.on('click', '.btn-toggle-rol', function () {
                 const id = $(this).data('id');
                 const estatus = $(this).data('estatus');
-                if (!window.confirm('¿Deseas cambiar el estatus de este rol?')) return;
-                cambiarEstatus(id, estatus);
+                DesktopUI.confirm({ title: 'Cambiar estatus', message: '¿Deseas cambiar el estatus de este rol?' }).then(function (ok) {
+                    if (!ok) return;
+                    cambiarEstatus(id, estatus);
+                });
             });
 
             $form.on('submit', function (event) {

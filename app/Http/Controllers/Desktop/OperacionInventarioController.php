@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Desktop;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Operacion\Inventario\ConfirmRecepcionMercanciaRequest;
 use App\Http\Requests\Operacion\Inventario\ListExistenciaMatrizRequest;
 use App\Http\Requests\Operacion\Inventario\ShowKardexDetalleRequest;
+use App\Http\Requests\Operacion\Inventario\StoreRecepcionMercanciaDraftRequest;
 use App\Services\Operacion\ExistenciaMatrizService;
 use App\Services\Operacion\InventarioBaseService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class OperacionInventarioController extends Controller
 {
@@ -25,6 +28,408 @@ class OperacionInventarioController extends Controller
 
     public function existencias()
     {
+        return $this->renderExistenciasView();
+    }
+
+    public function kardexDetalle(ShowKardexDetalleRequest $request, int $sku)
+    {
+        return view('desktop.operacion.inventario.kardex_detalle', [
+            'submenus' => $this->submenus(),
+            'detalle' => $this->inventarioService->obtenerKardexDetalleSku($sku, $request->validated()),
+        ]);
+    }
+
+    public function existenciasNegativas()
+    {
+        return $this->renderExistenciasView(true);
+    }
+
+    public function negativosSesion()
+    {
+        $opciones = $this->inventarioService->opcionesBase();
+        $usuario = auth()->user();
+        $defaultSucursalId = $usuario?->sucursales()
+            ->orderBy('tbl_sucursales_scl.scl_nombre')
+            ->value('tbl_sucursales_scl.scl_id');
+
+        if (!$defaultSucursalId && $opciones['sucursales']->count() === 1) {
+            $defaultSucursalId = (int) $opciones['sucursales']->first()->scl_id;
+        }
+
+        return view('desktop.operacion.inventario.negativos_sesion', [
+            'submenus' => $this->submenus(),
+            'opciones' => $opciones,
+            'sesionesCaja' => $this->inventarioService->opcionesSesionesCaja(),
+            'defaultSucursalId' => $defaultSucursalId ? (int) $defaultSucursalId : null,
+        ]);
+    }
+
+    public function recibir()
+    {
+        $usuario = auth()->user();
+        $defaultSucursalId = $usuario?->sucursales()
+            ->orderBy('tbl_sucursales_scl.scl_nombre')
+            ->value('tbl_sucursales_scl.scl_id');
+
+        $proveedores = DB::table('tbl_proveedores_prv')
+            ->where('prv_deleted', false)
+            ->whereNull('prv_deleted_at')
+            ->where('prv_estatus', 'activo')
+            ->orderBy('prv_nombre_empresa')
+            ->get(['prv_id', 'prv_nombre_empresa']);
+
+        $borrador = null;
+        $rmeId = (int) request()->integer('rme_id', 0);
+        if ($rmeId > 0) {
+            try {
+                $borrador = $this->inventarioService->obtenerRecepcionMercancia($rmeId);
+            } catch (\Throwable $e) {
+                $borrador = null;
+            }
+        }
+
+        return view('desktop.operacion.inventario.recibir', [
+            'submenus' => $this->submenus(),
+            'opciones' => $this->inventarioService->opcionesBase(),
+            'proveedores' => $proveedores,
+            'defaultSucursalId' => $defaultSucursalId ? (int) $defaultSucursalId : null,
+            'borrador' => $borrador,
+        ]);
+    }
+
+    public function buscarProductosRecibir(Request $request): JsonResponse
+    {
+        $datos = $request->validate([
+            'q' => ['nullable', 'string', 'max:120'],
+            'page' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        return response()->json(
+            $this->inventarioService->buscarProductosBase((string) ($datos['q'] ?? ''), (int) ($datos['page'] ?? 1), 20)
+        );
+    }
+
+    public function matrizRecibir(int $producto): JsonResponse
+    {
+        $sucursalId = request()->integer('min_scl_id') ?: null;
+
+        return response()->json([
+            'data' => $this->inventarioService->matrizCargaInicialProducto($producto, $sucursalId),
+        ]);
+    }
+
+    public function storeRecibirBorrador(StoreRecepcionMercanciaDraftRequest $request): JsonResponse
+    {
+        $recepcion = $this->inventarioService->guardarRecepcionMercanciaBorrador($request, $request->validated());
+
+        return response()->json([
+            'message' => 'Borrador guardado correctamente.',
+            'data' => [
+                'rme_id' => $recepcion->rme_id,
+                'rme_folio' => $recepcion->rme_folio,
+                'rme_estado' => $recepcion->rme_estado,
+            ],
+        ]);
+    }
+
+    public function confirmarRecibir(ConfirmRecepcionMercanciaRequest $request): JsonResponse
+    {
+        $resultado = $this->inventarioService->confirmarRecepcionMercancia($request, $request->validated());
+        $recepcion = $resultado['recepcion'];
+
+        return response()->json([
+            'message' => 'Recepción registrada correctamente.',
+            'data' => [
+                'rme_id' => $recepcion->rme_id,
+                'rme_folio' => $recepcion->rme_folio,
+                'rme_estado' => $recepcion->rme_estado,
+                'folios' => $resultado['folios'],
+            ],
+        ]);
+    }
+
+    public function recepciones()
+    {
+        return view('desktop.operacion.inventario.recepciones', [
+            'submenus' => $this->submenus(),
+            'opciones' => $this->inventarioService->opcionesBase(),
+        ]);
+    }
+
+    public function dataRecepciones(Request $request): JsonResponse
+    {
+        $datos = $request->validate([
+            'estado' => ['nullable', 'string', 'max:30'],
+            'fecha_desde' => ['nullable', 'date'],
+            'fecha_hasta' => ['nullable', 'date'],
+            'buscar' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        $buscarDatatable = trim((string) $request->input('search.value', ''));
+        if ($buscarDatatable !== '') {
+            $datos['buscar'] = $buscarDatatable;
+        }
+
+        $resultado = $this->inventarioService->paginarRecepcionesMercancia(
+            filtros: $datos,
+            start: (int) $request->integer('start', 0),
+            length: (int) $request->integer('length', 50),
+            orderColumn: (int) $request->input('order.0.column', 0),
+            orderDir: (string) $request->input('order.0.dir', 'desc'),
+        );
+
+        return response()->json([
+            'draw' => (int) $request->integer('draw', 1),
+            'recordsTotal' => (int) $resultado['recordsTotal'],
+            'recordsFiltered' => (int) $resultado['recordsFiltered'],
+            'data' => $resultado['data'],
+        ]);
+    }
+
+    public function showRecepcion(int $recepcion): JsonResponse
+    {
+        return response()->json([
+            'data' => $this->inventarioService->obtenerRecepcionMercancia($recepcion),
+        ]);
+    }
+
+    public function cancelarRecepcion(Request $request, int $recepcion): JsonResponse
+    {
+        $datos = $request->validate([
+            'motivo' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $registro = $this->inventarioService->cancelarRecepcionMercancia($request, $recepcion, (string) ($datos['motivo'] ?? ''));
+
+        return response()->json([
+            'message' => 'Recepción cancelada correctamente.',
+            'data' => ['rme_id' => $registro->rme_id, 'rme_estado' => $registro->rme_estado],
+        ]);
+    }
+
+    public function reportePdfRecepcion(int $recepcion): \Illuminate\Http\Response
+    {
+        $pdf = $this->inventarioService->descargarReporteRecepcionMercanciaPdf(request(), $recepcion);
+
+        return response($pdf['content'], 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $pdf['file_name'] . '"',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate',
+        ]);
+    }
+
+    public function salidas()
+    {
+        return view('desktop.operacion.inventario.salidas', [
+            'submenus' => $this->submenus(),
+            'opciones' => $this->inventarioService->opcionesBase(),
+        ]);
+    }
+
+    public function salidasRegistrar()
+    {
+        $usuario = auth()->user();
+        $defaultSucursalId = $usuario?->sucursales()
+            ->orderBy('tbl_sucursales_scl.scl_nombre')
+            ->value('tbl_sucursales_scl.scl_id');
+
+        return view('desktop.operacion.inventario.salidas_form', [
+            'submenus' => $this->submenus(),
+            'opciones' => $this->inventarioService->opcionesBase(),
+            'defaultSucursalId' => $defaultSucursalId ? (int) $defaultSucursalId : null,
+        ]);
+    }
+
+    public function dataSalidas(Request $request): JsonResponse
+    {
+        $datos = $request->validate([
+            'min_scl_id' => ['nullable', 'integer'],
+            'min_alm_id' => ['nullable', 'integer'],
+            'tipo' => ['nullable', 'string', 'max:30'],
+            'fecha_desde' => ['nullable', 'date'],
+            'fecha_hasta' => ['nullable', 'date'],
+            'buscar' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        $buscarDatatable = trim((string) $request->input('search.value', ''));
+        if ($buscarDatatable !== '') {
+            $datos['buscar'] = $buscarDatatable;
+        }
+
+        $resultado = $this->inventarioService->paginarSalidas(
+            filtros: $datos,
+            start: (int) $request->integer('start', 0),
+            length: (int) $request->integer('length', 50),
+            orderColumn: (int) $request->input('order.0.column', 0),
+            orderDir: (string) $request->input('order.0.dir', 'desc'),
+        );
+
+        return response()->json([
+            'draw' => (int) $request->integer('draw', 1),
+            'recordsTotal' => (int) $resultado['recordsTotal'],
+            'recordsFiltered' => (int) $resultado['recordsFiltered'],
+            'data' => $resultado['data'],
+        ]);
+    }
+
+    public function kardex()
+    {
+        return view('desktop.operacion.inventario.kardex', [
+            'submenus' => $this->submenus(),
+            'opciones' => $this->inventarioService->opcionesBase(),
+        ]);
+    }
+
+    public function dataKardex(Request $request): JsonResponse
+    {
+        $datos = $request->validate([
+            'min_scl_id' => ['nullable', 'integer'],
+            'min_alm_id' => ['nullable', 'integer'],
+            'min_psk_id' => ['nullable', 'integer'],
+            'fecha_desde' => ['nullable', 'date'],
+            'fecha_hasta' => ['nullable', 'date'],
+            'buscar' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        $buscarDatatable = trim((string) $request->input('search.value', ''));
+        if ($buscarDatatable !== '') {
+            $datos['buscar'] = $buscarDatatable;
+        }
+
+        $resultado = $this->inventarioService->paginarKardex(
+            filtros: $datos,
+            start: (int) $request->integer('start', 0),
+            length: (int) $request->integer('length', 50),
+            orderColumn: (int) $request->input('order.0.column', 0),
+            orderDir: (string) $request->input('order.0.dir', 'desc'),
+        );
+
+        return response()->json([
+            'draw' => (int) $request->integer('draw', 1),
+            'recordsTotal' => (int) $resultado['recordsTotal'],
+            'recordsFiltered' => (int) $resultado['recordsFiltered'],
+            'data' => $resultado['data'],
+        ]);
+    }
+
+    public function minimos()
+    {
+        return view('desktop.operacion.inventario.minimos', [
+            'submenus' => $this->submenus(),
+            'opciones' => $this->inventarioService->opcionesBase(),
+        ]);
+    }
+
+    public function dataBajoMinimo(Request $request): JsonResponse
+    {
+        $datos = $request->validate([
+            'mni_scl_id' => ['nullable', 'integer'],
+            'mni_alm_id' => ['nullable', 'integer'],
+            'buscar' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        $buscarDatatable = trim((string) $request->input('search.value', ''));
+        if ($buscarDatatable !== '') {
+            $datos['buscar'] = $buscarDatatable;
+        }
+
+        $resultado = $this->inventarioService->paginarBajoMinimo(
+            filtros: $datos,
+            start: (int) $request->integer('start', 0),
+            length: (int) $request->integer('length', 50),
+            orderColumn: (int) $request->input('order.0.column', 0),
+            orderDir: (string) $request->input('order.0.dir', 'asc'),
+        );
+
+        return response()->json([
+            'draw' => (int) $request->integer('draw', 1),
+            'recordsTotal' => (int) $resultado['recordsTotal'],
+            'recordsFiltered' => (int) $resultado['recordsFiltered'],
+            'data' => $resultado['data'],
+        ]);
+    }
+
+    public function dataExistenciasMatriz(ListExistenciaMatrizRequest $request): JsonResponse
+    {
+        return $this->dataExistenciasResponse($request);
+    }
+
+    public function dataExistenciasNegativas(ListExistenciaMatrizRequest $request): JsonResponse
+    {
+        return $this->dataExistenciasResponse($request, true);
+    }
+
+    public function buscarProductosBase(Request $request): JsonResponse
+    {
+        $datos = $request->validate([
+            'q' => ['nullable', 'string', 'max:120'],
+            'page' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        $resultado = $this->inventarioService->buscarProductosBase(
+            (string) ($datos['q'] ?? ''),
+            (int) ($datos['page'] ?? 1),
+            20,
+            $request->only(['prd_mrc_id', 'prd_mdl_id', 'prd_lna_id', 'prd_ctg_id'])
+        );
+
+        return response()->json($resultado);
+    }
+
+    public function dataNegativosSesion(Request $request): JsonResponse
+    {
+        $datos = $request->validate([
+            'cse_id' => ['nullable', 'integer'],
+            'min_scl_id' => ['nullable', 'integer'],
+            'min_alm_id' => ['nullable', 'integer'],
+            'fecha_desde' => ['nullable', 'date'],
+            'fecha_hasta' => ['nullable', 'date'],
+            'buscar' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        $buscarDatatable = trim((string) $request->input('search.value', ''));
+        if ($buscarDatatable !== '') {
+            $datos['buscar'] = $buscarDatatable;
+        }
+
+        $resultado = $this->inventarioService->paginarNegativosPorSesionCaja(
+            filtros: $datos,
+            start: (int) $request->integer('start', 0),
+            length: (int) $request->integer('length', 50),
+            orderColumn: (int) $request->input('order.0.column', 0),
+            orderDir: (string) $request->input('order.0.dir', 'desc'),
+        );
+
+        return response()->json([
+            'draw' => (int) $request->integer('draw', 1),
+            'recordsTotal' => (int) $resultado['recordsTotal'],
+            'recordsFiltered' => (int) $resultado['recordsFiltered'],
+            'data' => $resultado['data'],
+        ]);
+    }
+
+    public function exportarExcelExistenciasMatriz(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        return $this->exportarExcelExistencias($request);
+    }
+
+    public function exportarExcelExistenciasNegativas(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        return $this->exportarExcelExistencias($request, true);
+    }
+
+    public function exportarPdfExistenciasMatriz(Request $request): \Illuminate\Http\Response
+    {
+        return $this->exportarPdfExistencias($request);
+    }
+
+    public function exportarPdfExistenciasNegativas(Request $request): \Illuminate\Http\Response
+    {
+        return $this->exportarPdfExistencias($request, true);
+    }
+
+    private function renderExistenciasView(bool $soloNegativas = false)
+    {
         $opciones = $this->inventarioService->opcionesBase();
         $usuario = auth()->user();
         $defaultSucursalId = $usuario?->sucursales()
@@ -39,58 +444,22 @@ class OperacionInventarioController extends Controller
             'submenus' => $this->submenus(),
             'opciones' => $opciones,
             'defaultSucursalId' => $defaultSucursalId ? (int) $defaultSucursalId : null,
+            'soloNegativas' => $soloNegativas,
+            'activeSubmenu' => $soloNegativas ? 'existencias_negativas' : 'existencias',
+            'pageTitle' => $soloNegativas ? 'Existencias negativas' : 'Existencias',
+            'dataRoute' => $soloNegativas
+                ? route('desktop.operacion.inventario.existencias_negativas.data')
+                : route('desktop.operacion.inventario.existencias.data'),
+            'exportExcelRoute' => $soloNegativas
+                ? route('desktop.operacion.inventario.existencias_negativas.exportar.excel')
+                : route('desktop.operacion.inventario.existencias.exportar.excel'),
+            'exportPdfRoute' => $soloNegativas
+                ? route('desktop.operacion.inventario.existencias_negativas.exportar.pdf')
+                : route('desktop.operacion.inventario.existencias.exportar.pdf'),
         ]);
     }
 
-    public function kardexDetalle(ShowKardexDetalleRequest $request, int $sku)
-    {
-        return view('desktop.operacion.inventario.kardex_detalle', [
-            'submenus' => $this->submenus(),
-            'detalle' => $this->inventarioService->obtenerKardexDetalleSku($sku, $request->validated()),
-        ]);
-    }
-
-    public function existenciasNegativas()
-    {
-        return $this->renderPlaceholder('existencias_negativas', 'Existencias negativas');
-    }
-
-    public function negativosSesion()
-    {
-        return $this->renderPlaceholder('negativos_sesion', 'Negativos por sesión');
-    }
-
-    public function recibir()
-    {
-        return $this->renderPlaceholder('recibir', 'Recibir mercancía');
-    }
-
-    public function recepciones()
-    {
-        return $this->renderPlaceholder('recepciones', 'Recepciones capturadas');
-    }
-
-    public function salidas()
-    {
-        return $this->renderPlaceholder('salidas', 'Salidas');
-    }
-
-    public function kardex()
-    {
-        return $this->renderPlaceholder('kardex', 'Kardex');
-    }
-
-    public function minimos()
-    {
-        return $this->renderPlaceholder('minimos', 'Bajo mínimo');
-    }
-
-    public function reportes()
-    {
-        return $this->renderPlaceholder('reportes', 'Reportes PDF');
-    }
-
-    public function dataExistenciasMatriz(ListExistenciaMatrizRequest $request): JsonResponse
+    private function dataExistenciasResponse(ListExistenciaMatrizRequest $request, bool $soloNegativas = false): JsonResponse
     {
         $filtros = $request->only([
             'prd_id',
@@ -114,6 +483,7 @@ class OperacionInventarioController extends Controller
             length: (int) $request->integer('length', 10),
             orderColumn: (int) $request->input('order.0.column', 0),
             orderDir: (string) $request->input('order.0.dir', 'asc'),
+            soloNegativos: $soloNegativas,
         );
 
         return response()->json([
@@ -124,28 +494,12 @@ class OperacionInventarioController extends Controller
         ]);
     }
 
-    public function buscarProductosBase(Request $request): JsonResponse
-    {
-        $datos = $request->validate([
-            'q' => ['nullable', 'string', 'max:120'],
-            'page' => ['nullable', 'integer', 'min:1'],
-        ]);
-
-        $resultado = $this->inventarioService->buscarProductosBase(
-            (string) ($datos['q'] ?? ''),
-            (int) ($datos['page'] ?? 1),
-            20,
-            $request->only(['prd_mrc_id', 'prd_mdl_id', 'prd_lna_id', 'prd_ctg_id'])
-        );
-
-        return response()->json($resultado);
-    }
-
-    public function exportarExcelExistenciasMatriz(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
+    private function exportarExcelExistencias(Request $request, bool $soloNegativas = false): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         $filtros = $request->only(['prd_mrc_id', 'prd_mdl_id', 'prd_lna_id', 'prd_ctg_id', 'prd_id', 'buscar', 'min_scl_id', 'min_alm_id']);
-        $filas = $this->existenciaMatrizService->exportarTodos($filtros);
-        $fileName = 'existencias-matriz-' . now()->format('Ymd-His') . '.csv';
+        $filas = $this->existenciaMatrizService->exportarTodos($filtros, soloNegativos: $soloNegativas);
+        $baseName = $soloNegativas ? 'existencias-negativas' : 'existencias-matriz';
+        $fileName = $baseName . '-' . now()->format('Ymd-His') . '.csv';
 
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
@@ -185,10 +539,10 @@ class OperacionInventarioController extends Controller
         }, $fileName, $headers);
     }
 
-    public function exportarPdfExistenciasMatriz(Request $request): \Illuminate\Http\Response
+    private function exportarPdfExistencias(Request $request, bool $soloNegativas = false): \Illuminate\Http\Response
     {
         $filtros = $request->only(['prd_mrc_id', 'prd_mdl_id', 'prd_lna_id', 'prd_ctg_id', 'prd_id', 'buscar', 'min_scl_id', 'min_alm_id']);
-        $filas = $this->existenciaMatrizService->exportarTodos($filtros);
+        $filas = $this->existenciaMatrizService->exportarTodos($filtros, soloNegativos: $soloNegativas);
 
         $filas = collect($filas);
         $totalArt = $filas->sum(fn ($f) => (float) ($f['total_articulos'] ?? 0));
@@ -222,6 +576,7 @@ class OperacionInventarioController extends Controller
 
         $fechaGen = now()->format('d/m/Y H:i:s');
         $totalRows = count($filas);
+        $titulo = $soloNegativas ? 'Existencias Negativas' : 'Existencias Matriz';
 
         $html = '
         <style>
@@ -233,7 +588,7 @@ class OperacionInventarioController extends Controller
             td { font-size: 7.5px; padding: 3px; border-bottom: 1px solid #e2e8f0; }
             .footer { font-size: 6.5px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 3px; margin-top: 6px; }
         </style>
-        <h2>Existencias Matriz</h2>
+        <h2>' . $titulo . '</h2>
         <div class="meta">' . $totalRows . ' registros &bull; Generado: ' . $fechaGen . '</div>
         <table>
             <thead>
@@ -261,7 +616,7 @@ class OperacionInventarioController extends Controller
         $pdf = new \TCPDF('L', 'mm', 'A4', true, 'UTF-8', false, false);
         $pdf->SetCreator(config('app.name', 'La Suriana Retail'));
         $pdf->SetAuthor((string) (request()->user()?->name ?? config('app.name')));
-        $pdf->SetTitle('Existencias Matriz');
+        $pdf->SetTitle($titulo);
         $pdf->setPrintHeader(false);
         $pdf->setPrintFooter(false);
         $pdf->SetMargins(7, 7, 7);
@@ -270,7 +625,8 @@ class OperacionInventarioController extends Controller
         $pdf->AddPage();
         $pdf->writeHTML($html, true, false, true, false, '');
 
-        $fileName = 'existencias-matriz-' . now()->format('Ymd-His') . '.pdf';
+        $baseName = $soloNegativas ? 'existencias-negativas' : 'existencias-matriz';
+        $fileName = $baseName . '-' . now()->format('Ymd-His') . '.pdf';
         $content = $pdf->Output('', 'S');
 
         return response($content, 200, [
@@ -286,12 +642,10 @@ class OperacionInventarioController extends Controller
             ['key' => 'existencias', 'label' => 'Existencias', 'route' => route('desktop.operacion.inventario.existencias.index')],
             ['key' => 'existencias_negativas', 'label' => 'Existencias negativas', 'route' => route('desktop.operacion.inventario.existencias_negativas.index')],
             ['key' => 'negativos_sesion', 'label' => 'Negativos por sesión', 'route' => route('desktop.operacion.inventario.negativos_sesion.index')],
-            ['key' => 'recibir', 'label' => 'Recibir mercancía', 'route' => route('desktop.operacion.inventario.recibir.index')],
-            ['key' => 'recepciones', 'label' => 'Recepciones capturadas', 'route' => route('desktop.operacion.inventario.recepciones.index')],
+            ['key' => 'recepciones', 'label' => 'Recepciones', 'route' => route('desktop.operacion.inventario.recepciones.index')],
             ['key' => 'salidas', 'label' => 'Salidas', 'route' => route('desktop.operacion.inventario.salidas.index')],
             ['key' => 'kardex', 'label' => 'Kardex', 'route' => route('desktop.operacion.inventario.kardex.index')],
             ['key' => 'minimos', 'label' => 'Bajo mínimo', 'route' => route('desktop.operacion.inventario.minimos.index')],
-            ['key' => 'reportes', 'label' => 'Reportes PDF', 'route' => route('desktop.operacion.inventario.reportes.index')],
         ];
     }
 

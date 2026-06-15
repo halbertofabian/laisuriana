@@ -551,8 +551,10 @@
                 const id = $(this).data('id');
                 const estatus = $(this).data('estatus');
 
-                if (!window.confirm('¿Deseas cambiar el estatus de este usuario?')) return;
-                cambiarEstatus(id, estatus);
+                DesktopUI.confirm({ title: 'Cambiar estatus', message: '¿Deseas cambiar el estatus de este usuario?' }).then(function (ok) {
+                    if (!ok) return;
+                    cambiarEstatus(id, estatus);
+                });
             });
 
             $form.on('submit', function (event) {
