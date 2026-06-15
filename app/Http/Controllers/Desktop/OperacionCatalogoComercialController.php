@@ -5,22 +5,28 @@ namespace App\Http\Controllers\Desktop;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Operacion\Comercial\StoreAtributoRequest;
 use App\Http\Requests\Operacion\Comercial\StoreCatalogoBaseRequest;
+use App\Http\Requests\Operacion\Comercial\GenerarEtiquetaSkuRequest;
 use App\Http\Requests\Operacion\Comercial\StoreProductoRequest;
+use App\Http\Requests\Operacion\Comercial\StoreProveedorRequest;
 use App\Http\Requests\Operacion\Comercial\StoreValorAtributoRequest;
 use App\Http\Requests\Operacion\Comercial\UpdateAtributoRequest;
 use App\Http\Requests\Operacion\Comercial\UpdateCatalogoBaseRequest;
 use App\Http\Requests\Operacion\Comercial\UpdateProductoRequest;
 use App\Http\Requests\Operacion\Comercial\UpdateProductoSkuRequest;
+use App\Http\Requests\Operacion\Comercial\UpdateProveedorRequest;
 use App\Http\Requests\Operacion\Comercial\UpdateValorAtributoRequest;
 use App\Services\Operacion\Comercial\AtributoService;
 use App\Services\Operacion\Comercial\CatalogoBaseService;
+use App\Services\Operacion\Comercial\EtiquetadoProductoService;
 use App\Services\Operacion\Comercial\ModeloService;
 use App\Services\Operacion\Comercial\ProductoImagenTemporalService;
 use App\Services\Operacion\Comercial\ProductoSkuService;
 use App\Services\Operacion\Comercial\ProductoService;
+use App\Services\Operacion\Comercial\ProveedorService;
 use App\Models\Producto;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class OperacionCatalogoComercialController extends Controller
@@ -28,10 +34,12 @@ class OperacionCatalogoComercialController extends Controller
     public function __construct(
         private readonly AtributoService $atributoService,
         private readonly CatalogoBaseService $catalogoBaseService,
+        private readonly EtiquetadoProductoService $etiquetadoProductoService,
         private readonly ModeloService $modeloService,
         private readonly ProductoImagenTemporalService $productoImagenTemporalService,
         private readonly ProductoService $productoService,
         private readonly ProductoSkuService $productoSkuService,
+        private readonly ProveedorService $proveedorService,
     ) {
     }
 
@@ -139,12 +147,24 @@ class OperacionCatalogoComercialController extends Controller
 
     public function proveedores()
     {
-        return $this->renderPlaceholder('proveedores', 'Proveedores', 'La experiencia Desktop de proveedores se integrará aquí en la siguiente etapa.');
+        return view('desktop.operacion.catalogo_comercial.proveedores', [
+            'submenus' => $this->submenus(),
+            'permisosUI' => $this->permisosUI(),
+        ]);
     }
 
     public function etiquetado()
     {
-        return $this->renderPlaceholder('etiquetado', 'Etiquetado', 'La experiencia Desktop de etiquetado se integrará aquí en la siguiente etapa.');
+        $opcionesProducto = $this->productoService->opcionesParaFormulario();
+
+        return view('desktop.operacion.catalogo_comercial.etiquetado', [
+            'submenus' => $this->submenus(),
+            'opciones' => [
+                'productos' => $opcionesProducto['productos'],
+            ],
+            'zebraDefaults' => config('etiquetado.formatos.zebra_50x30', []),
+            'permisosUI' => $this->permisosUI(),
+        ]);
     }
 
     public function dataCatalogoBase(Request $request, string $tipo): JsonResponse
@@ -750,6 +770,106 @@ class OperacionCatalogoComercialController extends Controller
         $this->productoSkuService->eliminar($request, $sku);
 
         return response()->json(['message' => 'SKU eliminado correctamente.']);
+    }
+
+    public function generarEtiquetaSku(GenerarEtiquetaSkuRequest $request, int $sku)
+    {
+        $registro = $this->productoSkuService->obtenerParaEtiqueta($sku);
+        $pdfContent = $this->etiquetadoProductoService->generarEtiquetaSku($request, $registro, $request->validated());
+        $fileName = 'etiqueta-' . Str::slug((string) $registro->psk_codigo) . '.pdf';
+
+        return response($pdfContent, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $fileName . '"',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+        ]);
+    }
+
+    public function dataProveedores(Request $request): JsonResponse
+    {
+        $proveedores = $this->proveedorService->listar([
+            'buscar' => $request->query('buscar'),
+            'estatus' => $request->query('estatus'),
+        ]);
+
+        $data = $proveedores->map(fn ($item) => [
+            'prv_id' => $item->prv_id,
+            'prv_clave' => $item->prv_clave,
+            'prv_nombre_empresa' => $item->prv_nombre_empresa,
+            'prv_nombre_asesor_ventas' => $item->prv_nombre_asesor_ventas,
+            'prv_categoria' => $item->prv_categoria,
+            'prv_razon_social' => $item->prv_razon_social,
+            'prv_rfc' => $item->prv_rfc,
+            'prv_correo' => $item->prv_correo,
+            'prv_condiciones_pago' => $item->prv_condiciones_pago,
+            'prv_tiempo_respuesta' => $item->prv_tiempo_respuesta,
+            'prv_estatus' => $item->prv_estatus,
+            'numeros_contacto' => $item->contactos->pluck('prc_numero')->values(),
+            'numeros_contacto_texto' => $item->contactos->pluck('prc_numero')->join(', '),
+        ])->values();
+
+        return response()->json(['data' => $data]);
+    }
+
+    public function showProveedor(int $proveedor): JsonResponse
+    {
+        $item = $this->proveedorService->obtenerPorId($proveedor);
+
+        return response()->json(['data' => [
+            'prv_id' => $item->prv_id,
+            'prv_clave' => $item->prv_clave,
+            'prv_nombre_empresa' => $item->prv_nombre_empresa,
+            'prv_nombre_asesor_ventas' => $item->prv_nombre_asesor_ventas,
+            'prv_categoria' => $item->prv_categoria,
+            'prv_razon_social' => $item->prv_razon_social,
+            'prv_rfc' => $item->prv_rfc,
+            'prv_correo' => $item->prv_correo,
+            'prv_condiciones_pago' => $item->prv_condiciones_pago,
+            'prv_tiempo_respuesta' => $item->prv_tiempo_respuesta,
+            'prv_estatus' => $item->prv_estatus,
+            'numeros_contacto' => $item->contactos->pluck('prc_numero')->values(),
+        ]]);
+    }
+
+    public function storeProveedor(StoreProveedorRequest $request): JsonResponse
+    {
+        $item = $this->proveedorService->crear($request, $request->validated());
+
+        return response()->json([
+            'message' => 'Proveedor creado correctamente.',
+            'data' => ['prv_id' => $item->prv_id],
+        ]);
+    }
+
+    public function updateProveedor(UpdateProveedorRequest $request, int $proveedor): JsonResponse
+    {
+        $this->proveedorService->actualizar($request, $proveedor, $request->validated());
+
+        return response()->json(['message' => 'Proveedor actualizado correctamente.']);
+    }
+
+    public function cambiarEstatusProveedor(Request $request, int $proveedor): JsonResponse
+    {
+        $request->validate([
+            'prv_estatus' => ['required', Rule::in(['activo', 'inactivo'])],
+        ], [
+            'prv_estatus.required' => 'El estatus es obligatorio.',
+            'prv_estatus.in' => 'El estatus enviado no es válido.',
+        ]);
+
+        $registro = $this->proveedorService->cambiarEstatus($request, $proveedor, $request->string('prv_estatus')->toString());
+
+        return response()->json([
+            'message' => 'Estatus del proveedor actualizado correctamente.',
+            'data' => ['prv_estatus' => $registro->prv_estatus],
+        ]);
+    }
+
+    public function eliminarProveedor(Request $request, int $proveedor): JsonResponse
+    {
+        $this->proveedorService->eliminar($request, $proveedor);
+
+        return response()->json(['message' => 'Proveedor eliminado correctamente.']);
     }
 
     private function submenus(): array

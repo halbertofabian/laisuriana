@@ -15,9 +15,11 @@ class ShowKardexDetalleRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'periodo' => ['nullable', Rule::in(['este_mes', 'ultimos_3_meses', 'este_anio', 'ultimos_3_anios', 'rango'])],
+            'periodo' => ['nullable', Rule::in(['hoy', 'ayer', 'esta_semana', 'este_mes', 'ultimos_3_meses', 'ultimos_6_meses', 'este_anio', 'ultimos_3_anios', 'rango'])],
             'fecha_inicio' => ['nullable', 'date'],
             'fecha_fin' => ['nullable', 'date'],
+            'back_min_scl_id' => ['nullable', 'integer'],
+            'back_min_alm_id' => ['nullable', 'integer'],
             'back_prd_mrc_id' => ['nullable', 'integer'],
             'back_prd_mdl_id' => ['nullable', 'integer'],
             'back_prd_lna_id' => ['nullable', 'integer'],

@@ -2559,7 +2559,11 @@ class InventarioBaseService
         }
 
         return match ($periodo) {
+            'hoy' => [$hoy->copy()->startOfDay(), $hoy->copy()->endOfDay()],
+            'ayer' => [$hoy->copy()->subDay()->startOfDay(), $hoy->copy()->subDay()->endOfDay()],
+            'esta_semana' => [$hoy->copy()->startOfWeek(), $hoy->copy()->endOfDay()],
             'ultimos_3_meses' => [$hoy->copy()->subMonthsNoOverflow(2)->startOfMonth(), $hoy->copy()->endOfDay()],
+            'ultimos_6_meses' => [$hoy->copy()->subMonthsNoOverflow(5)->startOfMonth(), $hoy->copy()->endOfDay()],
             'este_anio' => [$hoy->copy()->startOfYear(), $hoy->copy()->endOfDay()],
             'ultimos_3_anios' => [$hoy->copy()->subYearsNoOverflow(2)->startOfYear(), $hoy->copy()->endOfDay()],
             default => [$hoy->copy()->startOfMonth(), $hoy->copy()->endOfDay()],
