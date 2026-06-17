@@ -334,8 +334,8 @@ class ExistenciaMatrizService
             ->get([
                 'psk.psk_id',
                 'psk.psk_prd_id',
-                'psk.psk_precio',
-                'psk.psk_costo',
+                DB::raw('MAX(psk.psk_precio) as psk_precio'),
+                DB::raw('MAX(psk.psk_costo) as psk_costo'),
                 DB::raw('COALESCE(color.vat_id, 0) as color_vat_id'),
                 'talla.vat_id as talla_vat_id',
                 'talla.vat_valor as talla_valor',
