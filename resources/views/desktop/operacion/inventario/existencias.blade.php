@@ -68,6 +68,19 @@
             height: 32px;
             max-width: 180px;
         }
+        .desktop-inv-check.desktop-check {
+            gap: 8px;
+            padding: 6px 4px;
+        }
+        .desktop-inv-check .desktop-check__box {
+            width: 16px;
+            height: 16px;
+            margin-top: 1px;
+        }
+        .desktop-inv-check .desktop-check__label {
+            font-size: .8rem;
+            line-height: 1.35;
+        }
         .desktop-inv-bar__spacer { flex: 1 1 auto; }
         .desktop-inv-bar__divider { width: 1px; height: 22px; background: var(--stroke); }
         .desktop-inv-bar .desktop-btn { height: 32px; }
@@ -392,10 +405,36 @@
             right: 8px;
         }
         .select2-dropdown {
+            background: var(--surface);
+            border: 1px solid var(--stroke);
             border-color: var(--stroke);
             border-radius: var(--r-md);
             overflow: hidden;
             box-shadow: var(--shadow-16);
+        }
+        .select2-container--open {
+            z-index: calc(var(--z-drawer) + 20);
+        }
+        .desktop-inv-drawer__panel .select2-container {
+            width: 100% !important;
+        }
+        .desktop-inv-drawer__panel .select2-container--open .select2-dropdown {
+            z-index: calc(var(--z-drawer) + 20);
+        }
+        .select2-results__options {
+            max-height: 240px;
+            overflow-y: auto;
+            background: var(--surface);
+        }
+        .select2-results__option {
+            background: transparent;
+        }
+        .select2-container--default .select2-results__option--selected {
+            background: var(--surface-sunken);
+        }
+        .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable {
+            background: var(--brand-soft);
+            color: var(--text);
         }
         @media (max-width: 1100px) {
             .desktop-inv-bar { flex-wrap: wrap; }
@@ -429,20 +468,10 @@
             </div>
 
             <div class="desktop-inv-bar__field">
-                <span class="desktop-inv-bar__cap">Sucursal</span>
-                <select class="desktop-toolbar__select" id="flt-scl">
-                    @foreach($opciones['sucursales'] as $sucursal)
-                        <option value="{{ $sucursal->scl_id }}" @selected((int) $sucursal->scl_id === (int) ($defaultSucursalId ?? 0))>{{ $sucursal->scl_nombre }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="desktop-inv-bar__field">
-                <span class="desktop-inv-bar__cap">Almacén</span>
-                <select class="desktop-toolbar__select" id="flt-alm">
-                    <option value="">Todos</option>
-                    @foreach($opciones['almacenes'] as $almacen)
-                        <option value="{{ $almacen->alm_id }}" data-scl="{{ $almacen->alm_scl_id }}">{{ $almacen->alm_nombre }}</option>
-                    @endforeach
+                <select class="desktop-toolbar__select" id="flt-length">
+                    <option value="25">25 por página</option>
+                    <option value="50">50 por página</option>
+                    <option value="100" selected>100 por página</option>
                 </select>
             </div>
 
@@ -519,6 +548,23 @@
             </div>
             <div class="desktop-inv-drawer__body">
                 <div class="desktop-field">
+                    <label for="flt-scl">Sucursal</label>
+                    <select id="flt-scl">
+                        @foreach($opciones['sucursales'] as $sucursal)
+                            <option value="{{ $sucursal->scl_id }}" @selected((int) $sucursal->scl_id === (int) ($defaultSucursalId ?? 0))>{{ $sucursal->scl_nombre }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="desktop-field">
+                    <label for="flt-alm">Almacén</label>
+                    <select id="flt-alm">
+                        <option value="">Todos</option>
+                        @foreach($opciones['almacenes'] as $almacen)
+                            <option value="{{ $almacen->alm_id }}" data-scl="{{ $almacen->alm_scl_id }}">{{ $almacen->alm_nombre }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="desktop-field">
                     <label for="flt-mrc">Marca</label>
                     <select id="flt-mrc">
                         <option value="">Todas</option>
@@ -558,6 +604,15 @@
                     <label for="flt-prd">Producto</label>
                     <select id="flt-prd"></select>
                 </div>
+                @if(empty($soloNegativas))
+                    <label class="desktop-inv-check desktop-check" for="flt-solo-disponibles">
+                        <input id="flt-solo-disponibles" type="checkbox">
+                        <span class="desktop-check__box" aria-hidden="true">
+                            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m4.5 10 3.2 3.2 7.8-7.8"/></svg>
+                        </span>
+                        <span class="desktop-check__label">Solo productos disponibles</span>
+                    </label>
+                @endif
             </div>
             <div class="desktop-inv-drawer__foot">
                 <button type="button" class="desktop-btn desktop-btn--default" id="btn-limpiar-drawer">Limpiar</button>
@@ -718,6 +773,7 @@
                     width: '100%',
                     placeholder: 'Todos los productos',
                     allowClear: true,
+                    dropdownParent: $('#desktop-inv-drawer .desktop-inv-drawer__panel'),
                     ajax: {
                         url: rutas.productos,
                         dataType: 'json',
@@ -775,7 +831,7 @@
                 tabla = $table.DataTable({
                     processing: true,
                     serverSide: true,
-                    pageLength: 50,
+                    pageLength: Number($('#flt-length').val() || 100),
                     searching: false,
                     lengthChange: false,
                     autoWidth: false,
@@ -798,6 +854,7 @@
                             d.prd_ctg_id = $('#flt-ctg').val();
                             d.prd_id = $('#flt-prd').val();
                             d.buscar = $('#flt-buscar').val();
+                            d.solo_disponibles = $('#flt-solo-disponibles').is(':checked') ? 1 : 0;
                         }
                     },
                     columns: [
@@ -849,6 +906,7 @@
                 $('#flt-buscar').val('');
                 $('#flt-scl').val(@json((string) ($defaultSucursalId ?? '')));
                 $('#flt-alm').val('');
+                $('#flt-solo-disponibles').prop('checked', false);
                 aplicarFiltroConceptosPorLinea();
                 syncAlmacenesPorSucursal();
                 recargarTabla(true);
@@ -865,6 +923,8 @@
                 const prd = $('#flt-prd').val();
                 const prdText = $('#flt-prd').find('option:selected').text().trim();
                 const buscar = $('#flt-buscar').val().trim();
+                const soloDisponibles = $('#flt-solo-disponibles').is(':checked');
+                const length = $('#flt-length').val();
 
                 if (scl) params.set('back_min_scl_id', scl);
                 if (alm) params.set('back_min_alm_id', alm);
@@ -875,6 +935,8 @@
                 if (prd) params.set('back_prd_id', prd);
                 if (prd && prdText) params.set('back_prd_text', prdText);
                 if (buscar) params.set('back_buscar', buscar);
+                if (soloDisponibles) params.set('solo_disponibles', '1');
+                if (length) params.set('length', length);
 
                 return params;
             }
@@ -919,6 +981,10 @@
                 setIfPresent('#flt-ctg', 'prd_ctg_id');
                 setIfPresent('#flt-scl', 'min_scl_id');
                 setIfPresent('#flt-alm', 'min_alm_id');
+                $('#flt-solo-disponibles').prop('checked', params.get('solo_disponibles') === '1');
+                if (params.get('length') && $('#flt-length option[value="' + params.get('length') + '"]').length) {
+                    $('#flt-length').val(params.get('length'));
+                }
 
                 const buscar = params.get('buscar');
                 if (buscar) $('#flt-buscar').val(buscar);
@@ -956,7 +1022,9 @@
                     prd_lna_id: $('#flt-lna').val(),
                     prd_ctg_id: $('#flt-ctg').val(),
                     prd_id: $('#flt-prd').val(),
-                    buscar: $('#flt-buscar').val().trim()
+                    buscar: $('#flt-buscar').val().trim(),
+                    solo_disponibles: $('#flt-solo-disponibles').is(':checked') ? '1' : '',
+                    length: $('#flt-length').val()
                 };
 
                 Object.keys(map).forEach(function (key) {
@@ -1059,10 +1127,13 @@
 
             function contarFiltrosAvanzados() {
                 let n = 0;
+                if (!!$('#flt-alm').val()) n += 1;
+                if (String($('#flt-scl').val() || '') !== String(defaultScl)) n += 1;
                 ['#flt-mrc', '#flt-mdl', '#flt-lna', '#flt-ctg'].forEach(function (sel) {
                     if ($(sel).val()) n += 1;
                 });
                 if ($('#flt-prd').val()) n += 1;
+                if ($('#flt-solo-disponibles').is(':checked')) n += 1;
                 return n;
             }
 
@@ -1070,6 +1141,7 @@
                 return contarFiltrosAvanzados() > 0
                     || !!$('#flt-buscar').val().trim()
                     || !!$('#flt-alm').val()
+                    || $('#flt-solo-disponibles').is(':checked')
                     || String($('#flt-scl').val() || '') !== String(defaultScl);
             }
 
@@ -1096,6 +1168,7 @@
             aplicarFiltrosDesdeQuery();
             actualizarIndicadores();
             buildTabla();
+            $('#flt-length').val(String(tabla ? tabla.page.len() : 100));
             syncInvHScroll();
 
             $('#btn-recargar-existencias').on('click', function () {
@@ -1115,7 +1188,11 @@
                 $('#flt-prd').val(null).trigger('change');
                 actualizarIndicadores();
             });
-            $('#flt-prd').on('change', actualizarIndicadores);
+            $('#flt-prd, #flt-solo-disponibles').on('change', actualizarIndicadores);
+            $('#flt-length').on('change', function () {
+                if (!tabla) return;
+                tabla.page.len(Number($(this).val() || 100)).draw();
+            });
             $('#flt-buscar').on('input', actualizarIndicadores);
             $('#btn-filtrar').on('click', function () {
                 recargarTabla(true);

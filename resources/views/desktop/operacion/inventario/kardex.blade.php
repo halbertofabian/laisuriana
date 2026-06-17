@@ -18,6 +18,85 @@
         .desktop-kar-bar__field .desktop-toolbar__select, .desktop-kar-bar__field input { height: 32px; max-width: 160px; }
         .desktop-kar-bar__spacer { flex: 1 1 auto; }
         .desktop-kar-bar__divider { width: 1px; height: 22px; background: var(--stroke); }
+        .desktop-kar-bar .desktop-btn { height: 32px; }
+        .desktop-kar-clear {
+            border: 0;
+            background: transparent;
+            color: var(--brand);
+            font: inherit;
+            font-size: .78rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            padding: 0 4px;
+        }
+        .desktop-kar-clear:hover { text-decoration: underline; }
+        .desktop-kar-clear[hidden] { display: none; }
+        .desktop-kar-filterbtn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            height: 32px;
+            padding: 0 11px;
+            border: 1px solid var(--stroke-strong);
+            border-radius: var(--r-md);
+            background: var(--surface);
+            color: var(--text);
+            font: inherit;
+            font-size: .8rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .desktop-kar-filterbtn svg { width: 15px; height: 15px; }
+        .desktop-kar-filterbtn:hover { background: var(--surface-sunken); }
+        .desktop-kar-filterbtn.is-active { border-color: var(--brand); color: var(--brand); }
+        .desktop-kar-filterbtn__badge {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 5px;
+            border-radius: 999px;
+            background: var(--brand);
+            color: var(--on-brand);
+            font-size: .68rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+        .desktop-kar-filterbtn__badge.is-visible { display: inline-flex; }
+        .desktop-kar-drawer { position: fixed; inset: 0; z-index: var(--z-drawer); display: none; }
+        .desktop-kar-drawer.is-open { display: block; }
+        .desktop-kar-drawer__scrim { position: absolute; inset: 0; background: rgba(15, 23, 42, .16); backdrop-filter: blur(2px); }
+        .desktop-kar-drawer__panel {
+            position: absolute; top: 0; right: 0; height: 100%; width: min(420px, 100%);
+            display: flex; flex-direction: column; background: var(--surface); border-left: 1px solid var(--stroke);
+            box-shadow: var(--shadow-16); animation: desktopkardrawer .18s ease;
+        }
+        @keyframes desktopkardrawer { from { transform: translateX(20px); opacity: .5; } to { transform: none; opacity: 1; } }
+        .desktop-kar-drawer__head {
+            display: flex; align-items: center; justify-content: space-between; gap: 8px;
+            padding: 14px 16px; border-bottom: 1px solid var(--stroke);
+        }
+        .desktop-kar-drawer__title { font-size: .95rem; font-weight: 600; letter-spacing: -.01em; }
+        .desktop-kar-drawer__close {
+            display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px;
+            border: 0; border-radius: var(--r-md); background: transparent; color: var(--text-2);
+            font-size: 1.2rem; line-height: 1; cursor: pointer;
+        }
+        .desktop-kar-drawer__close:hover { background: var(--surface-sunken); color: var(--text); }
+        .desktop-kar-drawer__body {
+            flex: 1 1 auto; overflow: auto; padding: 14px 16px; display: grid; gap: 12px; align-content: start;
+        }
+        .desktop-kar-drawer__body .desktop-field input,
+        .desktop-kar-drawer__body .desktop-field select { min-height: 34px; }
+        .desktop-kar-drawer__foot {
+            display: flex; align-items: center; justify-content: space-between; gap: 8px;
+            padding: 12px 16px; border-top: 1px solid var(--stroke);
+        }
+        .desktop-kar-period-range[hidden] { display: none; }
+        .desktop-kar-period-range { display: grid; gap: 12px; }
 
         .desktop-kar-table tbody td { padding-top: 4px !important; padding-bottom: 4px !important; vertical-align: middle; }
         .desktop-kar-table tbody tr.is-selected td { background: #eaf1fd; }
@@ -44,6 +123,9 @@
             .desktop-kar-bar__search { flex: 1 1 100%; max-width: none; order: -1; }
             .desktop-kar-bar__spacer { display: none; }
         }
+        @media (max-width: 860px) {
+            .desktop-kar-drawer__panel { width: 100%; }
+        }
     </style>
 @endpush
 
@@ -67,43 +149,20 @@
                 <input id="flt-buscar" type="search" placeholder="Folio, referencia, SKU o producto">
             </div>
             <div class="desktop-kar-bar__field">
-                <span class="desktop-kar-bar__cap">Sucursal</span>
-                <select class="desktop-toolbar__select" id="flt-scl">
-                    <option value="">Todas</option>
-                    @foreach($opciones['sucursales'] as $s)
-                        <option value="{{ $s->scl_id }}">{{ $s->scl_nombre }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="desktop-kar-bar__field">
-                <span class="desktop-kar-bar__cap">Almacén</span>
-                <select class="desktop-toolbar__select" id="flt-alm">
-                    <option value="">Todos</option>
-                    @foreach($opciones['almacenes'] as $a)
-                        <option value="{{ $a->alm_id }}" data-scl="{{ $a->alm_scl_id }}">{{ $a->alm_nombre }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="desktop-kar-bar__field">
-                <span class="desktop-kar-bar__cap">Desde</span>
-                <input type="date" id="flt-desde" class="desktop-toolbar__select">
-            </div>
-            <div class="desktop-kar-bar__field">
-                <span class="desktop-kar-bar__cap">Hasta</span>
-                <input type="date" id="flt-hasta" class="desktop-toolbar__select">
-            </div>
-            <div class="desktop-kar-bar__field">
-                <span class="desktop-kar-bar__cap">Registros</span>
                 <select class="desktop-toolbar__select" id="flt-length">
-                    <option value="10">10 por página</option>
                     <option value="25">25 por página</option>
-                    <option value="50" selected>50 por página</option>
-                    <option value="100">100 por página</option>
+                    <option value="50">50 por página</option>
+                    <option value="100" selected>100 por página</option>
                     <option value="250">250 por página</option>
                 </select>
             </div>
             <span class="desktop-kar-bar__spacer"></span>
-            <button type="button" class="desktop-btn desktop-btn--default" id="btn-limpiar">Limpiar</button>
+            <button type="button" class="desktop-kar-clear" id="btn-limpiar" hidden>Limpiar</button>
+            <button type="button" class="desktop-kar-filterbtn" id="btn-kar-filtros" aria-haspopup="dialog" aria-expanded="false">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+                Filtros
+                <span class="desktop-kar-filterbtn__badge" id="kar-filtros-badge"></span>
+            </button>
             <span class="desktop-kar-bar__divider"></span>
             <button type="button" class="desktop-btn desktop-btn--primary" id="btn-filtrar">Aplicar</button>
         </div>
@@ -135,6 +194,64 @@
             <div id="desktop-kar-pagination" class="desktop-pager"></div>
         </div>
     </section>
+
+    <aside class="desktop-kar-drawer" id="desktop-kar-drawer" aria-hidden="true" role="dialog" aria-label="Filtros avanzados">
+        <div class="desktop-kar-drawer__scrim" data-close-kar-drawer></div>
+        <div class="desktop-kar-drawer__panel">
+            <div class="desktop-kar-drawer__head">
+                <div class="desktop-kar-drawer__title">Filtros avanzados</div>
+                <button type="button" class="desktop-kar-drawer__close" data-close-kar-drawer aria-label="Cerrar">&times;</button>
+            </div>
+            <div class="desktop-kar-drawer__body">
+                <div class="desktop-field">
+                    <label for="flt-periodo">Periodo</label>
+                    <select id="flt-periodo">
+                        <option value="hoy">Hoy</option>
+                        <option value="ayer">Ayer</option>
+                        <option value="antier">Antier</option>
+                        <option value="semana_en_curso">Semana en curso</option>
+                        <option value="mes_en_curso">Mes en curso</option>
+                        <option value="mes_anterior">Mes anterior</option>
+                        <option value="ultimos_3_meses" selected>Últimos 3 meses</option>
+                        <option value="este_ano">Este año</option>
+                        <option value="rango_personalizado">Rango personalizado</option>
+                    </select>
+                </div>
+                <div class="desktop-kar-period-range" id="flt-periodo-rango" hidden>
+                    <div class="desktop-field">
+                        <label for="flt-desde">Desde</label>
+                        <input type="date" id="flt-desde">
+                    </div>
+                    <div class="desktop-field">
+                        <label for="flt-hasta">Hasta</label>
+                        <input type="date" id="flt-hasta">
+                    </div>
+                </div>
+                <div class="desktop-field">
+                    <label for="flt-scl">Sucursal</label>
+                    <select id="flt-scl">
+                        <option value="">Todas</option>
+                        @foreach($opciones['sucursales'] as $s)
+                            <option value="{{ $s->scl_id }}">{{ $s->scl_nombre }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="desktop-field">
+                    <label for="flt-alm">Almacén</label>
+                    <select id="flt-alm">
+                        <option value="">Todos</option>
+                        @foreach($opciones['almacenes'] as $a)
+                            <option value="{{ $a->alm_id }}" data-scl="{{ $a->alm_scl_id }}">{{ $a->alm_nombre }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+            <div class="desktop-kar-drawer__foot">
+                <button type="button" class="desktop-btn desktop-btn--default" id="btn-limpiar-drawer">Limpiar</button>
+                <button type="button" class="desktop-btn desktop-btn--primary" id="btn-aplicar-drawer">Aplicar filtros</button>
+            </div>
+        </div>
+    </aside>
 @endsection
 
 @push('desktop-vendor-scripts')
@@ -160,6 +277,90 @@
             function renderMeta(title, sub) {
                 return '<div class="desktop-kar-meta"><span class="desktop-kar-meta__title">' + esc(title || '—') + '</span>' +
                     (sub ? '<span class="desktop-kar-meta__sub">' + esc(sub) + '</span>' : '') + '</div>';
+            }
+
+            function formatDateValue(date) {
+                const y = date.getFullYear();
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                const d = String(date.getDate()).padStart(2, '0');
+                return y + '-' + m + '-' + d;
+            }
+
+            function startOfDay(date) {
+                const d = new Date(date);
+                d.setHours(0, 0, 0, 0);
+                return d;
+            }
+
+            function addDays(date, days) {
+                const d = new Date(date);
+                d.setDate(d.getDate() + days);
+                return d;
+            }
+
+            function addMonths(date, months) {
+                const d = new Date(date);
+                d.setMonth(d.getMonth() + months);
+                return d;
+            }
+
+            function resolverPeriodo(periodo) {
+                const today = startOfDay(new Date());
+                switch (periodo) {
+                    case 'hoy': return { desde: formatDateValue(today), hasta: formatDateValue(today) };
+                    case 'ayer': { const d = addDays(today, -1); return { desde: formatDateValue(d), hasta: formatDateValue(d) }; }
+                    case 'antier': { const d = addDays(today, -2); return { desde: formatDateValue(d), hasta: formatDateValue(d) }; }
+                    case 'semana_en_curso': {
+                        const day = today.getDay();
+                        const diff = day === 0 ? -6 : 1 - day;
+                        const desde = addDays(today, diff);
+                        return { desde: formatDateValue(desde), hasta: formatDateValue(addDays(desde, 6)) };
+                    }
+                    case 'mes_en_curso': {
+                        const desde = new Date(today.getFullYear(), today.getMonth(), 1);
+                        const hasta = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                        return { desde: formatDateValue(desde), hasta: formatDateValue(hasta) };
+                    }
+                    case 'mes_anterior': {
+                        const desde = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                        const hasta = new Date(today.getFullYear(), today.getMonth(), 0);
+                        return { desde: formatDateValue(desde), hasta: formatDateValue(hasta) };
+                    }
+                    case 'ultimos_3_meses': return { desde: formatDateValue(addMonths(today, -3)), hasta: formatDateValue(today) };
+                    case 'este_ano': return { desde: formatDateValue(new Date(today.getFullYear(), 0, 1)), hasta: formatDateValue(today) };
+                    default: return { desde: $('#flt-desde').val(), hasta: $('#flt-hasta').val() };
+                }
+            }
+
+            function syncPeriodoUI() {
+                $('#flt-periodo-rango').prop('hidden', $('#flt-periodo').val() !== 'rango_personalizado');
+            }
+
+            function getFechasFiltro() {
+                if ($('#flt-periodo').val() === 'rango_personalizado') {
+                    return { desde: $('#flt-desde').val(), hasta: $('#flt-hasta').val() };
+                }
+                return resolverPeriodo($('#flt-periodo').val());
+            }
+
+            function contarFiltrosAvanzados() {
+                let count = 0;
+                if ($('#flt-scl').val()) count += 1;
+                if ($('#flt-alm').val()) count += 1;
+                if ($('#flt-periodo').val() !== 'ultimos_3_meses') count += 1;
+                if ($('#flt-periodo').val() === 'rango_personalizado' && ($('#flt-desde').val() || $('#flt-hasta').val())) count += 1;
+                return count;
+            }
+
+            function hayFiltroActivo() {
+                return contarFiltrosAvanzados() > 0 || !!$('#flt-buscar').val().trim();
+            }
+
+            function syncBadge() {
+                const count = contarFiltrosAvanzados();
+                $('#kar-filtros-badge').text(count ? String(count) : '').toggleClass('is-visible', count > 0);
+                $('#btn-kar-filtros').toggleClass('is-active', count > 0);
+                $('#btn-limpiar').prop('hidden', !hayFiltroActivo());
             }
 
             function syncAlmacenes() {
@@ -193,7 +394,7 @@
                 tabla = $table.DataTable({
                     processing: true,
                     serverSide: true,
-                    pageLength: Number($('#flt-length').val() || 50),
+                    pageLength: Number($('#flt-length').val() || 100),
                     lengthChange: false,
                     searching: false,
                     ordering: true,
@@ -206,10 +407,11 @@
                     ajax: {
                         url: rutas.data,
                         data: function (d) {
+                            const fechas = getFechasFiltro();
                             d.min_scl_id = $('#flt-scl').val();
                             d.min_alm_id = $('#flt-alm').val();
-                            d.fecha_desde = $('#flt-desde').val();
-                            d.fecha_hasta = $('#flt-hasta').val();
+                            d.fecha_desde = fechas.desde;
+                            d.fecha_hasta = fechas.hasta;
                             d.buscar = $('#flt-buscar').val().trim();
                         }
                     },
@@ -251,14 +453,48 @@
                 if (!tabla) { buildTabla(); return; }
                 tabla.ajax.reload(null, !!reset);
             }
+            function limpiarFiltros() {
+                $('#flt-scl').val('');
+                syncAlmacenes();
+                $('#flt-alm').val('');
+                $('#flt-periodo').val('ultimos_3_meses');
+                $('#flt-desde').val('');
+                $('#flt-hasta').val('');
+                syncPeriodoUI();
+                $('#flt-buscar').val('');
+                syncBadge();
+                recargar(true);
+            }
+            function abrirDrawer() {
+                $('#desktop-kar-drawer').addClass('is-open').attr('aria-hidden', 'false');
+                $('#btn-kar-filtros').attr('aria-expanded', 'true');
+            }
+            function cerrarDrawer() {
+                $('#desktop-kar-drawer').removeClass('is-open').attr('aria-hidden', 'true');
+                $('#btn-kar-filtros').attr('aria-expanded', 'false');
+            }
 
-            $('#flt-scl').on('change', syncAlmacenes);
+            $('#flt-scl').on('change', function () {
+                syncAlmacenes();
+                syncBadge();
+            });
+            $('#flt-periodo').on('change', function () {
+                syncPeriodoUI();
+                syncBadge();
+            });
+            $('#flt-alm, #flt-desde, #flt-hasta').on('change', syncBadge);
+            $('#flt-buscar').on('input', syncBadge);
             $('#btn-filtrar, #btn-recargar-kardex').on('click', function () { recargar(true); });
             $('#flt-buscar').on('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); recargar(true); } });
-            $('#flt-length').on('change', function () { if (tabla) tabla.page.len(Number(this.value || 50)).draw(false); });
-            $('#btn-limpiar').on('click', function () {
-                $('#flt-scl').val(''); syncAlmacenes(); $('#flt-alm').val('');
-                $('#flt-desde').val(''); $('#flt-hasta').val(''); $('#flt-buscar').val('');
+            $('#flt-length').on('change', function () { if (tabla) tabla.page.len(Number(this.value || 100)).draw(false); });
+            $('#btn-kar-filtros').on('click', abrirDrawer);
+            $(document).on('click', '[data-close-kar-drawer]', cerrarDrawer);
+            $('#btn-limpiar, #btn-limpiar-drawer').on('click', function () {
+                limpiarFiltros();
+            });
+            $('#btn-aplicar-drawer').on('click', function () {
+                syncBadge();
+                cerrarDrawer();
                 recargar(true);
             });
             $('#desktop-kar-pagination').on('click', '.desktop-pager__btn', function () {
@@ -268,6 +504,8 @@
             });
 
             syncAlmacenes();
+            syncPeriodoUI();
+            syncBadge();
             buildTabla();
         })();
     </script>

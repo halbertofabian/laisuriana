@@ -232,9 +232,9 @@
             <option value="inactivo">Inactivos</option>
         </select>
         <select class="desktop-toolbar__select" id="productos-length">
-            <option value="10">10 por página</option>
             <option value="25">25 por página</option>
             <option value="50">50 por página</option>
+            <option value="100" selected>100 por página</option>
         </select>
         <input type="search" id="productos-search" class="desktop-toolbar__search" placeholder="Buscar producto, código, marca o proveedor">
     </div>
@@ -681,7 +681,7 @@
                     deferRender: true,
                     responsive: false,
                     autoWidth: false,
-                    pageLength: 10,
+                    pageLength: 100,
                     lengthChange: false,
                     searching: false,
                     order: [[1, 'asc']],

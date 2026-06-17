@@ -19,6 +19,7 @@ class ListExistenciaMatrizRequest extends FormRequest
             'start' => ['nullable', 'integer', 'min:0'],
             'length' => ['nullable', 'integer', 'min:1', 'max:100'],
             'buscar' => ['nullable', 'string', 'max:120'],
+            'solo_disponibles' => ['nullable', 'boolean'],
             'prd_id' => [
                 'nullable',
                 'integer',

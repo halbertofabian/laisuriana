@@ -40,6 +40,9 @@
             border-color: var(--brand);
             box-shadow: 0 0 0 1px var(--brand);
         }
+        #etiquetado-length {
+            min-width: 148px;
+        }
         .desktop-etq-panel {
             display: none;
             padding: 12px;
@@ -117,9 +120,9 @@
     </div>
     <div class="desktop-toolbar__group">
         <select class="desktop-toolbar__select" id="etiquetado-length">
-            <option value="10">10 por página</option>
             <option value="25">25 por página</option>
             <option value="50">50 por página</option>
+            <option value="100" selected>100 por página</option>
         </select>
         <input type="search" id="etiquetado-search" class="desktop-toolbar__search" placeholder="Buscar SKU, producto o nombre etiqueta">
     </div>
@@ -362,7 +365,7 @@
                     deferRender: true,
                     responsive: false,
                     autoWidth: false,
-                    pageLength: Number($('#etiquetado-length').val() || 10),
+                    pageLength: Number($('#etiquetado-length').val() || 100),
                     lengthChange: false,
                     searching: true,
                     dom: 'rt',
@@ -443,7 +446,7 @@
             });
             $('#etiquetado-length').on('change', function () {
                 if (!etiquetasTable) return;
-                etiquetasTable.page.len(Number(this.value || 10)).draw();
+                etiquetasTable.page.len(Number(this.value || 100)).draw();
             });
             $('#desktop-etiquetado-pagination').on('click', '[data-page]', function () {
                 if (!etiquetasTable) return;

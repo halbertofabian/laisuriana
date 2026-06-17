@@ -80,9 +80,9 @@
             <option value="inactivo">Inactivos</option>
         </select>
         <select class="desktop-toolbar__select" id="base-length">
-            <option value="10">10 por página</option>
             <option value="25">25 por página</option>
             <option value="50">50 por página</option>
+            <option value="100" selected>100 por página</option>
         </select>
         <input type="search" id="base-search" class="desktop-toolbar__search" placeholder="Buscar registro">
     </div>
@@ -638,7 +638,7 @@
                     deferRender: true,
                     responsive: false,
                     autoWidth: false,
-                    pageLength: Number($('#base-length').val() || 10),
+                    pageLength: Number($('#base-length').val() || 100),
                     lengthChange: false,
                     searching: false,
                     order: [[0, 'asc']],

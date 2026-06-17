@@ -26,8 +26,87 @@
         .desktop-rme-bar__cap { font-size: .68rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--text-3); }
         .desktop-rme-bar__field .desktop-toolbar__select,
         .desktop-rme-bar__field input { height: 32px; max-width: 170px; }
+        .desktop-rme-bar .desktop-btn { height: 32px; }
+        .desktop-rme-clear {
+            border: 0;
+            background: transparent;
+            color: var(--brand);
+            font: inherit;
+            font-size: .78rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            padding: 0 4px;
+        }
+        .desktop-rme-clear:hover { text-decoration: underline; }
+        .desktop-rme-clear[hidden] { display: none; }
+        .desktop-rme-filterbtn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            height: 32px;
+            padding: 0 11px;
+            border: 1px solid var(--stroke-strong);
+            border-radius: var(--r-md);
+            background: var(--surface);
+            color: var(--text);
+            font: inherit;
+            font-size: .8rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .desktop-rme-filterbtn svg { width: 15px; height: 15px; }
+        .desktop-rme-filterbtn:hover { background: var(--surface-sunken); }
+        .desktop-rme-filterbtn.is-active { border-color: var(--brand); color: var(--brand); }
+        .desktop-rme-filterbtn__badge {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 5px;
+            border-radius: 999px;
+            background: var(--brand);
+            color: var(--on-brand);
+            font-size: .68rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+        .desktop-rme-filterbtn__badge.is-visible { display: inline-flex; }
+        .desktop-rme-period-range[hidden] { display: none; }
+        .desktop-rme-period-range { display: grid; gap: 12px; }
         .desktop-rme-bar__spacer { flex: 1 1 auto; }
         .desktop-rme-bar__divider { width: 1px; height: 22px; background: var(--stroke); }
+        .desktop-rme-drawer { position: fixed; inset: 0; z-index: var(--z-drawer); display: none; }
+        .desktop-rme-drawer.is-open { display: block; }
+        .desktop-rme-drawer__scrim { position: absolute; inset: 0; background: rgba(15, 23, 42, .16); backdrop-filter: blur(2px); }
+        .desktop-rme-drawer__panel {
+            position: absolute; top: 0; right: 0; height: 100%; width: min(420px, 100%);
+            display: flex; flex-direction: column; background: var(--surface); border-left: 1px solid var(--stroke);
+            box-shadow: var(--shadow-16); animation: desktoprmedrawer .18s ease;
+        }
+        @keyframes desktoprmedrawer { from { transform: translateX(20px); opacity: .5; } to { transform: none; opacity: 1; } }
+        .desktop-rme-drawer__head {
+            display: flex; align-items: center; justify-content: space-between; gap: 8px;
+            padding: 14px 16px; border-bottom: 1px solid var(--stroke);
+        }
+        .desktop-rme-drawer__title { font-size: .95rem; font-weight: 600; letter-spacing: -.01em; }
+        .desktop-rme-drawer__close {
+            display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px;
+            border: 0; border-radius: var(--r-md); background: transparent; color: var(--text-2);
+            font-size: 1.2rem; line-height: 1; cursor: pointer;
+        }
+        .desktop-rme-drawer__close:hover { background: var(--surface-sunken); color: var(--text); }
+        .desktop-rme-drawer__body {
+            flex: 1 1 auto; overflow: auto; padding: 14px 16px; display: grid; gap: 12px; align-content: start;
+        }
+        .desktop-rme-drawer__body .desktop-field input,
+        .desktop-rme-drawer__body .desktop-field select { min-height: 34px; }
+        .desktop-rme-drawer__foot {
+            display: flex; align-items: center; justify-content: space-between; gap: 8px;
+            padding: 12px 16px; border-top: 1px solid var(--stroke);
+        }
 
         .desktop-rme-table tbody td { padding-top: 5px !important; padding-bottom: 5px !important; vertical-align: middle; }
         .desktop-rme-table tbody tr.is-selected td { background: #eaf1fd; }
@@ -73,6 +152,9 @@
             .desktop-rme-bar__search { flex: 1 1 100%; max-width: none; order: -1; }
             .desktop-rme-bar__spacer { display: none; }
         }
+        @media (max-width: 860px) {
+            .desktop-rme-drawer__panel { width: 100%; }
+        }
     </style>
 @endpush
 
@@ -100,34 +182,22 @@
                 <input id="flt-buscar" type="search" placeholder="Buscar folio, referencia o proveedor">
             </div>
             <div class="desktop-rme-bar__field">
-                <span class="desktop-rme-bar__cap">Estado</span>
-                <select class="desktop-toolbar__select" id="flt-estado">
-                    <option value="">Todos</option>
-                    <option value="finalizado">Finalizado</option>
-                    <option value="borrador">Borrador</option>
-                    <option value="cancelado">Cancelado</option>
-                </select>
-            </div>
-            <div class="desktop-rme-bar__field">
-                <span class="desktop-rme-bar__cap">Desde</span>
-                <input type="date" id="flt-desde" class="desktop-toolbar__select">
-            </div>
-            <div class="desktop-rme-bar__field">
-                <span class="desktop-rme-bar__cap">Hasta</span>
-                <input type="date" id="flt-hasta" class="desktop-toolbar__select">
-            </div>
-            <div class="desktop-rme-bar__field">
-                <span class="desktop-rme-bar__cap">Registros</span>
                 <select class="desktop-toolbar__select" id="flt-length">
-                    <option value="10">10 por página</option>
                     <option value="25">25 por página</option>
-                    <option value="50" selected>50 por página</option>
-                    <option value="100">100 por página</option>
+                    <option value="50">50 por página</option>
+                    <option value="100" selected>100 por página</option>
                     <option value="250">250 por página</option>
                 </select>
             </div>
 
             <span class="desktop-rme-bar__spacer"></span>
+            <button type="button" class="desktop-rme-clear" id="btn-limpiar" hidden>Limpiar</button>
+            <button type="button" class="desktop-rme-filterbtn" id="btn-rme-filtros" aria-haspopup="dialog" aria-expanded="false">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+                Filtros
+                <span class="desktop-rme-filterbtn__badge" id="rme-filtros-badge"></span>
+            </button>
+            <span class="desktop-rme-bar__divider"></span>
             <button type="button" class="desktop-btn desktop-btn--primary" id="btn-filtrar">Aplicar</button>
         </div>
 
@@ -155,6 +225,55 @@
             <div id="desktop-rme-pagination" class="desktop-pager"></div>
         </div>
     </section>
+
+    <aside class="desktop-rme-drawer" id="desktop-rme-drawer" aria-hidden="true" role="dialog" aria-label="Filtros avanzados">
+        <div class="desktop-rme-drawer__scrim" data-close-rme-drawer></div>
+        <div class="desktop-rme-drawer__panel">
+            <div class="desktop-rme-drawer__head">
+                <div class="desktop-rme-drawer__title">Filtros avanzados</div>
+                <button type="button" class="desktop-rme-drawer__close" data-close-rme-drawer aria-label="Cerrar">&times;</button>
+            </div>
+            <div class="desktop-rme-drawer__body">
+                <div class="desktop-field">
+                    <label for="flt-periodo">Periodo</label>
+                    <select id="flt-periodo">
+                        <option value="hoy">Hoy</option>
+                        <option value="ayer">Ayer</option>
+                        <option value="antier">Antier</option>
+                        <option value="semana_en_curso" selected>Semana en curso</option>
+                        <option value="mes_en_curso">Mes en curso</option>
+                        <option value="mes_anterior">Mes anterior</option>
+                        <option value="ultimos_3_meses">Últimos 3 meses</option>
+                        <option value="este_ano">Este año</option>
+                        <option value="rango_personalizado">Rango personalizado</option>
+                    </select>
+                </div>
+                <div class="desktop-rme-period-range" id="flt-periodo-rango" hidden>
+                    <div class="desktop-field">
+                        <label for="flt-desde">Desde</label>
+                        <input type="date" id="flt-desde">
+                    </div>
+                    <div class="desktop-field">
+                        <label for="flt-hasta">Hasta</label>
+                        <input type="date" id="flt-hasta">
+                    </div>
+                </div>
+                <div class="desktop-field">
+                    <label for="flt-estado">Estado</label>
+                    <select id="flt-estado">
+                        <option value="">Todos</option>
+                        <option value="finalizado">Finalizado</option>
+                        <option value="borrador">Borrador</option>
+                        <option value="cancelado">Cancelado</option>
+                    </select>
+                </div>
+            </div>
+            <div class="desktop-rme-drawer__foot">
+                <button type="button" class="desktop-btn desktop-btn--default" id="btn-limpiar-drawer">Limpiar</button>
+                <button type="button" class="desktop-btn desktop-btn--primary" id="btn-aplicar-drawer">Aplicar filtros</button>
+            </div>
+        </div>
+    </aside>
 
     <div class="desktop-modal" id="rme-modal" aria-hidden="true">
         <div class="desktop-modal__dialog" style="max-width:720px;">
@@ -202,6 +321,89 @@
             function renderMeta(title, subtitle) {
                 return '<div class="desktop-rme-meta"><span class="desktop-rme-meta__title">' + escapeHtml(title || '—') + '</span>' +
                     (subtitle ? '<span class="desktop-rme-meta__sub">' + escapeHtml(subtitle) + '</span>' : '') + '</div>';
+            }
+            function formatDateValue(date) {
+                const y = date.getFullYear();
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                const d = String(date.getDate()).padStart(2, '0');
+                return y + '-' + m + '-' + d;
+            }
+            function startOfDay(date) {
+                const d = new Date(date);
+                d.setHours(0, 0, 0, 0);
+                return d;
+            }
+            function addDays(date, days) {
+                const d = new Date(date);
+                d.setDate(d.getDate() + days);
+                return d;
+            }
+            function addMonths(date, months) {
+                const d = new Date(date);
+                d.setMonth(d.getMonth() + months);
+                return d;
+            }
+            function resolverPeriodo(periodo) {
+                const today = startOfDay(new Date());
+                switch (periodo) {
+                    case 'hoy':
+                        return { desde: formatDateValue(today), hasta: formatDateValue(today) };
+                    case 'ayer': {
+                        const d = addDays(today, -1);
+                        return { desde: formatDateValue(d), hasta: formatDateValue(d) };
+                    }
+                    case 'antier': {
+                        const d = addDays(today, -2);
+                        return { desde: formatDateValue(d), hasta: formatDateValue(d) };
+                    }
+                    case 'semana_en_curso': {
+                        const day = today.getDay();
+                        const diff = day === 0 ? -6 : 1 - day;
+                        const desde = addDays(today, diff);
+                        return { desde: formatDateValue(desde), hasta: formatDateValue(addDays(desde, 6)) };
+                    }
+                    case 'mes_en_curso': {
+                        const desde = new Date(today.getFullYear(), today.getMonth(), 1);
+                        const hasta = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                        return { desde: formatDateValue(desde), hasta: formatDateValue(hasta) };
+                    }
+                    case 'mes_anterior': {
+                        const desde = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                        const hasta = new Date(today.getFullYear(), today.getMonth(), 0);
+                        return { desde: formatDateValue(desde), hasta: formatDateValue(hasta) };
+                    }
+                    case 'ultimos_3_meses':
+                        return { desde: formatDateValue(addMonths(today, -3)), hasta: formatDateValue(today) };
+                    case 'este_ano':
+                        return { desde: formatDateValue(new Date(today.getFullYear(), 0, 1)), hasta: formatDateValue(today) };
+                    default:
+                        return { desde: $('#flt-desde').val(), hasta: $('#flt-hasta').val() };
+                }
+            }
+            function syncPeriodoUI() {
+                $('#flt-periodo-rango').prop('hidden', $('#flt-periodo').val() !== 'rango_personalizado');
+            }
+            function getFechasFiltro() {
+                if ($('#flt-periodo').val() === 'rango_personalizado') {
+                    return { desde: $('#flt-desde').val(), hasta: $('#flt-hasta').val() };
+                }
+                return resolverPeriodo($('#flt-periodo').val());
+            }
+            function contarFiltrosAvanzados() {
+                let count = 0;
+                if ($('#flt-estado').val()) count += 1;
+                if ($('#flt-periodo').val() !== 'semana_en_curso') count += 1;
+                if ($('#flt-periodo').val() === 'rango_personalizado' && ($('#flt-desde').val() || $('#flt-hasta').val())) count += 1;
+                return count;
+            }
+            function hayFiltroActivo() {
+                return contarFiltrosAvanzados() > 0 || !!$('#flt-buscar').val().trim();
+            }
+            function syncBadge() {
+                const count = contarFiltrosAvanzados();
+                $('#rme-filtros-badge').text(count ? String(count) : '').toggleClass('is-visible', count > 0);
+                $('#btn-rme-filtros').toggleClass('is-active', count > 0);
+                $('#btn-limpiar').prop('hidden', !hayFiltroActivo());
             }
             function renderEstado(v) {
                 const estado = String(v || '').toLowerCase();
@@ -252,7 +454,7 @@
                 tabla = $table.DataTable({
                     processing: true,
                     serverSide: true,
-                    pageLength: Number($('#flt-length').val() || 50),
+                    pageLength: Number($('#flt-length').val() || 100),
                     lengthChange: false,
                     searching: false,
                     ordering: true,
@@ -265,9 +467,10 @@
                     ajax: {
                         url: rutas.data,
                         data: function (d) {
+                            const fechas = getFechasFiltro();
                             d.estado = $('#flt-estado').val();
-                            d.fecha_desde = $('#flt-desde').val();
-                            d.fecha_hasta = $('#flt-hasta').val();
+                            d.fecha_desde = fechas.desde;
+                            d.fecha_hasta = fechas.hasta;
                             d.buscar = $('#flt-buscar').val().trim();
                         }
                     },
@@ -291,6 +494,24 @@
             function recargar(reset) {
                 if (!tabla) { buildTabla(); return; }
                 tabla.ajax.reload(null, !!reset);
+            }
+            function limpiarFiltros() {
+                $('#flt-estado').val('');
+                $('#flt-periodo').val('semana_en_curso');
+                $('#flt-desde').val('');
+                $('#flt-hasta').val('');
+                syncPeriodoUI();
+                $('#flt-buscar').val('');
+                syncBadge();
+                recargar(true);
+            }
+            function abrirDrawer() {
+                $('#desktop-rme-drawer').addClass('is-open').attr('aria-hidden', 'false');
+                $('#btn-rme-filtros').attr('aria-expanded', 'true');
+            }
+            function cerrarDrawer() {
+                $('#desktop-rme-drawer').removeClass('is-open').attr('aria-hidden', 'true');
+                $('#btn-rme-filtros').attr('aria-expanded', 'false');
             }
 
             // ===== Modal de detalle =====
@@ -388,8 +609,24 @@
             }
 
             $('#btn-filtrar, #btn-recargar-rme').on('click', function () { recargar(true); });
+            $('#flt-periodo').on('change', function () {
+                syncPeriodoUI();
+                syncBadge();
+            });
+            $('#flt-estado, #flt-desde, #flt-hasta').on('change', syncBadge);
+            $('#flt-buscar').on('input', syncBadge);
             $('#flt-buscar').on('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); recargar(true); } });
-            $('#flt-length').on('change', function () { if (tabla) tabla.page.len(Number(this.value || 50)).draw(false); });
+            $('#flt-length').on('change', function () { if (tabla) tabla.page.len(Number(this.value || 100)).draw(false); });
+            $('#btn-rme-filtros').on('click', abrirDrawer);
+            $(document).on('click', '[data-close-rme-drawer]', cerrarDrawer);
+            $('#btn-limpiar, #btn-limpiar-drawer').on('click', function () {
+                limpiarFiltros();
+            });
+            $('#btn-aplicar-drawer').on('click', function () {
+                syncBadge();
+                cerrarDrawer();
+                recargar(true);
+            });
 
             $('#desktop-rme-pagination').on('click', '.desktop-pager__btn', function () {
                 if (!tabla || this.disabled) return;
@@ -403,7 +640,8 @@
             $(document).on('click', '[data-close-rme]', cerrarModal);
             $('#rme-modal').on('click', function (e) { if (e.target === this) cerrarModal(); });
             $(document).on('keydown', function (e) { if (e.key === 'Escape') cerrarModal(); });
-
+            syncPeriodoUI();
+            syncBadge();
             buildTabla();
         })();
     </script>

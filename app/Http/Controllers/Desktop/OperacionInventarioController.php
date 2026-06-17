@@ -382,6 +382,11 @@ class OperacionInventarioController extends Controller
             'cse_id' => ['nullable', 'integer'],
             'min_scl_id' => ['nullable', 'integer'],
             'min_alm_id' => ['nullable', 'integer'],
+            'prd_id' => ['nullable', 'integer'],
+            'prd_mrc_id' => ['nullable', 'integer'],
+            'prd_mdl_id' => ['nullable', 'integer'],
+            'prd_lna_id' => ['nullable', 'integer'],
+            'prd_ctg_id' => ['nullable', 'integer'],
             'fecha_desde' => ['nullable', 'date'],
             'fecha_hasta' => ['nullable', 'date'],
             'buscar' => ['nullable', 'string', 'max:120'],
@@ -405,6 +410,144 @@ class OperacionInventarioController extends Controller
             'recordsTotal' => (int) $resultado['recordsTotal'],
             'recordsFiltered' => (int) $resultado['recordsFiltered'],
             'data' => $resultado['data'],
+        ]);
+    }
+
+    public function exportarExcelNegativosSesion(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $filtros = $request->only([
+            'cse_id',
+            'min_scl_id',
+            'min_alm_id',
+            'prd_id',
+            'prd_mrc_id',
+            'prd_mdl_id',
+            'prd_lna_id',
+            'prd_ctg_id',
+            'fecha_desde',
+            'fecha_hasta',
+            'buscar',
+        ]);
+
+        $filas = $this->inventarioService->listarNegativosPorSesionCaja($filtros);
+        $fileName = 'negativos-por-sesion-' . now()->format('Ymd-His') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$fileName}\"",
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
+        ];
+
+        return response()->streamDownload(function () use ($filas): void {
+            $handle = fopen('php://output', 'w');
+            fwrite($handle, "\xEF\xBB\xBF");
+
+            fputcsv($handle, ['Fecha', 'Sesion', 'Caja', 'Sucursal', 'Almacen', 'Venta', 'SKU', 'Producto', 'Cantidad', 'Antes', 'Despues', 'Usuario venta', 'Usuario apertura']);
+
+            foreach ($filas as $fila) {
+                fputcsv($handle, [
+                    $fila->min_fecha_movimiento ?? '',
+                    $fila->cse_id ?? '',
+                    $fila->caj_nombre ?? '',
+                    $fila->scl_nombre ?? '',
+                    $fila->alm_nombre ?? '',
+                    $fila->psv_folio ?? '',
+                    $fila->psk_codigo ?? '',
+                    $fila->psk_nombre ?? $fila->prd_nombre ?? '',
+                    $fila->min_cantidad ?? 0,
+                    $fila->min_existencia_antes ?? 0,
+                    $fila->min_existencia_despues ?? 0,
+                    $fila->usuario_venta ?? '',
+                    $fila->usuario_apertura ?? '',
+                ]);
+            }
+
+            fclose($handle);
+        }, $fileName, $headers);
+    }
+
+    public function exportarPdfNegativosSesion(Request $request): \Illuminate\Http\Response
+    {
+        $filtros = $request->only([
+            'cse_id',
+            'min_scl_id',
+            'min_alm_id',
+            'prd_id',
+            'prd_mrc_id',
+            'prd_mdl_id',
+            'prd_lna_id',
+            'prd_ctg_id',
+            'fecha_desde',
+            'fecha_hasta',
+            'buscar',
+        ]);
+
+        $filas = $this->inventarioService->listarNegativosPorSesionCaja($filtros);
+        $filas = collect($filas);
+        $fechaGen = now()->format('d/m/Y H:i:s');
+
+        $rowsHtml = '';
+        $rowIdx = 0;
+        foreach ($filas as $fila) {
+            $bg = ($rowIdx % 2 === 0) ? '#f8fafc' : '#ffffff';
+            $rowIdx++;
+
+            $rowsHtml .= '<tr style="background:' . $bg . '">'
+                . '<td>' . htmlspecialchars((string) ($fila->min_fecha_movimiento ?? '-')) . '</td>'
+                . '<td>' . htmlspecialchars('#' . (string) ($fila->cse_id ?? '-')) . '</td>'
+                . '<td>' . htmlspecialchars((string) ($fila->caj_nombre ?? '-')) . '</td>'
+                . '<td>' . htmlspecialchars((string) ($fila->scl_nombre ?? '-')) . '</td>'
+                . '<td>' . htmlspecialchars((string) ($fila->alm_nombre ?? '-')) . '</td>'
+                . '<td>' . htmlspecialchars((string) ($fila->psv_folio ?? '-')) . '</td>'
+                . '<td>' . htmlspecialchars((string) ($fila->psk_codigo ?? '-')) . '</td>'
+                . '<td>' . htmlspecialchars((string) ($fila->psk_nombre ?? $fila->prd_nombre ?? '-')) . '</td>'
+                . '<td style="text-align:right">' . number_format((float) ($fila->min_cantidad ?? 0), 2) . '</td>'
+                . '<td style="text-align:right">' . number_format((float) ($fila->min_existencia_antes ?? 0), 2) . '</td>'
+                . '<td style="text-align:right">' . number_format((float) ($fila->min_existencia_despues ?? 0), 2) . '</td>'
+                . '<td>' . htmlspecialchars((string) ($fila->usuario_venta ?? '-')) . '</td>'
+                . '</tr>';
+        }
+
+        $html = '
+        <style>
+            body { font-family: helvetica; font-size: 8px; color: #1e293b; }
+            h2 { font-size: 12px; color: #1e3a5f; margin: 0 0 2px 0; }
+            .meta { font-size: 7px; color: #64748b; margin-bottom: 6px; }
+            table { border-collapse: collapse; width: 100%; }
+            th { background: #1e3a5f; color: #fff; font-size: 7.5px; padding: 4px 3px; text-align: left; }
+            td { font-size: 7.2px; padding: 3px; border-bottom: 1px solid #e2e8f0; }
+        </style>
+        <h2>Negativos por sesion</h2>
+        <div class="meta">' . $filas->count() . ' registros &bull; Generado: ' . $fechaGen . '</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Fecha</th><th>Sesion</th><th>Caja</th><th>Sucursal</th><th>Almacen</th>
+                    <th>Venta</th><th>SKU</th><th>Producto</th>
+                    <th style="text-align:right">Cantidad</th>
+                    <th style="text-align:right">Antes</th>
+                    <th style="text-align:right">Despues</th>
+                    <th>Usuario venta</th>
+                </tr>
+            </thead>
+            <tbody>' . $rowsHtml . '</tbody>
+        </table>';
+
+        $pdf = new \TCPDF('L', 'mm', 'A4', true, 'UTF-8', false, false);
+        $pdf->SetCreator(config('app.name', 'La Suriana Retail'));
+        $pdf->SetAuthor((string) (request()->user()?->name ?? config('app.name')));
+        $pdf->SetTitle('Negativos por sesion');
+        $pdf->SetMargins(8, 8, 8);
+        $pdf->SetAutoPageBreak(true, 8);
+        $pdf->AddPage();
+        $pdf->writeHTML($html, true, false, true, false, '');
+
+        return response($pdf->Output('negativos-por-sesion.pdf', 'S'), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="negativos-por-sesion.pdf"',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate',
         ]);
     }
 
@@ -470,6 +613,7 @@ class OperacionInventarioController extends Controller
             'buscar',
             'min_scl_id',
             'min_alm_id',
+            'solo_disponibles',
         ]);
 
         $buscarDatatable = trim((string) $request->input('search.value', ''));
@@ -496,7 +640,7 @@ class OperacionInventarioController extends Controller
 
     private function exportarExcelExistencias(Request $request, bool $soloNegativas = false): \Symfony\Component\HttpFoundation\StreamedResponse
     {
-        $filtros = $request->only(['prd_mrc_id', 'prd_mdl_id', 'prd_lna_id', 'prd_ctg_id', 'prd_id', 'buscar', 'min_scl_id', 'min_alm_id']);
+        $filtros = $request->only(['prd_mrc_id', 'prd_mdl_id', 'prd_lna_id', 'prd_ctg_id', 'prd_id', 'buscar', 'min_scl_id', 'min_alm_id', 'solo_disponibles']);
         $filas = $this->existenciaMatrizService->exportarTodos($filtros, soloNegativos: $soloNegativas);
         $baseName = $soloNegativas ? 'existencias-negativas' : 'existencias-matriz';
         $fileName = $baseName . '-' . now()->format('Ymd-His') . '.csv';

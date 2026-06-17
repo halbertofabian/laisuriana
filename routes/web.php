@@ -152,6 +152,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/kardex/{sku}/detalle', [OperacionInventarioController::class, 'kardexDetalle'])->name('kardex.detalle')->middleware('permiso:inventario_base.ver');
         Route::get('/negativos-por-sesion', [OperacionInventarioController::class, 'negativosSesion'])->name('negativos_sesion.index')->middleware('permiso:inventario_base.ver');
         Route::get('/negativos-por-sesion/data', [OperacionInventarioController::class, 'dataNegativosSesion'])->name('negativos_sesion.data')->middleware('permiso:inventario_base.ver');
+        Route::get('/negativos-por-sesion/exportar/excel', [OperacionInventarioController::class, 'exportarExcelNegativosSesion'])->name('negativos_sesion.exportar.excel')->middleware('permiso:inventario_base.ver');
+        Route::get('/negativos-por-sesion/exportar/pdf', [OperacionInventarioController::class, 'exportarPdfNegativosSesion'])->name('negativos_sesion.exportar.pdf')->middleware('permiso:inventario_base.ver');
         Route::get('/recibir', [OperacionInventarioController::class, 'recibir'])->name('recibir.index')->middleware('permiso:inventario_base.ver');
         Route::get('/recibir/productos/buscar', [OperacionInventarioController::class, 'buscarProductosRecibir'])->name('recibir.productos.buscar')->middleware('permiso:inventario_base.ver');
         Route::get('/recibir/productos/{producto}/matriz', [OperacionInventarioController::class, 'matrizRecibir'])->name('recibir.productos.matriz')->middleware('permiso:inventario_base.ver');

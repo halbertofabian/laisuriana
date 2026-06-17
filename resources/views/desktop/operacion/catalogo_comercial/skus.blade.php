@@ -50,6 +50,9 @@
             border-color: var(--brand);
             box-shadow: 0 0 0 1px var(--brand);
         }
+        #skus-length {
+            min-width: 148px;
+        }
         .desktop-sku-bar__spacer { flex: 1 1 auto; }
         .desktop-sku-filterbtn {
             display: inline-flex;
@@ -429,9 +432,9 @@
     </div>
     <div class="desktop-toolbar__group">
         <select class="desktop-toolbar__select" id="skus-length">
-            <option value="10">10 por página</option>
             <option value="25">25 por página</option>
-            <option value="50" selected>50 por página</option>
+            <option value="50">50 por página</option>
+            <option value="100" selected>100 por página</option>
         </select>
     </div>
 @endsection
@@ -988,7 +991,7 @@
                     deferRender: true,
                     responsive: false,
                     autoWidth: false,
-                    pageLength: 50,
+                    pageLength: 100,
                     lengthChange: false,
                     searching: false,
                     order: [[1, 'asc']],
@@ -1243,6 +1246,8 @@
                     return;
                 }
 
+                $('#skus-length').val('100');
+                if (skusTable) skusTable.page.len(100);
                 reloadTable(true);
             }
 

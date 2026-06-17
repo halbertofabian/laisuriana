@@ -66,9 +66,9 @@
             <option value="inactivo">Inactivos</option>
         </select>
         <select class="desktop-toolbar__select" id="proveedores-length">
-            <option value="10">10 por página</option>
             <option value="25">25 por página</option>
             <option value="50">50 por página</option>
+            <option value="100" selected>100 por página</option>
         </select>
         <input type="search" id="proveedores-search" class="desktop-toolbar__search" placeholder="Buscar proveedor">
     </div>
@@ -475,9 +475,17 @@
                     'Mostrando ' + (info.start + 1) + ' a ' + info.end + ' de ' + total + ' proveedores'
                 );
 
-                $('#desktop-proveedores-pagination').html(
-                    $(tableInstance.table().container()).find('.dataTables_paginate').html()
-                );
+                const buttons = [];
+                buttons.push({ label: '‹', page: 'previous', disabled: info.page === 0 });
+                for (let i = 0; i < info.pages; i += 1) {
+                    buttons.push({ label: String(i + 1), page: i, active: i === info.page });
+                }
+                buttons.push({ label: '›', page: 'next', disabled: info.page >= info.pages - 1 });
+
+                $('#desktop-proveedores-pagination').html(buttons.map(function (button) {
+                    const classes = ['desktop-pager__btn', button.active ? 'is-active' : '', button.disabled ? 'is-disabled' : ''].filter(Boolean).join(' ');
+                    return '<button type="button" class="' + classes + '" data-page="' + button.page + '"' + (button.disabled ? ' disabled' : '') + '>' + button.label + '</button>';
+                }).join(''));
             }
 
             function buildTable() {
@@ -491,7 +499,7 @@
                         dataSrc: 'data'
                     },
                     columns: providerColumns(),
-                    pageLength: Number($('#proveedores-length').val() || 10),
+                    pageLength: Number($('#proveedores-length').val() || 100),
                     lengthChange: false,
                     searching: false,
                     ordering: false,
@@ -575,8 +583,13 @@
             });
             $('#proveedores-length').on('change', function () {
                 if (providersTable) {
-                    providersTable.page.len(Number(this.value || 10)).draw();
+                    providersTable.page.len(Number(this.value || 100)).draw();
                 }
+            });
+            $('#desktop-proveedores-pagination').on('click', '.desktop-pager__btn', function () {
+                if (!providersTable || this.disabled) return;
+                const page = $(this).data('page');
+                providersTable.page(page === 'previous' || page === 'next' ? page : Number(page)).draw('page');
             });
 
             $('#btn-agregar-contacto').on('click', function () {

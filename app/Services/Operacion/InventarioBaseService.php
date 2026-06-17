@@ -722,6 +722,11 @@ class InventarioBaseService
             ->when(!empty($filtros['cse_id']), fn ($q) => $q->where('cse.cse_id', (int) $filtros['cse_id']))
             ->when(!empty($filtros['min_scl_id']), fn ($q) => $q->where('min.min_scl_id', (int) $filtros['min_scl_id']))
             ->when(!empty($filtros['min_alm_id']), fn ($q) => $q->where('min.min_alm_id', (int) $filtros['min_alm_id']))
+            ->when(!empty($filtros['prd_id']), fn ($q) => $q->where('prd.prd_id', (int) $filtros['prd_id']))
+            ->when(!empty($filtros['prd_mrc_id']), fn ($q) => $q->where('prd.prd_mrc_id', (int) $filtros['prd_mrc_id']))
+            ->when(!empty($filtros['prd_mdl_id']), fn ($q) => $q->where('prd.prd_mdl_id', (int) $filtros['prd_mdl_id']))
+            ->when(!empty($filtros['prd_lna_id']), fn ($q) => $q->where('prd.prd_lna_id', (int) $filtros['prd_lna_id']))
+            ->when(!empty($filtros['prd_ctg_id']), fn ($q) => $q->where('prd.prd_ctg_id', (int) $filtros['prd_ctg_id']))
             ->when(!empty($filtros['fecha_desde']), fn ($q) => $q->whereDate('min.min_fecha_movimiento', '>=', $filtros['fecha_desde']))
             ->when(!empty($filtros['fecha_hasta']), fn ($q) => $q->whereDate('min.min_fecha_movimiento', '<=', $filtros['fecha_hasta']))
             ->when(!empty($filtros['buscar']), function ($q) use ($filtros): void {
@@ -1775,42 +1780,54 @@ class InventarioBaseService
         $numColumnas  = max(1, count($columnasMap));
         $mmCol        = max(10, (int) floor($mmDisponible / $numColumnas));
 
-        // ── Resumen rápido (3 pastillas en mm fijos) ──────────────────────
-        $mmTercio = (int) floor(283 / 3);
-        $html .= '
-        <table style="border-collapse:collapse;margin-bottom:8px;width:283mm;">
-            <tr>
-                <td style="border:1px solid ' . $colorBorderTbl . ';padding:5px 10px;background-color:#ffffff;width:' . $mmTercio . 'mm;text-align:center;">
-                    <div style="font-size:7px;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Productos</div>
-                    <div style="font-size:14px;font-weight:bold;color:' . $colorPrimario . ';">' . $totalProductos . '</div>
-                </td>
-                <td style="border:1px solid ' . $colorBorderTbl . ';padding:5px 10px;background-color:#ffffff;width:' . $mmTercio . 'mm;text-align:center;">
-                    <div style="font-size:7px;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Variantes (filas)</div>
-                    <div style="font-size:14px;font-weight:bold;color:' . $colorPrimario . ';">' . $totalFilas . '</div>
-                </td>
-                <td style="border:1px solid ' . $colorBorderTbl . ';padding:5px 10px;background-color:' . $colorOkBg . ';width:' . $mmTercio . 'mm;text-align:center;">
-                    <div style="font-size:7px;color:#166534;text-transform:uppercase;letter-spacing:0.5px;">Total piezas</div>
-                    <div style="font-size:14px;font-weight:bold;color:#166534;">' . number_format($granTotal, 0, '.', ',') . '</div>
-                </td>
-            </tr>
-        </table>';
-
         $baseMonetaria = max(0, round($subtotalMonetario - $descuentoMonetario + $fleteTotal, 2));
-        $html .= '
-        <table style="border-collapse:collapse;margin-bottom:8px;width:283mm;">
-            <tr>
-                <td style="border:1px solid ' . $colorBorderTbl . ';padding:5px 8px;background:#ffffff;width:47mm;"><strong>Subtotal</strong><br>' . number_format($subtotalMonetario, 2, '.', ',') . '</td>
-                <td style="border:1px solid ' . $colorBorderTbl . ';padding:5px 8px;background:#ffffff;width:47mm;"><strong>Descuento</strong><br>' . number_format($descuentoMonetario, 2, '.', ',') . '</td>
-                <td style="border:1px solid ' . $colorBorderTbl . ';padding:5px 8px;background:#ffffff;width:47mm;"><strong>Flete</strong><br>' . number_format($fleteTotal, 2, '.', ',') . '</td>';
+        $moneyRow = function (string $label, float $value, bool $grand = false) use ($colorBorderTbl, $colorPrimario, $colorAccent): string {
+            $rowStyle = 'padding:3px 0;font-size:' . ($grand ? '11px' : '9px') . ';color:' . ($grand ? $colorPrimario : '#475569') . ';';
+            if ($grand) {
+                $rowStyle .= 'border-top:1px solid ' . $colorBorderTbl . ';padding-top:7px;';
+            }
 
-        if ($tipoEntrada === 'compra_factura') {
-            $html .= '<td style="border:1px solid ' . $colorBorderTbl . ';padding:5px 8px;background:#ffffff;width:47mm;"><strong>Base</strong><br>' . number_format($baseMonetaria, 2, '.', ',') . '</td>';
-            $html .= '<td style="border:1px solid ' . $colorBorderTbl . ';padding:5px 8px;background:#ffffff;width:47mm;"><strong>IVA (' . number_format($ivaPorcentaje, 2, '.', ',') . '%)</strong><br>' . number_format($ivaMonetario, 2, '.', ',') . '</td>';
+            return '<tr>' .
+                '<td style="' . $rowStyle . ' text-align:left;">' . $this->esc($label) . '</td>' .
+                '<td style="' . $rowStyle . ' text-align:right;font-weight:' . ($grand ? '800' : '600') . ';color:' . ($grand ? $colorAccent : $colorPrimario) . ';">$ ' . number_format($value, 2, '.', ',') . '</td>' .
+            '</tr>';
+        };
+
+        $moneyRows = '';
+        if ($tipoEntrada === 'compra_remision') {
+            $moneyRows .= $moneyRow('Descuento', $descuentoMonetario);
+            $moneyRows .= $moneyRow('Flete', $fleteTotal);
+            $moneyRows .= $moneyRow('Total', $totalMonetario, true);
         } else {
-            $html .= '<td style="border:1px solid ' . $colorBorderTbl . ';padding:5px 8px;background:#ffffff;width:94mm;" colspan="2"><strong>Base</strong><br>' . number_format($baseMonetaria, 2, '.', ',') . '</td>';
+            $moneyRows .= $moneyRow('Subtotal', $subtotalMonetario);
+            $moneyRows .= $moneyRow('Descuento', $descuentoMonetario);
+            $moneyRows .= $moneyRow('Flete', $fleteTotal);
+            if ($tipoEntrada === 'compra_factura') {
+                $moneyRows .= $moneyRow('IVA (' . number_format($ivaPorcentaje, 2, '.', ',') . '%)', $ivaMonetario);
+            }
+            $moneyRows .= $moneyRow('Total', $totalMonetario, true);
         }
 
-        $html .= '<td style="border:1px solid ' . $colorAccent . ';padding:5px 8px;background:' . $colorAccent . ';color:#ffffff;width:48mm;"><strong>Total</strong><br>' . number_format($totalMonetario, 2, '.', ',') . '</td>
+        $summaryHtml = '
+        <table style="border-collapse:collapse;margin-top:10px;margin-bottom:8px;width:283mm;">
+            <tr>
+                <td style="border:none;border-top:1px solid ' . $colorBorderTbl . ';padding:10px 8px 8px 0;width:125mm;vertical-align:top;">
+                    <table style="border-collapse:collapse;width:auto;">
+                        <tr>
+                            <td style="border:none;padding:0 26px 0 0;vertical-align:top;">
+                                <div style="font-size:8px;font-weight:700;letter-spacing:0.4px;text-transform:uppercase;color:#8a94a6;">Líneas</div>
+                                <div style="font-size:18px;font-weight:800;color:' . $colorPrimario . ';line-height:1.1;">' . number_format($totalFilas, 0, '.', ',') . '</div>
+                            </td>
+                            <td style="border:none;padding:0;vertical-align:top;">
+                                <div style="font-size:8px;font-weight:700;letter-spacing:0.4px;text-transform:uppercase;color:#8a94a6;">Artículos</div>
+                                <div style="font-size:18px;font-weight:800;color:' . $colorPrimario . ';line-height:1.1;">' . number_format($granTotal, 2, '.', ',') . '</div>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+                <td style="border:none;border-top:1px solid ' . $colorBorderTbl . ';padding:8px 0 8px 18px;width:158mm;vertical-align:top;">
+                    <table style="border-collapse:collapse;width:100%;">' . $moneyRows . '</table>
+                </td>
             </tr>
         </table>';
 
@@ -1916,6 +1933,7 @@ class InventarioBaseService
         $html .= '</tr>';
 
         $html .= '</tbody></table>';
+        $html .= $summaryHtml;
 
         // ── Pie de página ────────────────────────────────────────────────
         $html .= '

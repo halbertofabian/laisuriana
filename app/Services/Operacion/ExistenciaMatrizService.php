@@ -85,6 +85,8 @@ class ExistenciaMatrizService
             return [];
         }
 
+        $soloDisponibles = !empty($filtros['solo_disponibles']);
+
         $productoIds = $filas->pluck('prd_id')
             ->map(fn ($id) => (int) $id)
             ->unique()
@@ -94,12 +96,68 @@ class ExistenciaMatrizService
         $tallasPorProducto = $this->resolverTallasPorProducto($productoIds);
         $existenciasPorFila = $this->resolverExistenciasPorFila($productoIds, $filtros);
 
-        return $filas->map(function ($fila) use ($tallasPorProducto, $existenciasPorFila): array {
+        return $filas->map(function ($fila) use ($tallasPorProducto, $existenciasPorFila, $soloDisponibles): ?array {
             $productoId = (int) $fila->prd_id;
             $colorId = (int) ($fila->color_vat_id ?? 0);
             $rowKey = $this->rowKey($productoId, $colorId);
             $tallas = $tallasPorProducto[$productoId] ?? [['key' => '__base__', 'label' => 'Base']];
             $celdas = $existenciasPorFila[$rowKey] ?? [];
+
+            $tallasTransformadas = collect($tallas)->map(function (array $talla) use ($celdas, $colorId): array {
+                $celda = $celdas[$talla['key']] ?? null;
+                $existencia = $celda['existencia'] ?? null;
+                $existenciaFloat = (float) $existencia;
+                $tieneHistorial = (bool) ($celda['tiene_historial'] ?? false);
+                $estado = $celda === null
+                    ? 'sin_sku'
+                    : (!$tieneHistorial
+                        ? 'sin_historial'
+                        : ($existenciaFloat < 0
+                            ? 'negativo'
+                            : ($existenciaFloat > 0 ? 'con_existencia' : 'cero')));
+
+                return [
+                    'talla' => $talla['label'],
+                    'existencia' => $existencia !== null ? round((float) $existencia, 2) : null,
+                    'estado' => $estado,
+                    'psk_id' => $celda['psk_id'] ?? null,
+                    'talla_key' => $talla['key'],
+                    'color_vat_id' => $celda['color_vat_id'] ?? ($colorId > 0 ? $colorId : null),
+                    'psk_precio' => isset($celda['psk_precio']) ? round((float) $celda['psk_precio'], 2) : 0.0,
+                    'psk_costo' => isset($celda['psk_costo']) ? round((float) $celda['psk_costo'], 2) : 0.0,
+                ];
+            });
+
+            if ($soloDisponibles) {
+                $tallasTransformadas = $tallasTransformadas
+                    ->filter(fn (array $talla) => $talla['estado'] === 'con_existencia')
+                    ->values();
+            } else {
+                $tallasTransformadas = $tallasTransformadas->values();
+            }
+
+            if ($soloDisponibles && $tallasTransformadas->isEmpty()) {
+                return null;
+            }
+
+            $totalArticulos = round((float) ($fila->total_articulos ?? 0), 2);
+            $precioUnitario = round((float) ($fila->precio_unitario ?? 0), 2);
+            $costoUnitario = round((float) ($fila->costo_unitario ?? 0), 2);
+            $totalImportePrecio = round((float) ($fila->total_importe_precio ?? 0), 2);
+            $totalImporteCosto = round((float) ($fila->total_importe_costo ?? 0), 2);
+            $skuTotal = (int) $fila->sku_total;
+
+            if ($soloDisponibles) {
+                $skuTotal = $tallasTransformadas
+                    ->filter(fn (array $talla) => !empty($talla['psk_id']))
+                    ->count();
+
+                $totalArticulos = round((float) $tallasTransformadas->sum(fn (array $talla) => (float) ($talla['existencia'] ?? 0)), 2);
+                $totalImportePrecio = round((float) $tallasTransformadas->sum(fn (array $talla) => (float) ($talla['existencia'] ?? 0) * (float) ($talla['psk_precio'] ?? 0)), 2);
+                $totalImporteCosto = round((float) $tallasTransformadas->sum(fn (array $talla) => (float) ($talla['existencia'] ?? 0) * (float) ($talla['psk_costo'] ?? 0)), 2);
+                $precioUnitario = $totalArticulos > 0 ? round($totalImportePrecio / $totalArticulos, 2) : 0.0;
+                $costoUnitario = $totalArticulos > 0 ? round($totalImporteCosto / $totalArticulos, 2) : 0.0;
+            }
 
             return [
                 'prd_id' => $productoId,
@@ -111,36 +169,18 @@ class ExistenciaMatrizService
                 'concepto_nombre' => (string) ($fila->concepto_nombre ?? ''),
                 'color_nombre' => (string) ($fila->color_nombre ?? 'Sin color'),
                 'color_vat_id' => $colorId > 0 ? $colorId : null,
-                'sku_total' => (int) $fila->sku_total,
-                'total_articulos' => round((float) ($fila->total_articulos ?? 0), 2),
-                'precio_unitario' => round((float) ($fila->precio_unitario ?? 0), 2),
-                'costo_unitario' => round((float) ($fila->costo_unitario ?? 0), 2),
-                'total_importe_precio' => round((float) ($fila->total_importe_precio ?? 0), 2),
-                'total_importe_costo' => round((float) ($fila->total_importe_costo ?? 0), 2),
-                'tallas' => collect($tallas)->map(function (array $talla) use ($celdas, $colorId): array {
-                    $celda = $celdas[$talla['key']] ?? null;
-                    $existencia = $celda['existencia'] ?? null;
-                    $existenciaFloat = (float) $existencia;
-                    $tieneHistorial = (bool) ($celda['tiene_historial'] ?? false);
-                    $estado = $celda === null
-                        ? 'sin_sku'
-                        : (!$tieneHistorial
-                            ? 'sin_historial'
-                            : ($existenciaFloat < 0
-                                ? 'negativo'
-                                : ($existenciaFloat > 0 ? 'con_existencia' : 'cero')));
-
-                    return [
-                        'talla' => $talla['label'],
-                        'existencia' => $existencia !== null ? round((float) $existencia, 2) : null,
-                        'estado' => $estado,
-                        'psk_id' => $celda['psk_id'] ?? null,
-                        'talla_key' => $talla['key'],
-                        'color_vat_id' => $celda['color_vat_id'] ?? ($colorId > 0 ? $colorId : null),
-                    ];
-                })->values()->all(),
+                'sku_total' => $skuTotal,
+                'total_articulos' => $totalArticulos,
+                'precio_unitario' => $precioUnitario,
+                'costo_unitario' => $costoUnitario,
+                'total_importe_precio' => $totalImportePrecio,
+                'total_importe_costo' => $totalImporteCosto,
+                'tallas' => $tallasTransformadas
+                    ->map(fn (array $talla) => collect($talla)->except(['psk_precio', 'psk_costo'])->all())
+                    ->values()
+                    ->all(),
             ];
-        })->values()->all();
+        })->filter()->values()->all();
     }
 
     private function resolverTallasPorProducto(array $productoIds): array
@@ -294,6 +334,8 @@ class ExistenciaMatrizService
             ->get([
                 'psk.psk_id',
                 'psk.psk_prd_id',
+                'psk.psk_precio',
+                'psk.psk_costo',
                 DB::raw('COALESCE(color.vat_id, 0) as color_vat_id'),
                 'talla.vat_id as talla_vat_id',
                 'talla.vat_valor as talla_valor',
@@ -313,6 +355,8 @@ class ExistenciaMatrizService
                 'label' => $item->talla_valor ? (string) $item->talla_valor : 'Base',
                 'color_vat_id' => (int) ($item->color_vat_id ?? 0) ?: null,
                 'tiene_historial' => (int) ($item->tiene_historial ?? 0) === 1,
+                'psk_precio' => (float) ($item->psk_precio ?? 0),
+                'psk_costo' => (float) ($item->psk_costo ?? 0),
             ];
         }
 
@@ -367,6 +411,7 @@ class ExistenciaMatrizService
                 'color.vat_id',
                 'color.vat_valor'
             )
+            ->when(!empty($filtros['solo_disponibles']), fn ($q) => $q->havingRaw('MAX(CASE WHEN COALESCE(inv.existencia_total, 0) > 0 THEN 1 ELSE 0 END) = 1'))
             ->when($soloNegativos, fn ($q) => $q->havingRaw('MIN(inv.existencia_total) < 0'));
 
         return $query->select([

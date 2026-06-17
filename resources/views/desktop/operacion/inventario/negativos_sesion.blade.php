@@ -4,6 +4,7 @@
 
 @push('desktop-vendor-styles')
     <link rel="stylesheet" href="{{ asset('vendor-template/assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}" />
+    <link rel="stylesheet" href="{{ asset('vendor-template/assets/vendor/libs/select2/select2.css') }}" />
 @endpush
 
 @push('desktop-styles')
@@ -60,8 +61,7 @@
             text-transform: uppercase;
             color: var(--text-3);
         }
-        .desktop-neg-bar__field .desktop-toolbar__select,
-        .desktop-neg-bar__field input {
+        .desktop-neg-bar__field .desktop-toolbar__select {
             height: 32px;
             max-width: 180px;
         }
@@ -95,6 +95,7 @@
             cursor: pointer;
             white-space: nowrap;
         }
+        .desktop-neg-filterbtn svg { width: 15px; height: 15px; }
         .desktop-neg-filterbtn:hover { background: var(--surface-sunken); }
         .desktop-neg-filterbtn.is-active { border-color: var(--brand); color: var(--brand); }
         .desktop-neg-filterbtn__badge {
@@ -112,14 +113,15 @@
             line-height: 1;
         }
         .desktop-neg-filterbtn__badge.is-visible { display: inline-flex; }
+        .desktop-neg-export { position: relative; display: inline-flex; }
+        .desktop-neg-export .desktop-btn svg { width: 13px; height: 13px; }
+
         .desktop-neg-table tbody td {
             padding-top: 6px !important;
             padding-bottom: 6px !important;
             vertical-align: middle;
         }
-        .desktop-neg-table tbody tr.is-selected td {
-            background: #eaf1fd;
-        }
+        .desktop-neg-table tbody tr.is-selected td { background: #eaf1fd; }
         .desktop-neg-meta {
             display: flex;
             flex-direction: column;
@@ -162,10 +164,6 @@
         .desktop-neg-num--danger {
             color: #c62828;
             font-weight: 800;
-        }
-        .desktop-neg-empty {
-            color: var(--text-2);
-            font-size: .78rem;
         }
         .desktop-neg-drawer { position: fixed; inset: 0; z-index: var(--z-drawer); display: none; }
         .desktop-neg-drawer.is-open { display: block; }
@@ -222,6 +220,11 @@
         .desktop-neg-drawer__body .desktop-field select {
             min-height: 34px;
         }
+        .desktop-neg-period-range[hidden] { display: none; }
+        .desktop-neg-period-range {
+            display: grid;
+            gap: 12px;
+        }
         .desktop-neg-tablearea {
             position: relative;
             flex: 1 1 auto;
@@ -233,6 +236,43 @@
             flex: 1 1 auto;
             min-height: 0;
             overflow: auto;
+        }
+        .select2-container--default .select2-selection--single,
+        .select2-container--default .select2-selection--multiple {
+            min-height: 38px;
+            border: 1px solid var(--stroke);
+            border-radius: var(--r-md);
+            background: var(--surface);
+        }
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 36px;
+            color: var(--text);
+            font-size: .84rem;
+            padding-left: 12px;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 36px;
+            right: 8px;
+        }
+        .select2-dropdown {
+            background: var(--surface);
+            border: 1px solid var(--stroke);
+            border-radius: var(--r-md);
+            overflow: hidden;
+            box-shadow: var(--shadow-16);
+        }
+        .select2-container--open { z-index: calc(var(--z-drawer) + 20); }
+        .desktop-neg-drawer__panel .select2-container { width: 100% !important; }
+        .desktop-neg-drawer__panel .select2-container--open .select2-dropdown { z-index: calc(var(--z-drawer) + 20); }
+        .select2-results__options {
+            max-height: 240px;
+            overflow-y: auto;
+            background: var(--surface);
+        }
+        .select2-container--default .select2-results__option--selected { background: var(--surface-sunken); }
+        .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable {
+            background: var(--brand-soft);
+            color: var(--text);
         }
         @media (max-width: 1180px) {
             .desktop-neg-bar { flex-wrap: wrap; }
@@ -266,43 +306,42 @@
             </div>
 
             <div class="desktop-neg-bar__field">
-                <span class="desktop-neg-bar__cap">Sucursal</span>
-                <select class="desktop-toolbar__select" id="flt-scl">
-                    <option value="">Todas</option>
-                    @foreach($opciones['sucursales'] as $sucursal)
-                        <option value="{{ $sucursal->scl_id }}" @selected((int) $sucursal->scl_id === (int) ($defaultSucursalId ?? 0))>{{ $sucursal->scl_nombre }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="desktop-neg-bar__field">
-                <span class="desktop-neg-bar__cap">Almacén</span>
-                <select class="desktop-toolbar__select" id="flt-alm">
-                    <option value="">Todos</option>
-                    @foreach($opciones['almacenes'] as $almacen)
-                        <option value="{{ $almacen->alm_id }}" data-scl="{{ $almacen->alm_scl_id }}">{{ $almacen->alm_nombre }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="desktop-neg-bar__field">
-                <span class="desktop-neg-bar__cap">Registros</span>
                 <select class="desktop-toolbar__select" id="flt-length">
-                    <option value="10">10 por página</option>
                     <option value="25">25 por página</option>
-                    <option value="50" selected>50 por página</option>
-                    <option value="100">100 por página</option>
+                    <option value="50">50 por página</option>
+                    <option value="100" selected>100 por página</option>
                     <option value="250">250 por página</option>
                 </select>
             </div>
 
             <span class="desktop-neg-bar__spacer"></span>
 
-            <button type="button" class="desktop-neg-clear" id="btn-limpiar">Limpiar</button>
+            <button type="button" class="desktop-neg-clear" id="btn-limpiar" hidden>Limpiar</button>
             <button type="button" class="desktop-neg-filterbtn" id="btn-neg-filtros" aria-haspopup="dialog" aria-expanded="false">
-                Más filtros
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+                Filtros
                 <span class="desktop-neg-filterbtn__badge" id="neg-filtros-badge"></span>
             </button>
+
             <span class="desktop-neg-bar__divider"></span>
+
             <button type="button" class="desktop-btn desktop-btn--primary" id="btn-filtrar">Aplicar</button>
+            <div class="desktop-neg-export">
+                <button type="button" class="desktop-btn desktop-btn--default" id="btn-exportar" data-overflow aria-haspopup="true" aria-expanded="false">
+                    Exportar
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+                <div class="desktop-menu" role="menu" aria-label="Exportar">
+                    <button type="button" class="desktop-menu__item" id="btn-exportar-excel">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="m9 13 6 6"/><path d="m15 13-6 6"/></svg>
+                        Exportar Excel
+                    </button>
+                    <button type="button" class="desktop-menu__item" id="btn-exportar-pdf">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15h6"/><path d="M9 18h6"/></svg>
+                        Exportar PDF
+                    </button>
+                </div>
+            </div>
         </div>
 
         <div class="desktop-neg-tablearea">
@@ -343,6 +382,30 @@
             </div>
             <div class="desktop-neg-drawer__body">
                 <div class="desktop-field">
+                    <label for="flt-periodo">Periodo</label>
+                    <select id="flt-periodo">
+                        <option value="hoy">Hoy</option>
+                        <option value="ayer">Ayer</option>
+                        <option value="antier">Antier</option>
+                        <option value="semana_en_curso" selected>Semana en curso</option>
+                        <option value="mes_en_curso">Mes en curso</option>
+                        <option value="mes_anterior">Mes anterior</option>
+                        <option value="ultimos_3_meses">Últimos 3 meses</option>
+                        <option value="este_ano">Este año</option>
+                        <option value="rango_personalizado">Rango personalizado</option>
+                    </select>
+                </div>
+                <div class="desktop-neg-period-range" id="flt-periodo-rango" hidden>
+                    <div class="desktop-field">
+                        <label for="flt-desde">Desde</label>
+                        <input type="date" id="flt-desde">
+                    </div>
+                    <div class="desktop-field">
+                        <label for="flt-hasta">Hasta</label>
+                        <input type="date" id="flt-hasta">
+                    </div>
+                </div>
+                <div class="desktop-field">
                     <label for="flt-cse">Sesión de caja</label>
                     <select id="flt-cse">
                         <option value="">Todas</option>
@@ -354,12 +417,62 @@
                     </select>
                 </div>
                 <div class="desktop-field">
-                    <label for="flt-desde">Desde</label>
-                    <input type="date" id="flt-desde">
+                    <label for="flt-scl">Sucursal</label>
+                    <select id="flt-scl">
+                        <option value="">Todas</option>
+                        @foreach($opciones['sucursales'] as $sucursal)
+                            <option value="{{ $sucursal->scl_id }}" @selected((int) $sucursal->scl_id === (int) ($defaultSucursalId ?? 0))>{{ $sucursal->scl_nombre }}</option>
+                        @endforeach
+                    </select>
                 </div>
                 <div class="desktop-field">
-                    <label for="flt-hasta">Hasta</label>
-                    <input type="date" id="flt-hasta">
+                    <label for="flt-alm">Almacén</label>
+                    <select id="flt-alm">
+                        <option value="">Todos</option>
+                        @foreach($opciones['almacenes'] as $almacen)
+                            <option value="{{ $almacen->alm_id }}" data-scl="{{ $almacen->alm_scl_id }}">{{ $almacen->alm_nombre }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="desktop-field">
+                    <label for="flt-mrc">Marca</label>
+                    <select id="flt-mrc">
+                        <option value="">Todas</option>
+                        @foreach($opciones['marcas'] as $marca)
+                            <option value="{{ $marca->mrc_id }}">{{ $marca->mrc_nombre }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="desktop-field">
+                    <label for="flt-mdl">Modelo</label>
+                    <select id="flt-mdl">
+                        <option value="">Todos</option>
+                        @foreach($opciones['modelos'] as $modelo)
+                            <option value="{{ $modelo->mdl_id }}">{{ $modelo->mdl_nombre }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="desktop-field">
+                    <label for="flt-lna">Línea</label>
+                    <select id="flt-lna">
+                        <option value="">Todas</option>
+                        @foreach($opciones['lineas'] as $linea)
+                            <option value="{{ $linea->lna_id }}">{{ $linea->lna_nombre }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="desktop-field">
+                    <label for="flt-ctg">Concepto</label>
+                    <select id="flt-ctg">
+                        <option value="">Todos</option>
+                        @foreach($opciones['categorias'] as $categoria)
+                            <option value="{{ $categoria->ctg_id }}" data-lna="{{ $categoria->ctg_lna_id }}">{{ $categoria->ctg_nombre }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="desktop-field">
+                    <label for="flt-prd">Producto</label>
+                    <select id="flt-prd"></select>
                 </div>
             </div>
             <div class="desktop-neg-drawer__foot">
@@ -372,6 +485,7 @@
 
 @push('desktop-vendor-scripts')
     <script src="{{ asset('vendor-template/assets/vendor/libs/datatables-bs5/datatables-bootstrap5.js') }}"></script>
+    <script src="{{ asset('vendor-template/assets/vendor/libs/select2/select2.js') }}"></script>
 @endpush
 
 @push('desktop-scripts')
@@ -379,9 +493,12 @@
         (function () {
             const rutas = {
                 data: @json(route('desktop.operacion.inventario.negativos_sesion.data')),
+                productos: @json(route('desktop.operacion.inventario.productos.buscar')),
+                exportarExcel: @json(route('desktop.operacion.inventario.negativos_sesion.exportar.excel')),
+                exportarPdf: @json(route('desktop.operacion.inventario.negativos_sesion.exportar.pdf')),
             };
 
-            const almacenesBase = @json($opciones['almacenes']->map(fn($a) => ['alm_id' => $a->alm_id, 'alm_scl_id' => $a->alm_scl_id, 'alm_nombre' => $a->alm_nombre])->values());
+            const defaultScl = @json((string) ($defaultSucursalId ?? ''));
             const $table = $('#tbl-negativos-sesion');
             let tabla = null;
             let selectedRowIdx = null;
@@ -396,6 +513,150 @@
                     '<span class="desktop-neg-meta__title">' + escapeHtml(title || '—') + '</span>' +
                     (subtitle ? '<span class="desktop-neg-meta__sub">' + escapeHtml(subtitle) + '</span>' : '') +
                 '</div>';
+            }
+
+            function formatDateValue(date) {
+                const y = date.getFullYear();
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                const d = String(date.getDate()).padStart(2, '0');
+                return y + '-' + m + '-' + d;
+            }
+
+            function startOfDay(date) {
+                const d = new Date(date);
+                d.setHours(0, 0, 0, 0);
+                return d;
+            }
+
+            function addDays(date, days) {
+                const d = new Date(date);
+                d.setDate(d.getDate() + days);
+                return d;
+            }
+
+            function addMonths(date, months) {
+                const d = new Date(date);
+                d.setMonth(d.getMonth() + months);
+                return d;
+            }
+
+            function resolverPeriodo(periodo) {
+                const today = startOfDay(new Date());
+                switch (periodo) {
+                    case 'hoy':
+                        return { desde: formatDateValue(today), hasta: formatDateValue(today) };
+                    case 'ayer': {
+                        const d = addDays(today, -1);
+                        return { desde: formatDateValue(d), hasta: formatDateValue(d) };
+                    }
+                    case 'antier': {
+                        const d = addDays(today, -2);
+                        return { desde: formatDateValue(d), hasta: formatDateValue(d) };
+                    }
+                    case 'semana_en_curso': {
+                        const day = today.getDay();
+                        const diffToMonday = day === 0 ? -6 : 1 - day;
+                        const desde = addDays(today, diffToMonday);
+                        const hasta = addDays(desde, 6);
+                        return { desde: formatDateValue(desde), hasta: formatDateValue(hasta) };
+                    }
+                    case 'mes_en_curso': {
+                        const desde = new Date(today.getFullYear(), today.getMonth(), 1);
+                        const hasta = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                        return { desde: formatDateValue(desde), hasta: formatDateValue(hasta) };
+                    }
+                    case 'mes_anterior': {
+                        const desde = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                        const hasta = new Date(today.getFullYear(), today.getMonth(), 0);
+                        return { desde: formatDateValue(desde), hasta: formatDateValue(hasta) };
+                    }
+                    case 'ultimos_3_meses':
+                        return { desde: formatDateValue(addMonths(today, -3)), hasta: formatDateValue(today) };
+                    case 'este_ano': {
+                        const desde = new Date(today.getFullYear(), 0, 1);
+                        return { desde: formatDateValue(desde), hasta: formatDateValue(today) };
+                    }
+                    default:
+                        return { desde: $('#flt-desde').val(), hasta: $('#flt-hasta').val() };
+                }
+            }
+
+            function syncPeriodoUI() {
+                $('#flt-periodo-rango').prop('hidden', $('#flt-periodo').val() !== 'rango_personalizado');
+            }
+
+            function getFechasFiltro() {
+                if ($('#flt-periodo').val() === 'rango_personalizado') {
+                    return { desde: $('#flt-desde').val(), hasta: $('#flt-hasta').val() };
+                }
+                return resolverPeriodo($('#flt-periodo').val());
+            }
+
+            function aplicarFiltroConceptosPorLinea() {
+                const lineaId = $('#flt-lna').val();
+                const $concepto = $('#flt-ctg');
+                const actual = $concepto.val();
+
+                $concepto.find('option').each(function () {
+                    const valor = $(this).val();
+                    const linea = $(this).data('lna');
+                    const mostrar = !valor || !lineaId || String(linea || '') === String(lineaId);
+                    $(this).prop('hidden', !mostrar);
+                });
+
+                if (actual && $concepto.find('option[value="' + actual + '"]:not([hidden])').length === 0) {
+                    $concepto.val('');
+                }
+            }
+
+            function syncAlmacenes() {
+                const sucursalId = String($('#flt-scl').val() || '');
+                const $almacen = $('#flt-alm');
+                const actual = String($almacen.val() || '');
+
+                $almacen.find('option').each(function () {
+                    const valor = String($(this).val() || '');
+                    if (!valor) {
+                        $(this).prop('hidden', false);
+                        return;
+                    }
+
+                    const scl = String($(this).data('scl') || '');
+                    $(this).prop('hidden', sucursalId !== '' && scl !== sucursalId);
+                });
+
+                if (actual && $almacen.find('option[value="' + actual + '"]:not([hidden])').length === 0) {
+                    $almacen.val('');
+                }
+            }
+
+            function initSelect2() {
+                $('#flt-prd').select2({
+                    width: '100%',
+                    placeholder: 'Todos los productos',
+                    allowClear: true,
+                    dropdownParent: $('#desktop-neg-drawer .desktop-neg-drawer__panel'),
+                    ajax: {
+                        url: rutas.productos,
+                        dataType: 'json',
+                        delay: 250,
+                        data: function (params) {
+                            return {
+                                q: params.term || '',
+                                page: params.page || 1,
+                                min_scl_id: $('#flt-scl').val(),
+                                min_alm_id: $('#flt-alm').val(),
+                                prd_mrc_id: $('#flt-mrc').val(),
+                                prd_mdl_id: $('#flt-mdl').val(),
+                                prd_lna_id: $('#flt-lna').val(),
+                                prd_ctg_id: $('#flt-ctg').val(),
+                            };
+                        },
+                        processResults: function (data) {
+                            return data;
+                        }
+                    }
+                });
             }
 
             function renderFooter() {
@@ -445,39 +706,34 @@
                 selectedRowIdx = null;
             }
 
-            function syncAlmacenes() {
-                const sclId = String($('#flt-scl').val() || '');
-                const current = String($('#flt-alm').val() || '');
-                const $alm = $('#flt-alm');
-                $alm.empty().append('<option value="">Todos</option>');
-                almacenesBase.forEach(function (a) {
-                    if (sclId !== '' && String(a.alm_scl_id) !== sclId) return;
-                    const selected = current !== '' && current === String(a.alm_id) ? ' selected' : '';
-                    $alm.append('<option value="' + escapeHtml(a.alm_id) + '"' + selected + '>' + escapeHtml(a.alm_nombre) + '</option>');
-                });
-            }
-
-            function filtrosActivosCount() {
+            function contarFiltrosAvanzados() {
                 let count = 0;
-                ['#flt-cse', '#flt-desde', '#flt-hasta'].forEach(function (selector) {
+                if (!!$('#flt-alm').val()) count += 1;
+                if (String($('#flt-scl').val() || '') !== String(defaultScl)) count += 1;
+                ['#flt-mrc', '#flt-mdl', '#flt-lna', '#flt-ctg', '#flt-prd', '#flt-cse'].forEach(function (selector) {
                     if ($(selector).val()) count += 1;
                 });
+                if ($('#flt-periodo').val() !== 'semana_en_curso') count += 1;
+                if ($('#flt-periodo').val() === 'rango_personalizado' && ($('#flt-desde').val() || $('#flt-hasta').val())) count += 1;
                 return count;
             }
 
+            function hayFiltroActivo() {
+                return contarFiltrosAvanzados() > 0 || !!$('#flt-buscar').val().trim();
+            }
+
             function syncBadge() {
-                const count = filtrosActivosCount();
-                const badge = document.getElementById('neg-filtros-badge');
-                badge.textContent = count ? String(count) : '';
-                badge.classList.toggle('is-visible', count > 0);
+                const count = contarFiltrosAvanzados();
+                $('#neg-filtros-badge').text(count ? String(count) : '').toggleClass('is-visible', count > 0);
                 $('#btn-neg-filtros').toggleClass('is-active', count > 0);
+                $('#btn-limpiar').prop('hidden', !hayFiltroActivo());
             }
 
             function buildTabla() {
                 tabla = $table.DataTable({
                     processing: true,
                     serverSide: true,
-                    pageLength: Number($('#flt-length').val() || 50),
+                    pageLength: Number($('#flt-length').val() || 100),
                     lengthChange: false,
                     searching: false,
                     ordering: true,
@@ -494,11 +750,17 @@
                     ajax: {
                         url: rutas.data,
                         data: function (d) {
+                            const fechas = getFechasFiltro();
                             d.cse_id = $('#flt-cse').val();
                             d.min_scl_id = $('#flt-scl').val();
                             d.min_alm_id = $('#flt-alm').val();
-                            d.fecha_desde = $('#flt-desde').val();
-                            d.fecha_hasta = $('#flt-hasta').val();
+                            d.prd_mrc_id = $('#flt-mrc').val();
+                            d.prd_mdl_id = $('#flt-mdl').val();
+                            d.prd_lna_id = $('#flt-lna').val();
+                            d.prd_ctg_id = $('#flt-ctg').val();
+                            d.prd_id = $('#flt-prd').val();
+                            d.fecha_desde = fechas.desde;
+                            d.fecha_hasta = fechas.hasta;
                             d.buscar = $('#flt-buscar').val().trim();
                         },
                         error: function (xhr) {
@@ -508,30 +770,18 @@
                         }
                     },
                     columns: [
-                        { data: 'min_fecha_movimiento', render: function (v) {
-                            return renderMeta(v ? String(v).replace('T', ' ').slice(0, 16) : '—', v ? 'Movimiento inventario' : '');
-                        }},
-                        { data: 'cse_id', render: function (v, _, row) {
-                            return renderMeta('#' + (v || '—'), row.cse_estatus || '—');
-                        }},
+                        { data: 'min_fecha_movimiento', render: function (v) { return renderMeta(v ? String(v).replace('T', ' ').slice(0, 16) : '—', v ? 'Movimiento inventario' : ''); }},
+                        { data: 'cse_id', render: function (v, _, row) { return renderMeta('#' + (v || '—'), row.cse_estatus || '—'); }},
                         { data: 'caj_nombre', render: function (v) { return renderMeta(v || '—'); }},
                         { data: 'scl_nombre', render: function (v) { return renderMeta(v || '—'); }},
                         { data: 'alm_nombre', render: function (v) { return renderMeta(v || '—'); }},
-                        { data: 'psv_folio', render: function (v) {
-                            return '<span class="desktop-neg-badge">' + escapeHtml(v || '—') + '</span>';
-                        }},
-                        { data: 'psk_codigo', render: function (v, _, row) {
-                            return renderMeta(v || '—', row.min_folio || '');
-                        }},
-                        { data: 'psk_nombre', render: function (v, _, row) {
-                            return renderMeta(v || row.prd_nombre || '—', row.prd_nombre || '');
-                        }},
+                        { data: 'psv_folio', render: function (v) { return '<span class="desktop-neg-badge">' + escapeHtml(v || '—') + '</span>'; }},
+                        { data: 'psk_codigo', render: function (v, _, row) { return renderMeta(v || '—', row.min_folio || ''); }},
+                        { data: 'psk_nombre', render: function (v, _, row) { return renderMeta(v || row.prd_nombre || '—', row.prd_nombre || ''); }},
                         { data: 'min_cantidad', className: 'desktop-neg-num', render: function (v) { return '-' + Number(v || 0).toFixed(2); }},
                         { data: 'min_existencia_antes', className: 'desktop-neg-num', render: function (v) { return Number(v || 0).toFixed(2); }},
                         { data: 'min_existencia_despues', className: 'desktop-neg-num desktop-neg-num--danger', render: function (v) { return Number(v || 0).toFixed(2); }},
-                        { data: 'usuario_venta', render: function (v, _, row) {
-                            return renderMeta(v || '—', row.usuario_apertura ? 'Apertura: ' + row.usuario_apertura : '');
-                        }},
+                        { data: 'usuario_venta', render: function (v, _, row) { return renderMeta(v || '—', row.usuario_apertura ? 'Apertura: ' + row.usuario_apertura : ''); }},
                     ],
                     initComplete: renderFooter,
                     drawCallback: function () {
@@ -554,17 +804,25 @@
                     buildTabla();
                     return;
                 }
-                tabla.ajax.reload(null, !resetPage ? false : true);
+                tabla.ajax.reload(null, !!resetPage);
             }
 
             function limpiarFiltros() {
-                $('#flt-scl').val(@json((string) ($defaultSucursalId ?? '')));
-                syncAlmacenes();
+                $('#flt-scl').val(defaultScl);
                 $('#flt-alm').val('');
+                $('#flt-mrc').val('');
+                $('#flt-mdl').val('');
+                $('#flt-lna').val('');
+                $('#flt-ctg').val('');
+                $('#flt-prd').val(null).trigger('change');
                 $('#flt-cse').val('');
+                $('#flt-periodo').val('semana_en_curso');
                 $('#flt-desde').val('');
                 $('#flt-hasta').val('');
+                syncPeriodoUI();
                 $('#flt-buscar').val('');
+                aplicarFiltroConceptosPorLinea();
+                syncAlmacenes();
                 syncBadge();
                 recargar(true);
             }
@@ -579,19 +837,109 @@
                 $('#btn-neg-filtros').attr('aria-expanded', 'false');
             }
 
+            function aplicarFiltrosDesdeQuery() {
+                const params = new URLSearchParams(window.location.search);
+                function setIfPresent(id, key) {
+                    const value = params.get(key);
+                    if (value) $(id).val(value);
+                }
+
+                setIfPresent('#flt-scl', 'min_scl_id');
+                setIfPresent('#flt-alm', 'min_alm_id');
+                setIfPresent('#flt-mrc', 'prd_mrc_id');
+                setIfPresent('#flt-mdl', 'prd_mdl_id');
+                setIfPresent('#flt-lna', 'prd_lna_id');
+                setIfPresent('#flt-ctg', 'prd_ctg_id');
+                setIfPresent('#flt-cse', 'cse_id');
+                setIfPresent('#flt-periodo', 'periodo');
+                setIfPresent('#flt-desde', 'fecha_desde');
+                setIfPresent('#flt-hasta', 'fecha_hasta');
+                setIfPresent('#flt-length', 'length');
+                syncPeriodoUI();
+
+                const buscar = params.get('buscar');
+                if (buscar) $('#flt-buscar').val(buscar);
+
+                const prdId = params.get('prd_id');
+                const prdText = params.get('prd_text');
+                if (prdId) {
+                    const option = new Option(prdText || ('Producto #' + prdId), prdId, true, true);
+                    $('#flt-prd').append(option).trigger('change');
+                }
+            }
+
+            function buildExportUrl(base) {
+                const params = new URLSearchParams();
+                const fechas = getFechasFiltro();
+                const map = {
+                    cse_id: $('#flt-cse').val(),
+                    min_scl_id: $('#flt-scl').val(),
+                    min_alm_id: $('#flt-alm').val(),
+                    prd_mrc_id: $('#flt-mrc').val(),
+                    prd_mdl_id: $('#flt-mdl').val(),
+                    prd_lna_id: $('#flt-lna').val(),
+                    prd_ctg_id: $('#flt-ctg').val(),
+                    prd_id: $('#flt-prd').val(),
+                    prd_text: $('#flt-prd').find('option:selected').text().trim(),
+                    periodo: $('#flt-periodo').val(),
+                    fecha_desde: fechas.desde,
+                    fecha_hasta: fechas.hasta,
+                    buscar: $('#flt-buscar').val().trim(),
+                    length: $('#flt-length').val(),
+                };
+
+                Object.keys(map).forEach(function (key) {
+                    if (map[key]) params.set(key, map[key]);
+                });
+
+                const qs = params.toString();
+                return qs ? base + '?' + qs : base;
+            }
+
+            initSelect2();
+            aplicarFiltroConceptosPorLinea();
+            syncAlmacenes();
+            aplicarFiltrosDesdeQuery();
+            aplicarFiltroConceptosPorLinea();
+            syncAlmacenes();
+            if (!$('#flt-periodo').val()) $('#flt-periodo').val('semana_en_curso');
+            syncPeriodoUI();
+            syncBadge();
+            recargar(true);
+
+            $('#btn-recargar-negativos, #btn-filtrar').on('click', function () {
+                syncBadge();
+                recargar(true);
+            });
+
             $('#flt-scl').on('change', function () {
                 syncAlmacenes();
+                $('#flt-prd').val(null).trigger('change');
+                syncBadge();
+            });
+
+            $('#flt-lna').on('change', function () {
+                aplicarFiltroConceptosPorLinea();
+                $('#flt-prd').val(null).trigger('change');
+                syncBadge();
+            });
+
+            $('#flt-periodo').on('change', function () {
+                syncPeriodoUI();
+                syncBadge();
+            });
+
+            $('#flt-alm, #flt-mrc, #flt-mdl, #flt-ctg, #flt-cse, #flt-desde, #flt-hasta, #flt-prd').on('change', function () {
+                if (this.id !== 'flt-prd' && this.id !== 'flt-cse' && this.id !== 'flt-desde' && this.id !== 'flt-hasta') {
+                    $('#flt-prd').val(null).trigger('change');
+                }
+                syncBadge();
             });
 
             $('#flt-length').on('change', function () {
                 if (tabla) {
-                    tabla.page.len(Number(this.value || 50)).draw(false);
+                    tabla.page.len(Number(this.value || 100)).draw(false);
                 }
-            });
-
-            $('#btn-filtrar, #btn-recargar-negativos').on('click', function () {
-                syncBadge();
-                recargar(true);
             });
 
             $('#btn-limpiar, #btn-limpiar-drawer').on('click', function () {
@@ -607,6 +955,14 @@
             $('#btn-neg-filtros').on('click', abrirDrawer);
             $(document).on('click', '[data-close-neg-drawer]', cerrarDrawer);
 
+            $('#btn-exportar-excel').on('click', function () {
+                window.location.href = buildExportUrl(rutas.exportarExcel);
+            });
+            $('#btn-exportar-pdf').on('click', function () {
+                window.open(buildExportUrl(rutas.exportarPdf), '_blank');
+            });
+
+            $('#flt-buscar').on('input', syncBadge);
             $('#flt-buscar').on('keydown', function (event) {
                 if (event.key === 'Enter') {
                     event.preventDefault();
@@ -660,10 +1016,6 @@
                     }
                 }
             });
-
-            syncAlmacenes();
-            syncBadge();
-            recargar(true);
         })();
     </script>
 @endpush
