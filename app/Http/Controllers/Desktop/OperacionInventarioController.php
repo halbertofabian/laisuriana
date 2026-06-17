@@ -370,7 +370,7 @@ class OperacionInventarioController extends Controller
             (string) ($datos['q'] ?? ''),
             (int) ($datos['page'] ?? 1),
             20,
-            $request->only(['prd_mrc_id', 'prd_mdl_id', 'prd_lna_id', 'prd_ctg_id'])
+            $request->only(['prd_mrc_id', 'prd_mdl_id', 'prd_lna_id', 'prd_ctg_id', 'prd_dsc_id'])
         );
 
         return response()->json($resultado);
@@ -387,6 +387,7 @@ class OperacionInventarioController extends Controller
             'prd_mdl_id' => ['nullable', 'integer'],
             'prd_lna_id' => ['nullable', 'integer'],
             'prd_ctg_id' => ['nullable', 'integer'],
+            'prd_dsc_id' => ['nullable', 'integer'],
             'fecha_desde' => ['nullable', 'date'],
             'fecha_hasta' => ['nullable', 'date'],
             'buscar' => ['nullable', 'string', 'max:120'],
@@ -424,6 +425,7 @@ class OperacionInventarioController extends Controller
             'prd_mdl_id',
             'prd_lna_id',
             'prd_ctg_id',
+            'prd_dsc_id',
             'fecha_desde',
             'fecha_hasta',
             'buscar',
@@ -479,6 +481,7 @@ class OperacionInventarioController extends Controller
             'prd_mdl_id',
             'prd_lna_id',
             'prd_ctg_id',
+            'prd_dsc_id',
             'fecha_desde',
             'fecha_hasta',
             'buscar',
@@ -610,6 +613,7 @@ class OperacionInventarioController extends Controller
             'prd_mdl_id',
             'prd_lna_id',
             'prd_ctg_id',
+            'prd_dsc_id',
             'buscar',
             'min_scl_id',
             'min_alm_id',
@@ -640,7 +644,7 @@ class OperacionInventarioController extends Controller
 
     private function exportarExcelExistencias(Request $request, bool $soloNegativas = false): \Symfony\Component\HttpFoundation\StreamedResponse
     {
-        $filtros = $request->only(['prd_mrc_id', 'prd_mdl_id', 'prd_lna_id', 'prd_ctg_id', 'prd_id', 'buscar', 'min_scl_id', 'min_alm_id', 'solo_disponibles']);
+        $filtros = $request->only(['prd_mrc_id', 'prd_mdl_id', 'prd_lna_id', 'prd_ctg_id', 'prd_dsc_id', 'prd_id', 'buscar', 'min_scl_id', 'min_alm_id', 'solo_disponibles']);
         $filas = $this->existenciaMatrizService->exportarTodos($filtros, soloNegativos: $soloNegativas);
         $baseName = $soloNegativas ? 'existencias-negativas' : 'existencias-matriz';
         $fileName = $baseName . '-' . now()->format('Ymd-His') . '.csv';
@@ -685,7 +689,7 @@ class OperacionInventarioController extends Controller
 
     private function exportarPdfExistencias(Request $request, bool $soloNegativas = false): \Illuminate\Http\Response
     {
-        $filtros = $request->only(['prd_mrc_id', 'prd_mdl_id', 'prd_lna_id', 'prd_ctg_id', 'prd_id', 'buscar', 'min_scl_id', 'min_alm_id']);
+        $filtros = $request->only(['prd_mrc_id', 'prd_mdl_id', 'prd_lna_id', 'prd_ctg_id', 'prd_dsc_id', 'prd_id', 'buscar', 'min_scl_id', 'min_alm_id']);
         $filas = $this->existenciaMatrizService->exportarTodos($filtros, soloNegativos: $soloNegativas);
 
         $filas = collect($filas);

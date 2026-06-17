@@ -6,6 +6,7 @@ use App\Models\ModeloProducto;
 use App\Models\Producto;
 use App\Services\AuditoriaService;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -60,62 +61,74 @@ class ModeloService
 
     public function crear(Request $request, array $datos): ModeloProducto
     {
-        return DB::transaction(function () use ($request, $datos): ModeloProducto {
-            $clave = trim((string) ($datos['clave'] ?? ''));
-            if ($clave === '') {
-                $clave = $this->generarClave($datos['nombre']);
-            }
+        try {
+            return DB::transaction(function () use ($request, $datos): ModeloProducto {
+                $clave = trim((string) ($datos['clave'] ?? ''));
+                if ($clave === '') {
+                    $clave = $this->generarClave($datos['nombre']);
+                }
 
-            $modelo = ModeloProducto::query()->create([
-                'mdl_nombre'           => $datos['nombre'],
-                'mdl_clave'            => $clave,
-                'mdl_estatus'          => $datos['estatus'],
-                'mdl_created_by_usr_id' => optional($request->user())->usr_id,
-                'mdl_updated_by_usr_id' => optional($request->user())->usr_id,
-            ]);
+                $modelo = ModeloProducto::query()->create([
+                    'mdl_nombre'           => $datos['nombre'],
+                    'mdl_clave'            => $clave,
+                    'mdl_estatus'          => $datos['estatus'],
+                    'mdl_created_by_usr_id' => optional($request->user())->usr_id,
+                    'mdl_updated_by_usr_id' => optional($request->user())->usr_id,
+                ]);
 
-            $modelo->marcas()->sync($datos['marca_ids'] ?? []);
+                $modelo->marcas()->sync($datos['marca_ids'] ?? []);
 
-            $this->auditoriaService->registrarAccion(
-                $request,
-                'catalogo_comercial.modelos.crear',
-                'tbl_modelos_mdl',
-                (string) $modelo->mdl_id,
-                ['mdl_clave' => $modelo->mdl_clave, 'mdl_estatus' => $modelo->mdl_estatus]
-            );
+                $this->auditoriaService->registrarAccion(
+                    $request,
+                    'catalogo_comercial.modelos.crear',
+                    'tbl_modelos_mdl',
+                    (string) $modelo->mdl_id,
+                    ['mdl_clave' => $modelo->mdl_clave, 'mdl_estatus' => $modelo->mdl_estatus]
+                );
 
-            return $modelo;
-        });
+                return $modelo;
+            });
+        } catch (QueryException $exception) {
+            $this->throwIfDuplicateModelName($exception);
+
+            throw $exception;
+        }
     }
 
     public function actualizar(Request $request, int $id, array $datos): ModeloProducto
     {
-        return DB::transaction(function () use ($request, $id, $datos): ModeloProducto {
-            $modelo = ModeloProducto::query()->findOrFail($id);
-            $clave = trim((string) ($datos['clave'] ?? ''));
-            if ($clave === '') {
-                $clave = $modelo->mdl_clave ?: $this->generarClave($datos['nombre']);
-            }
+        try {
+            return DB::transaction(function () use ($request, $id, $datos): ModeloProducto {
+                $modelo = ModeloProducto::query()->findOrFail($id);
+                $clave = trim((string) ($datos['clave'] ?? ''));
+                if ($clave === '') {
+                    $clave = $modelo->mdl_clave ?: $this->generarClave($datos['nombre']);
+                }
 
-            $modelo->update([
-                'mdl_nombre'           => $datos['nombre'],
-                'mdl_clave'            => $clave,
-                'mdl_estatus'          => $datos['estatus'],
-                'mdl_updated_by_usr_id' => optional($request->user())->usr_id,
-            ]);
+                $modelo->update([
+                    'mdl_nombre'           => $datos['nombre'],
+                    'mdl_clave'            => $clave,
+                    'mdl_estatus'          => $datos['estatus'],
+                    'mdl_updated_by_usr_id' => optional($request->user())->usr_id,
+                ]);
 
-            $modelo->marcas()->sync($datos['marca_ids'] ?? []);
+                $modelo->marcas()->sync($datos['marca_ids'] ?? []);
 
-            $this->auditoriaService->registrarAccion(
-                $request,
-                'catalogo_comercial.modelos.editar',
-                'tbl_modelos_mdl',
-                (string) $modelo->mdl_id,
-                ['mdl_clave' => $modelo->mdl_clave, 'mdl_estatus' => $modelo->mdl_estatus]
-            );
+                $this->auditoriaService->registrarAccion(
+                    $request,
+                    'catalogo_comercial.modelos.editar',
+                    'tbl_modelos_mdl',
+                    (string) $modelo->mdl_id,
+                    ['mdl_clave' => $modelo->mdl_clave, 'mdl_estatus' => $modelo->mdl_estatus]
+                );
 
-            return $modelo;
-        });
+                return $modelo;
+            });
+        } catch (QueryException $exception) {
+            $this->throwIfDuplicateModelName($exception);
+
+            throw $exception;
+        }
     }
 
     public function cambiarEstatus(Request $request, int $id, string $estatus): ModeloProducto
@@ -191,5 +204,17 @@ class ModeloService
         }
 
         return $candidato;
+    }
+
+    private function throwIfDuplicateModelName(QueryException $exception): void
+    {
+        $duplicateEntry = (int) ($exception->errorInfo[1] ?? 0) === 1062;
+        $sqlMessage = (string) ($exception->errorInfo[2] ?? $exception->getMessage());
+
+        if ($duplicateEntry && str_contains($sqlMessage, 'uk_modelo_nombre')) {
+            throw ValidationException::withMessages([
+                'nombre' => 'El nombre del modelo ya existe.',
+            ]);
+        }
     }
 }

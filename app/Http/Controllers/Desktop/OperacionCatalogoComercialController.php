@@ -207,6 +207,12 @@ class OperacionCatalogoComercialController extends Controller
                     'tipo_cantidad' => $item->umd_tipo_cantidad,
                     'es_predeterminada' => (bool) $item->umd_es_predeterminada,
                 ],
+                'descripciones' => [
+                    'id' => $item->dsc_id,
+                    'nombre' => $item->dsc_nombre,
+                    'clave' => $item->dsc_clave,
+                    'estatus' => $item->dsc_estatus,
+                ],
                 'conceptos' => [
                     'id' => $item->cpt_id,
                     'nombre' => $item->cpt_nombre,
@@ -236,6 +242,7 @@ class OperacionCatalogoComercialController extends Controller
             'lineas' => ['id' => $item->lna_id, 'nombre' => $item->lna_nombre, 'clave' => $item->lna_clave, 'estatus' => $item->lna_estatus],
             'categorias' => ['id' => $item->ctg_id, 'nombre' => $item->ctg_nombre, 'clave' => $item->ctg_clave, 'estatus' => $item->ctg_estatus, 'lna_id' => $item->ctg_lna_id, 'linea' => $item->linea?->lna_nombre],
             'unidades' => ['id' => $item->umd_id, 'nombre' => $item->umd_nombre, 'codigo' => $item->umd_codigo, 'clave' => $item->umd_clave, 'estatus' => $item->umd_estatus, 'tipo_cantidad' => $item->umd_tipo_cantidad, 'es_predeterminada' => (bool) $item->umd_es_predeterminada],
+            'descripciones' => ['id' => $item->dsc_id, 'nombre' => $item->dsc_nombre, 'clave' => $item->dsc_clave, 'estatus' => $item->dsc_estatus],
             'conceptos' => ['id' => $item->cpt_id, 'nombre' => $item->cpt_nombre, 'clave' => $item->cpt_clave, 'estatus' => $item->cpt_estatus],
             'motivos' => ['id' => $item->mtv_id, 'nombre' => $item->mtv_nombre, 'clave' => $item->mtv_clave, 'estatus' => $item->mtv_estatus],
         };
@@ -328,13 +335,22 @@ class OperacionCatalogoComercialController extends Controller
     public function storeModelo(Request $request): JsonResponse
     {
         $datos = $request->validate([
-            'nombre' => ['required', 'string', 'max:120'],
+            'nombre' => [
+                'required',
+                'string',
+                'max:120',
+                Rule::unique('tbl_modelos_mdl', 'mdl_nombre')
+                    ->where(fn ($query) => $query
+                        ->where('mdl_deleted', false)
+                        ->whereNull('mdl_deleted_at')),
+            ],
             'clave' => ['nullable', 'string', 'max:40'],
             'estatus' => ['required', Rule::in(['activo', 'inactivo'])],
             'marca_ids' => ['nullable', 'array'],
             'marca_ids.*' => ['integer', 'exists:tbl_marcas_mrc,mrc_id'],
         ], [
             'nombre.required' => 'El nombre es obligatorio.',
+            'nombre.unique' => 'El nombre del modelo ya existe.',
             'estatus.required' => 'El estatus es obligatorio.',
         ]);
 
@@ -349,13 +365,23 @@ class OperacionCatalogoComercialController extends Controller
     public function updateModelo(Request $request, int $modelo): JsonResponse
     {
         $datos = $request->validate([
-            'nombre' => ['required', 'string', 'max:120'],
+            'nombre' => [
+                'required',
+                'string',
+                'max:120',
+                Rule::unique('tbl_modelos_mdl', 'mdl_nombre')
+                    ->ignore($modelo, 'mdl_id')
+                    ->where(fn ($query) => $query
+                        ->where('mdl_deleted', false)
+                        ->whereNull('mdl_deleted_at')),
+            ],
             'clave' => ['nullable', 'string', 'max:40'],
             'estatus' => ['required', Rule::in(['activo', 'inactivo'])],
             'marca_ids' => ['nullable', 'array'],
             'marca_ids.*' => ['integer', 'exists:tbl_marcas_mrc,mrc_id'],
         ], [
             'nombre.required' => 'El nombre es obligatorio.',
+            'nombre.unique' => 'El nombre del modelo ya existe.',
             'estatus.required' => 'El estatus es obligatorio.',
         ]);
 
@@ -556,6 +582,7 @@ class OperacionCatalogoComercialController extends Controller
             'proveedor' => $item->proveedor?->prv_nombre_empresa,
             'linea' => $item->linea?->lna_nombre,
             'categoria' => $item->categoria?->ctg_nombre,
+            'descripcion_catalogo' => $item->descripcionCatalogo?->dsc_nombre,
             'unidad' => $item->unidad?->umd_nombre,
             'almacenes_permitidos' => $item->almacenesPermitidos->map(fn ($almacen) => [
                 'alm_id' => $almacen->alm_id,
@@ -891,6 +918,7 @@ class OperacionCatalogoComercialController extends Controller
             ['key' => 'modelos', 'label' => 'Modelos'],
             ['key' => 'lineas', 'label' => 'Líneas'],
             ['key' => 'categorias', 'label' => 'Conceptos'],
+            ['key' => 'descripciones', 'label' => 'Descripción'],
             ['key' => 'unidades', 'label' => 'Unidades'],
             ['key' => 'motivos', 'label' => 'Motivos'],
         ];
@@ -918,7 +946,7 @@ class OperacionCatalogoComercialController extends Controller
 
     private function validarTipoCatalogo(string $tipo): void
     {
-        abort_unless(in_array($tipo, ['marcas', 'lineas', 'categorias', 'unidades', 'conceptos', 'motivos'], true), 404);
+        abort_unless(in_array($tipo, ['marcas', 'lineas', 'categorias', 'descripciones', 'unidades', 'conceptos', 'motivos'], true), 404);
     }
 
     private function idColumnCatalogo(string $tipo): string
@@ -927,6 +955,7 @@ class OperacionCatalogoComercialController extends Controller
             'marcas' => 'mrc_id',
             'lineas' => 'lna_id',
             'categorias' => 'ctg_id',
+            'descripciones' => 'dsc_id',
             'unidades' => 'umd_id',
             'conceptos' => 'cpt_id',
             'motivos' => 'mtv_id',
@@ -939,6 +968,7 @@ class OperacionCatalogoComercialController extends Controller
             'marcas' => 'mrc_estatus',
             'lineas' => 'lna_estatus',
             'categorias' => 'ctg_estatus',
+            'descripciones' => 'dsc_estatus',
             'unidades' => 'umd_estatus',
             'conceptos' => 'cpt_estatus',
             'motivos' => 'mtv_estatus',
@@ -967,6 +997,7 @@ class OperacionCatalogoComercialController extends Controller
                 'marcas' => $opcionesProducto['marcas'],
                 'lineas' => $opcionesProducto['lineas'],
                 'categorias' => $opcionesProducto['categorias'],
+                'descripciones' => $opcionesProducto['descripciones'],
                 'unidades' => $opcionesProducto['unidades'],
                 'almacenes' => $opcionesProducto['almacenes'],
                 'proveedores' => $opcionesProducto['proveedores'],
@@ -1013,6 +1044,12 @@ class OperacionCatalogoComercialController extends Controller
                     'ctg_lna_id' => $item->ctg_lna_id ?? null,
                 ])
                 ->values(),
+            'descripcionesCatalogo' => $opcionesProducto['descripciones']
+                ->map(fn ($item) => [
+                    'dsc_id' => $item->dsc_id,
+                    'dsc_nombre' => $item->dsc_nombre,
+                ])
+                ->values(),
             'initialProductoData' => $producto ? $this->mapProductoPayload($producto) : null,
             'isEditing' => (bool) $producto,
             'permisosUI' => $this->permisosUI(),
@@ -1037,6 +1074,7 @@ class OperacionCatalogoComercialController extends Controller
             'prd_prv_id' => $item->prd_prv_id,
             'prd_lna_id' => $item->prd_lna_id,
             'prd_ctg_id' => $item->prd_ctg_id,
+            'prd_dsc_id' => $item->prd_dsc_id,
             'prd_umd_id' => $item->prd_umd_id,
             'almacen_ids' => $item->almacenesPermitidos->pluck('alm_id')->map(fn ($id) => (int) $id)->values(),
             'prd_tipo' => $item->prd_tipo,

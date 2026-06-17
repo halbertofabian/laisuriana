@@ -24,6 +24,7 @@ class ShowKardexDetalleRequest extends FormRequest
             'back_prd_mdl_id' => ['nullable', 'integer'],
             'back_prd_lna_id' => ['nullable', 'integer'],
             'back_prd_ctg_id' => ['nullable', 'integer'],
+            'back_prd_dsc_id' => ['nullable', 'integer'],
             'back_prd_id' => ['nullable', 'integer'],
             'back_prd_text' => ['nullable', 'string', 'max:180'],
             'back_buscar' => ['nullable', 'string', 'max:120'],

@@ -1146,6 +1146,7 @@
                                             <div class="col-md-4"><label class="form-label">Proveedor principal</label><select class="form-select" name="prd_prv_id" id="prd_prv_id"><option value="">Sin proveedor asignado</option>@foreach($opciones['proveedores'] as $item)<option value="{{ $item->prv_id }}">{{ $item->prv_nombre_empresa }}</option>@endforeach</select></div>
                                             <div class="col-md-4"><label class="form-label">Línea <span class="text-danger">*</span></label><select class="form-select" name="prd_lna_id" id="prd_lna_id" required><option value="">Selecciona una línea</option>@foreach($opciones['lineas'] as $item)<option value="{{ $item->lna_id }}">{{ $item->lna_nombre }}</option>@endforeach</select></div>
                                             <div class="col-md-4"><label class="form-label">Concepto</label><select class="form-select" name="prd_ctg_id" id="prd_ctg_id"><option value="">Selecciona un concepto</option>@foreach($opciones['categorias'] as $item)<option value="{{ $item->ctg_id }}">{{ $item->ctg_nombre }}</option>@endforeach</select></div>
+                                            <div class="col-md-4"><label class="form-label">Descripción</label><select class="form-select" name="prd_dsc_id" id="prd_dsc_id"><option value="">Selecciona una descripción</option>@foreach($opciones['descripciones'] as $item)<option value="{{ $item->dsc_id }}">{{ $item->dsc_nombre }}</option>@endforeach</select></div>
                                             <div class="col-md-4"><label class="form-label">Unidad de venta <span class="text-danger">*</span></label><select class="form-select" name="prd_umd_id" id="prd_umd_id" required><option value="">Selecciona una unidad</option>@foreach($opciones['unidades'] as $item)<option value="{{ $item->umd_id }}"{{ $item->umd_es_predeterminada ? ' data-predeterminada="1"' : '' }}>{{ $item->umd_nombre }} ({{ $item->umd_codigo }}){{ $item->umd_es_predeterminada ? ' ★' : '' }}</option>@endforeach</select></div>
                                             <div class="col-12">
                                                 <label class="form-label">Almacenes permitidos <span class="text-danger">*</span></label>
@@ -3947,6 +3948,7 @@
             }
             $('#prd_lna_id').val(String(d.prd_lna_id || ''));
             actualizarSelectCategoria(d.prd_lna_id, d.prd_ctg_id);
+            $('#prd_dsc_id').val(String(d.prd_dsc_id || ''));
             $('#prd_umd_id').val(String(d.prd_umd_id || ''));
             $('#prd-almacenes-checklist input[type="checkbox"]').each(function () {
                 const almacenId = parseInt($(this).val(), 10);

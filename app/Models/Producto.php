@@ -37,6 +37,7 @@ class Producto extends Model
         'prd_prv_id',
         'prd_lna_id',
         'prd_ctg_id',
+        'prd_dsc_id',
         'prd_umd_id',
         'prd_tipo',
         'prd_estatus',
@@ -77,6 +78,11 @@ class Producto extends Model
     public function categoria()
     {
         return $this->belongsTo(Categoria::class, 'prd_ctg_id', 'ctg_id');
+    }
+
+    public function descripcionCatalogo()
+    {
+        return $this->belongsTo(Descripcion::class, 'prd_dsc_id', 'dsc_id');
     }
 
     public function unidad()

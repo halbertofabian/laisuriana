@@ -60,6 +60,14 @@ class ListExistenciaMatrizRequest extends FormRequest
                     ->whereNull('ctg_deleted_at')
                     ->where('ctg_estatus', 'activo')),
             ],
+            'prd_dsc_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('tbl_descripciones_dsc', 'dsc_id')->where(fn ($query) => $query
+                    ->where('dsc_deleted', false)
+                    ->whereNull('dsc_deleted_at')
+                    ->where('dsc_estatus', 'activo')),
+            ],
             'min_scl_id' => [
                 'nullable',
                 'integer',
@@ -88,6 +96,7 @@ class ListExistenciaMatrizRequest extends FormRequest
             'prd_mdl_id.exists' => 'El modelo seleccionado no está disponible.',
             'prd_lna_id.exists' => 'La línea seleccionada no está disponible.',
             'prd_ctg_id.exists' => 'El concepto seleccionado no está disponible.',
+            'prd_dsc_id.exists' => 'La descripción seleccionada no está disponible.',
             'min_scl_id.exists' => 'La sucursal seleccionada no está disponible.',
             'min_alm_id.exists' => 'El almacén seleccionado no pertenece a la sucursal o no está activo.',
         ];

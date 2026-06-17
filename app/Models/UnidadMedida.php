@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasLogicalDeletion;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -10,6 +11,12 @@ class UnidadMedida extends Model
 {
     use HasFactory;
     use HasLogicalDeletion;
+
+    public const LOGICAL_DELETION_UNIQUE_COLUMNS = [
+        'umd_nombre' => 120,
+        'umd_codigo' => 20,
+        'umd_clave' => 40,
+    ];
 
     public const CREATED_AT = 'umd_created_at';
     public const UPDATED_AT = 'umd_updated_at';
@@ -35,5 +42,29 @@ class UnidadMedida extends Model
         return [
             'umd_es_predeterminada' => 'boolean',
         ];
+    }
+
+    protected function umdNombre(): Attribute
+    {
+        return Attribute::make(
+            get: fn ($value) => is_string($value) ? mb_strtoupper($value) : $value,
+            set: fn ($value) => is_string($value) ? mb_strtoupper(trim($value)) : $value,
+        );
+    }
+
+    protected function umdCodigo(): Attribute
+    {
+        return Attribute::make(
+            get: fn ($value) => is_string($value) ? mb_strtoupper($value) : $value,
+            set: fn ($value) => is_string($value) ? mb_strtoupper(trim($value)) : $value,
+        );
+    }
+
+    protected function umdClave(): Attribute
+    {
+        return Attribute::make(
+            get: fn ($value) => is_string($value) ? mb_strtoupper($value) : $value,
+            set: fn ($value) => is_string($value) ? mb_strtoupper(trim($value)) : $value,
+        );
     }
 }

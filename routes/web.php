@@ -23,7 +23,7 @@ use App\Http\Controllers\Seguridad\UsuarioController;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Route;
 
-Route::pattern('tipo', 'marcas|lineas|categorias|unidades|conceptos|motivos');
+Route::pattern('tipo', 'marcas|lineas|categorias|descripciones|unidades|conceptos|motivos');
 
 Route::get('/', function () {
     return auth()->check() ? redirect()->route('dashboard') : redirect()->route('login');

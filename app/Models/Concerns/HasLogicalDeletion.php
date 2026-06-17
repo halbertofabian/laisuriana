@@ -28,10 +28,42 @@ trait HasLogicalDeletion
 
     public function marcarComoEliminado(): bool
     {
+        $this->prepararCamposUnicosParaEliminacion();
+
         return $this->forceFill([
             static::logicalDeletedColumn() => true,
             static::logicalDeletedAtColumn() => now(),
         ])->save();
+    }
+
+    protected function prepararCamposUnicosParaEliminacion(): void
+    {
+        $columnas = defined('static::LOGICAL_DELETION_UNIQUE_COLUMNS')
+            ? constant('static::LOGICAL_DELETION_UNIQUE_COLUMNS')
+            : [];
+
+        if (!is_array($columnas) || $columnas === []) {
+            return;
+        }
+
+        foreach ($columnas as $columna => $longitudMaxima) {
+            if (is_int($columna)) {
+                $columna = $longitudMaxima;
+                $longitudMaxima = null;
+            }
+
+            $valor = $this->getAttribute($columna);
+
+            if (!is_string($valor) || $valor === '') {
+                continue;
+            }
+
+            $sufijo = '__d' . $this->getKey();
+            $maximo = is_int($longitudMaxima)
+                ? max(1, $longitudMaxima - mb_strlen($sufijo))
+                : max(1, 190 - mb_strlen($sufijo));
+            $this->setAttribute($columna, mb_substr($valor, 0, $maximo) . $sufijo);
+        }
     }
 
     protected static function logicalDeletedColumn(): string

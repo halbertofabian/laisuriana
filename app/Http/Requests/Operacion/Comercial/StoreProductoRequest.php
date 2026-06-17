@@ -44,6 +44,7 @@ class StoreProductoRequest extends FormRequest
             'prd_mdl_id' => ['nullable', 'integer', Rule::exists('tbl_modelos_mdl', 'mdl_id')],
             'prd_lna_id' => ['required', 'integer', Rule::exists('tbl_lineas_lna', 'lna_id')],
             'prd_ctg_id' => ['nullable', 'integer', Rule::exists('tbl_categorias_ctg', 'ctg_id')],
+            'prd_dsc_id' => ['nullable', 'integer', Rule::exists('tbl_descripciones_dsc', 'dsc_id')],
             'prd_umd_id' => ['required', 'integer', Rule::exists('tbl_unidades_medida_umd', 'umd_id')],
             'almacen_ids' => ['required', 'array', 'min:1'],
             'almacen_ids.*' => ['integer', Rule::exists('tbl_almacenes_alm', 'alm_id')],

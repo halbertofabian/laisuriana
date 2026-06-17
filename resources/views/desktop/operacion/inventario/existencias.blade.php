@@ -601,6 +601,15 @@
                     </select>
                 </div>
                 <div class="desktop-field">
+                    <label for="flt-dsc">Descripción</label>
+                    <select id="flt-dsc">
+                        <option value="">Todas</option>
+                        @foreach($opciones['descripciones'] as $descripcion)
+                            <option value="{{ $descripcion->dsc_id }}">{{ $descripcion->dsc_nombre }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="desktop-field">
                     <label for="flt-prd">Producto</label>
                     <select id="flt-prd"></select>
                 </div>
@@ -788,6 +797,7 @@
                                 prd_mdl_id: $('#flt-mdl').val(),
                                 prd_lna_id: $('#flt-lna').val(),
                                 prd_ctg_id: $('#flt-ctg').val(),
+                                prd_dsc_id: $('#flt-dsc').val(),
                             };
                         },
                         processResults: function (data) {
@@ -852,6 +862,7 @@
                             d.prd_mdl_id = $('#flt-mdl').val();
                             d.prd_lna_id = $('#flt-lna').val();
                             d.prd_ctg_id = $('#flt-ctg').val();
+                            d.prd_dsc_id = $('#flt-dsc').val();
                             d.prd_id = $('#flt-prd').val();
                             d.buscar = $('#flt-buscar').val();
                             d.solo_disponibles = $('#flt-solo-disponibles').is(':checked') ? 1 : 0;
@@ -902,6 +913,7 @@
                 $('#flt-mdl').val('');
                 $('#flt-lna').val('');
                 $('#flt-ctg').val('');
+                $('#flt-dsc').val('');
                 $('#flt-prd').val(null).trigger('change');
                 $('#flt-buscar').val('');
                 $('#flt-scl').val(@json((string) ($defaultSucursalId ?? '')));
@@ -918,6 +930,7 @@
                 const mdl = $('#flt-mdl').val();
                 const lna = $('#flt-lna').val();
                 const ctg = $('#flt-ctg').val();
+                const dsc = $('#flt-dsc').val();
                 const scl = $('#flt-scl').val();
                 const alm = $('#flt-alm').val();
                 const prd = $('#flt-prd').val();
@@ -932,6 +945,7 @@
                 if (mdl) params.set('back_prd_mdl_id', mdl);
                 if (lna) params.set('back_prd_lna_id', lna);
                 if (ctg) params.set('back_prd_ctg_id', ctg);
+                if (dsc) params.set('back_prd_dsc_id', dsc);
                 if (prd) params.set('back_prd_id', prd);
                 if (prd && prdText) params.set('back_prd_text', prdText);
                 if (buscar) params.set('back_buscar', buscar);
@@ -979,6 +993,7 @@
                 setIfPresent('#flt-mdl', 'prd_mdl_id');
                 setIfPresent('#flt-lna', 'prd_lna_id');
                 setIfPresent('#flt-ctg', 'prd_ctg_id');
+                setIfPresent('#flt-dsc', 'prd_dsc_id');
                 setIfPresent('#flt-scl', 'min_scl_id');
                 setIfPresent('#flt-alm', 'min_alm_id');
                 $('#flt-solo-disponibles').prop('checked', params.get('solo_disponibles') === '1');
@@ -1021,6 +1036,7 @@
                     prd_mdl_id: $('#flt-mdl').val(),
                     prd_lna_id: $('#flt-lna').val(),
                     prd_ctg_id: $('#flt-ctg').val(),
+                    prd_dsc_id: $('#flt-dsc').val(),
                     prd_id: $('#flt-prd').val(),
                     buscar: $('#flt-buscar').val().trim(),
                     solo_disponibles: $('#flt-solo-disponibles').is(':checked') ? '1' : '',
@@ -1129,7 +1145,7 @@
                 let n = 0;
                 if (!!$('#flt-alm').val()) n += 1;
                 if (String($('#flt-scl').val() || '') !== String(defaultScl)) n += 1;
-                ['#flt-mrc', '#flt-mdl', '#flt-lna', '#flt-ctg'].forEach(function (sel) {
+                ['#flt-mrc', '#flt-mdl', '#flt-lna', '#flt-ctg', '#flt-dsc'].forEach(function (sel) {
                     if ($(sel).val()) n += 1;
                 });
                 if ($('#flt-prd').val()) n += 1;
@@ -1184,7 +1200,7 @@
                 $('#flt-prd').val(null).trigger('change');
                 actualizarIndicadores();
             });
-            $('#flt-alm, #flt-mrc, #flt-mdl, #flt-ctg').on('change', function () {
+            $('#flt-alm, #flt-mrc, #flt-mdl, #flt-ctg, #flt-dsc').on('change', function () {
                 $('#flt-prd').val(null).trigger('change');
                 actualizarIndicadores();
             });

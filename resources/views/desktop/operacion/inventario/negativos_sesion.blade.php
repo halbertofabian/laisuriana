@@ -471,6 +471,15 @@
                     </select>
                 </div>
                 <div class="desktop-field">
+                    <label for="flt-dsc">Descripción</label>
+                    <select id="flt-dsc">
+                        <option value="">Todas</option>
+                        @foreach($opciones['descripciones'] as $descripcion)
+                            <option value="{{ $descripcion->dsc_id }}">{{ $descripcion->dsc_nombre }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="desktop-field">
                     <label for="flt-prd">Producto</label>
                     <select id="flt-prd"></select>
                 </div>
@@ -650,6 +659,7 @@
                                 prd_mdl_id: $('#flt-mdl').val(),
                                 prd_lna_id: $('#flt-lna').val(),
                                 prd_ctg_id: $('#flt-ctg').val(),
+                                prd_dsc_id: $('#flt-dsc').val(),
                             };
                         },
                         processResults: function (data) {
@@ -710,7 +720,7 @@
                 let count = 0;
                 if (!!$('#flt-alm').val()) count += 1;
                 if (String($('#flt-scl').val() || '') !== String(defaultScl)) count += 1;
-                ['#flt-mrc', '#flt-mdl', '#flt-lna', '#flt-ctg', '#flt-prd', '#flt-cse'].forEach(function (selector) {
+                ['#flt-mrc', '#flt-mdl', '#flt-lna', '#flt-ctg', '#flt-dsc', '#flt-prd', '#flt-cse'].forEach(function (selector) {
                     if ($(selector).val()) count += 1;
                 });
                 if ($('#flt-periodo').val() !== 'semana_en_curso') count += 1;
@@ -758,6 +768,7 @@
                             d.prd_mdl_id = $('#flt-mdl').val();
                             d.prd_lna_id = $('#flt-lna').val();
                             d.prd_ctg_id = $('#flt-ctg').val();
+                            d.prd_dsc_id = $('#flt-dsc').val();
                             d.prd_id = $('#flt-prd').val();
                             d.fecha_desde = fechas.desde;
                             d.fecha_hasta = fechas.hasta;
@@ -814,6 +825,7 @@
                 $('#flt-mdl').val('');
                 $('#flt-lna').val('');
                 $('#flt-ctg').val('');
+                $('#flt-dsc').val('');
                 $('#flt-prd').val(null).trigger('change');
                 $('#flt-cse').val('');
                 $('#flt-periodo').val('semana_en_curso');
@@ -850,6 +862,7 @@
                 setIfPresent('#flt-mdl', 'prd_mdl_id');
                 setIfPresent('#flt-lna', 'prd_lna_id');
                 setIfPresent('#flt-ctg', 'prd_ctg_id');
+                setIfPresent('#flt-dsc', 'prd_dsc_id');
                 setIfPresent('#flt-cse', 'cse_id');
                 setIfPresent('#flt-periodo', 'periodo');
                 setIfPresent('#flt-desde', 'fecha_desde');
@@ -879,6 +892,7 @@
                     prd_mdl_id: $('#flt-mdl').val(),
                     prd_lna_id: $('#flt-lna').val(),
                     prd_ctg_id: $('#flt-ctg').val(),
+                    prd_dsc_id: $('#flt-dsc').val(),
                     prd_id: $('#flt-prd').val(),
                     prd_text: $('#flt-prd').find('option:selected').text().trim(),
                     periodo: $('#flt-periodo').val(),
@@ -929,7 +943,7 @@
                 syncBadge();
             });
 
-            $('#flt-alm, #flt-mrc, #flt-mdl, #flt-ctg, #flt-cse, #flt-desde, #flt-hasta, #flt-prd').on('change', function () {
+            $('#flt-alm, #flt-mrc, #flt-mdl, #flt-ctg, #flt-dsc, #flt-cse, #flt-desde, #flt-hasta, #flt-prd').on('change', function () {
                 if (this.id !== 'flt-prd' && this.id !== 'flt-cse' && this.id !== 'flt-desde' && this.id !== 'flt-hasta') {
                     $('#flt-prd').val(null).trigger('change');
                 }

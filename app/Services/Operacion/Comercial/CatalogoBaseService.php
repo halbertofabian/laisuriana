@@ -4,6 +4,7 @@ namespace App\Services\Operacion\Comercial;
 
 use App\Models\Categoria;
 use App\Models\Concepto;
+use App\Models\Descripcion;
 use App\Models\Linea;
 use App\Models\Marca;
 use App\Models\Motivo;
@@ -103,7 +104,9 @@ class CatalogoBaseService
             ];
 
             if (!empty($config['codigo'])) {
-                $payload[$config['codigo']] = Arr::get($datos, 'codigo');
+                $payload[$config['codigo']] = $tipo === 'unidades'
+                    ? $this->resolverCodigoUnidad(Arr::get($datos, 'codigo'), $datos['nombre'], $config['model'], $config['codigo'])
+                    : Arr::get($datos, 'codigo');
             }
 
             if ($tipo === 'categorias') {
@@ -163,7 +166,17 @@ class CatalogoBaseService
             ];
 
             if (!empty($config['codigo'])) {
-                $payload[$config['codigo']] = Arr::get($datos, 'codigo');
+                $payload[$config['codigo']] = $tipo === 'unidades'
+                    ? $this->resolverCodigoUnidad(
+                        Arr::get($datos, 'codigo'),
+                        $datos['nombre'],
+                        $config['model'],
+                        $config['codigo'],
+                        $id,
+                        $config['id'],
+                        (string) $registro->{$config['codigo']}
+                    )
+                    : Arr::get($datos, 'codigo');
             }
 
             if ($tipo === 'categorias') {
@@ -327,6 +340,54 @@ class CatalogoBaseService
         return $query->exists();
     }
 
+    private function resolverCodigoUnidad(
+        mixed $codigoIngresado,
+        string $nombre,
+        string $modelClass,
+        string $codigoColumn,
+        ?int $idIgnorar = null,
+        ?string $idColumn = null,
+        string $codigoActual = ''
+    ): string {
+        $codigo = trim((string) $codigoIngresado);
+
+        if ($codigo !== '') {
+            return mb_strtoupper($codigo);
+        }
+
+        if ($codigoActual !== '') {
+            return $codigoActual;
+        }
+
+        return $this->generarCodigoUnidad($nombre, $modelClass, $codigoColumn, $idIgnorar, $idColumn);
+    }
+
+    private function generarCodigoUnidad(
+        string $nombre,
+        string $modelClass,
+        string $codigoColumn,
+        ?int $idIgnorar = null,
+        ?string $idColumn = null
+    ): string {
+        $limpio = (string) Str::of($nombre)
+            ->ascii()
+            ->replaceMatches('/[^A-Za-z0-9]+/', '_')
+            ->trim('_')
+            ->upper();
+
+        $base = Str::substr('UMD_' . ($limpio !== '' ? $limpio : 'UNIDAD'), 0, 20);
+        $candidato = $base;
+        $consecutivo = 2;
+
+        while ($this->claveExiste($modelClass, $codigoColumn, $candidato, $idIgnorar, $idColumn)) {
+            $sufijo = '_' . $consecutivo;
+            $candidato = Str::substr($base, 0, 20 - strlen($sufijo)) . $sufijo;
+            $consecutivo++;
+        }
+
+        return $candidato;
+    }
+
     private function config(string $tipo): array
     {
         return match ($tipo) {
@@ -377,6 +438,18 @@ class CatalogoBaseService
                 'updated_by' => 'umd_updated_by_usr_id',
                 'codigo' => 'umd_codigo',
                 'prefijo' => 'UMD',
+            ],
+            'descripciones' => [
+                'model' => Descripcion::class,
+                'table' => 'tbl_descripciones_dsc',
+                'id' => 'dsc_id',
+                'nombre' => 'dsc_nombre',
+                'clave' => 'dsc_clave',
+                'estatus' => 'dsc_estatus',
+                'created_by' => 'dsc_created_by_usr_id',
+                'updated_by' => 'dsc_updated_by_usr_id',
+                'codigo' => null,
+                'prefijo' => 'DSC',
             ],
             'conceptos' => [
                 'model' => Concepto::class,

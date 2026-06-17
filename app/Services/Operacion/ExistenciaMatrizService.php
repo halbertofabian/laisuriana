@@ -371,6 +371,7 @@ class ExistenciaMatrizService
             ->leftJoin('tbl_modelos_mdl as mdl', 'mdl.mdl_id', '=', 'prd.prd_mdl_id')
             ->leftJoin('tbl_lineas_lna as lna', 'lna.lna_id', '=', 'prd.prd_lna_id')
             ->leftJoin('tbl_categorias_ctg as ctg', 'ctg.ctg_id', '=', 'prd.prd_ctg_id')
+            ->leftJoin('tbl_descripciones_dsc as dsc', 'dsc.dsc_id', '=', 'prd.prd_dsc_id')
             ->leftJoinSub($this->subqueryValorAtributoPorSku('color'), 'color', function ($join): void {
                 $join->on('color.psk_id', '=', 'psk.psk_id');
             })
@@ -388,6 +389,7 @@ class ExistenciaMatrizService
             ->when(!empty($filtros['prd_mdl_id']), fn ($q) => $q->where('prd.prd_mdl_id', (int) $filtros['prd_mdl_id']))
             ->when(!empty($filtros['prd_lna_id']), fn ($q) => $q->where('prd.prd_lna_id', (int) $filtros['prd_lna_id']))
             ->when(!empty($filtros['prd_ctg_id']), fn ($q) => $q->where('prd.prd_ctg_id', (int) $filtros['prd_ctg_id']))
+            ->when(!empty($filtros['prd_dsc_id']), fn ($q) => $q->where('prd.prd_dsc_id', (int) $filtros['prd_dsc_id']))
             ->when($conBuscar && !empty($filtros['buscar']), function ($q) use ($filtros): void {
                 $buscar = trim((string) $filtros['buscar']);
                 $q->where(function ($sub) use ($buscar): void {
@@ -397,6 +399,7 @@ class ExistenciaMatrizService
                         ->orWhere('mdl.mdl_nombre', 'like', "%{$buscar}%")
                         ->orWhere('lna.lna_nombre', 'like', "%{$buscar}%")
                         ->orWhere('ctg.ctg_nombre', 'like', "%{$buscar}%")
+                        ->orWhere('dsc.dsc_nombre', 'like', "%{$buscar}%")
                         ->orWhere('color.vat_valor', 'like', "%{$buscar}%");
                 });
             })

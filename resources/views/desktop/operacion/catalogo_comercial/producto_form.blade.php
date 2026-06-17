@@ -872,6 +872,15 @@
                                         </select>
                                     </div>
                                     <div class="desktop-field span-4">
+                                        <label>Descripción</label>
+                                        <select name="prd_dsc_id" id="prd_dsc_id">
+                                            <option value="">Selecciona una descripción</option>
+                                            @foreach($opciones['descripciones'] as $item)
+                                                <option value="{{ $item->dsc_id }}">{{ $item->dsc_nombre }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="desktop-field span-4">
                                         <label>Unidad de venta</label>
                                         <select name="prd_umd_id" id="prd_umd_id" required>
                                             <option value="">Selecciona una unidad</option>
@@ -1759,6 +1768,7 @@
                 $('#prd_prv_id').val(String(data.prd_prv_id || ''));
                 $('#prd_lna_id').val(String(data.prd_lna_id || ''));
                 updateCategories(data.prd_lna_id, data.prd_ctg_id);
+                $('#prd_dsc_id').val(String(data.prd_dsc_id || ''));
                 $('#prd_umd_id').val(String(data.prd_umd_id || ''));
                 $('#prd_estatus').val(data.prd_estatus || 'activo');
                 $('#prd-almacenes-checklist input[type="checkbox"]').each(function () {

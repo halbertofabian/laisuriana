@@ -7,34 +7,33 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Categoria extends Model
+class Descripcion extends Model
 {
     use HasFactory;
     use HasLogicalDeletion;
 
     public const LOGICAL_DELETION_UNIQUE_COLUMNS = [
-        'ctg_nombre' => 120,
-        'ctg_clave' => 40,
+        'dsc_nombre' => 120,
+        'dsc_clave' => 40,
     ];
 
-    public const CREATED_AT = 'ctg_created_at';
-    public const UPDATED_AT = 'ctg_updated_at';
-    public const LOGICAL_DELETED_COLUMN = 'ctg_deleted';
-    public const LOGICAL_DELETED_AT_COLUMN = 'ctg_deleted_at';
+    public const CREATED_AT = 'dsc_created_at';
+    public const UPDATED_AT = 'dsc_updated_at';
+    public const LOGICAL_DELETED_COLUMN = 'dsc_deleted';
+    public const LOGICAL_DELETED_AT_COLUMN = 'dsc_deleted_at';
 
-    protected $table = 'tbl_categorias_ctg';
-    protected $primaryKey = 'ctg_id';
+    protected $table = 'tbl_descripciones_dsc';
+    protected $primaryKey = 'dsc_id';
 
     protected $fillable = [
-        'ctg_nombre',
-        'ctg_lna_id',
-        'ctg_clave',
-        'ctg_estatus',
-        'ctg_created_by_usr_id',
-        'ctg_updated_by_usr_id',
+        'dsc_nombre',
+        'dsc_clave',
+        'dsc_estatus',
+        'dsc_created_by_usr_id',
+        'dsc_updated_by_usr_id',
     ];
 
-    protected function ctgNombre(): Attribute
+    protected function dscNombre(): Attribute
     {
         return Attribute::make(
             get: fn ($value) => is_string($value) ? mb_strtoupper($value) : $value,
@@ -42,16 +41,11 @@ class Categoria extends Model
         );
     }
 
-    protected function ctgClave(): Attribute
+    protected function dscClave(): Attribute
     {
         return Attribute::make(
             get: fn ($value) => is_string($value) ? mb_strtoupper($value) : $value,
             set: fn ($value) => is_string($value) ? mb_strtoupper(trim($value)) : $value,
         );
-    }
-
-    public function linea()
-    {
-        return $this->belongsTo(Linea::class, 'ctg_lna_id', 'lna_id');
     }
 }

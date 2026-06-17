@@ -50,7 +50,7 @@ class UpdateCatalogoBaseRequest extends FormRequest
 
         if ($tipo === 'unidades') {
             $rules['codigo'] = [
-                'required',
+                'nullable',
                 'string',
                 'max:20',
                 Rule::unique($config['table'], 'umd_codigo')
@@ -87,20 +87,30 @@ class UpdateCatalogoBaseRequest extends FormRequest
                 ->exists();
 
             if ($existe) {
-                $validator->errors()->add('nombre', 'Ya existe una categoría con ese nombre para la línea seleccionada.');
+                $validator->errors()->add('nombre', 'El nombre del concepto ya existe para la línea seleccionada.');
             }
         });
     }
 
     public function messages(): array
     {
+        $tipo = (string) $this->route('tipo');
+        $nombreUnique = $tipo === 'lineas'
+            ? 'El nombre de la línea ya existe.'
+            : ($tipo === 'unidades'
+                ? 'El nombre de la unidad ya existe.'
+                : ($tipo === 'descripciones'
+                    ? 'El nombre de la descripción ya existe.'
+                : ($tipo === 'motivos'
+                    ? 'El nombre del motivo ya existe.'
+                    : 'Ya existe un registro con ese nombre.')));
+
         return [
             'nombre.required' => 'El nombre es obligatorio.',
-            'nombre.unique' => 'Ya existe un registro con ese nombre.',
+            'nombre.unique' => $nombreUnique,
             'lna_id.required' => 'Debes seleccionar una línea para la categoría.',
             'lna_id.exists' => 'La línea seleccionada no existe.',
             'clave.unique' => 'Ya existe un registro con esa clave.',
-            'codigo.required' => 'El código es obligatorio para la unidad de medida.',
             'codigo.unique' => 'Ya existe una unidad con ese código.',
             'tipo_cantidad.required' => 'El tipo de cantidad es obligatorio.',
             'tipo_cantidad.in' => 'El tipo de cantidad debe ser "entero" o "decimal".',
@@ -116,6 +126,7 @@ class UpdateCatalogoBaseRequest extends FormRequest
             'lineas' => ['table' => 'tbl_lineas_lna', 'id' => 'lna_id', 'nombre' => 'lna_nombre', 'clave' => 'lna_clave', 'deleted' => 'lna_deleted'],
             'categorias' => ['table' => 'tbl_categorias_ctg', 'id' => 'ctg_id', 'nombre' => 'ctg_nombre', 'clave' => 'ctg_clave', 'deleted' => 'ctg_deleted'],
             'unidades' => ['table' => 'tbl_unidades_medida_umd', 'id' => 'umd_id', 'nombre' => 'umd_nombre', 'clave' => 'umd_clave', 'deleted' => 'umd_deleted'],
+            'descripciones' => ['table' => 'tbl_descripciones_dsc', 'id' => 'dsc_id', 'nombre' => 'dsc_nombre', 'clave' => 'dsc_clave', 'deleted' => 'dsc_deleted'],
             'conceptos' => ['table' => 'tbl_conceptos_cpt', 'id' => 'cpt_id', 'nombre' => 'cpt_nombre', 'clave' => 'cpt_clave', 'deleted' => 'cpt_deleted'],
             'motivos' => ['table' => 'tbl_motivos_mtv', 'id' => 'mtv_id', 'nombre' => 'mtv_nombre', 'clave' => 'mtv_clave', 'deleted' => 'mtv_deleted'],
             default => throw new \InvalidArgumentException('Tipo de catálogo no soportado.'),

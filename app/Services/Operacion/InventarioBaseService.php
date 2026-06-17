@@ -74,6 +74,12 @@ class InventarioBaseService
                 ->where('ctg_estatus', 'activo')
                 ->orderBy('ctg_nombre')
                 ->get(['ctg_id', 'ctg_lna_id', 'ctg_nombre']),
+            'descripciones' => DB::table('tbl_descripciones_dsc')
+                ->where('dsc_deleted', false)
+                ->whereNull('dsc_deleted_at')
+                ->where('dsc_estatus', 'activo')
+                ->orderBy('dsc_nombre')
+                ->get(['dsc_id', 'dsc_nombre']),
             'motivos' => DB::table('tbl_motivos_mtv')
                 ->where('mtv_deleted', false)
                 ->whereNull('mtv_deleted_at')
@@ -128,6 +134,7 @@ class InventarioBaseService
             ->when(!empty($filtros['prd_mdl_id']), fn ($q) => $q->where('prd_mdl_id', (int) $filtros['prd_mdl_id']))
             ->when(!empty($filtros['prd_lna_id']), fn ($q) => $q->where('prd_lna_id', (int) $filtros['prd_lna_id']))
             ->when(!empty($filtros['prd_ctg_id']), fn ($q) => $q->where('prd_ctg_id', (int) $filtros['prd_ctg_id']))
+            ->when(!empty($filtros['prd_dsc_id']), fn ($q) => $q->where('prd_dsc_id', (int) $filtros['prd_dsc_id']))
             ->when($termino !== '', function ($q) use ($termino): void {
                 $q->where(function ($sub) use ($termino): void {
                     $sub->where('prd_codigo', 'like', "%{$termino}%")
@@ -235,6 +242,7 @@ class InventarioBaseService
             ->leftJoin('tbl_modelos_mdl as mdl', 'mdl.mdl_id', '=', 'prd.prd_mdl_id')
             ->leftJoin('tbl_lineas_lna as lna', 'lna.lna_id', '=', 'prd.prd_lna_id')
             ->leftJoin('tbl_categorias_ctg as ctg', 'ctg.ctg_id', '=', 'prd.prd_ctg_id')
+            ->leftJoin('tbl_descripciones_dsc as dsc', 'dsc.dsc_id', '=', 'prd.prd_dsc_id')
             ->leftJoinSub($subSkus, 'skc', function ($join): void {
                 $join->on('skc.psk_prd_id', '=', 'prd.prd_id');
             })
@@ -245,6 +253,7 @@ class InventarioBaseService
             ->when(!empty($filtros['prd_mdl_id']), fn ($q) => $q->where('prd.prd_mdl_id', (int) $filtros['prd_mdl_id']))
             ->when(!empty($filtros['prd_lna_id']), fn ($q) => $q->where('prd.prd_lna_id', (int) $filtros['prd_lna_id']))
             ->when(!empty($filtros['prd_ctg_id']), fn ($q) => $q->where('prd.prd_ctg_id', (int) $filtros['prd_ctg_id']))
+            ->when(!empty($filtros['prd_dsc_id']), fn ($q) => $q->where('prd.prd_dsc_id', (int) $filtros['prd_dsc_id']))
             ->when($conBuscar && !empty($filtros['buscar']), function ($q) use ($filtros): void {
                 $buscar = trim((string) $filtros['buscar']);
                 $q->where(function ($sub) use ($buscar): void {
@@ -253,7 +262,8 @@ class InventarioBaseService
                         ->orWhere('mrc.mrc_nombre', 'like', "%{$buscar}%")
                         ->orWhere('mdl.mdl_nombre', 'like', "%{$buscar}%")
                         ->orWhere('lna.lna_nombre', 'like', "%{$buscar}%")
-                        ->orWhere('ctg.ctg_nombre', 'like', "%{$buscar}%");
+                        ->orWhere('ctg.ctg_nombre', 'like', "%{$buscar}%")
+                        ->orWhere('dsc.dsc_nombre', 'like', "%{$buscar}%");
                 });
             });
     }
@@ -271,10 +281,12 @@ class InventarioBaseService
             'prd.prd_mdl_id',
             'prd.prd_lna_id',
             'prd.prd_ctg_id',
+            'prd.prd_dsc_id',
             'mrc.mrc_nombre as marca_nombre',
             'mdl.mdl_nombre as modelo_nombre',
             'lna.lna_nombre as linea_nombre',
             'ctg.ctg_nombre as categoria_nombre',
+            'dsc.dsc_nombre as descripcion_nombre',
             DB::raw('COALESCE(skc.skus_activos, 0) as skus_activos'),
         ];
     }
@@ -694,6 +706,7 @@ class InventarioBaseService
                 'prd_mdl_id' => $filtros['back_prd_mdl_id'] ?? null,
                 'prd_lna_id' => $filtros['back_prd_lna_id'] ?? null,
                 'prd_ctg_id' => $filtros['back_prd_ctg_id'] ?? null,
+                'prd_dsc_id' => $filtros['back_prd_dsc_id'] ?? null,
                 'prd_id' => $filtros['back_prd_id'] ?? null,
                 'prd_text' => $filtros['back_prd_text'] ?? null,
                 'buscar' => $filtros['back_buscar'] ?? null,
@@ -727,6 +740,7 @@ class InventarioBaseService
             ->when(!empty($filtros['prd_mdl_id']), fn ($q) => $q->where('prd.prd_mdl_id', (int) $filtros['prd_mdl_id']))
             ->when(!empty($filtros['prd_lna_id']), fn ($q) => $q->where('prd.prd_lna_id', (int) $filtros['prd_lna_id']))
             ->when(!empty($filtros['prd_ctg_id']), fn ($q) => $q->where('prd.prd_ctg_id', (int) $filtros['prd_ctg_id']))
+            ->when(!empty($filtros['prd_dsc_id']), fn ($q) => $q->where('prd.prd_dsc_id', (int) $filtros['prd_dsc_id']))
             ->when(!empty($filtros['fecha_desde']), fn ($q) => $q->whereDate('min.min_fecha_movimiento', '>=', $filtros['fecha_desde']))
             ->when(!empty($filtros['fecha_hasta']), fn ($q) => $q->whereDate('min.min_fecha_movimiento', '<=', $filtros['fecha_hasta']))
             ->when(!empty($filtros['buscar']), function ($q) use ($filtros): void {

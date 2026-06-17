@@ -335,6 +335,15 @@
                                     </select>
                                 </div>
                                 <div class="desktop-field">
+                                    <label>Descripción</label>
+                                    <select name="prd_dsc_id" id="prd_dsc_id">
+                                        <option value="">Selecciona una descripción</option>
+                                        @foreach($opciones['descripciones'] as $item)
+                                            <option value="{{ $item->dsc_id }}">{{ $item->dsc_nombre }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="desktop-field">
                                     <label>Unidad de venta</label>
                                     <select name="prd_umd_id" id="prd_umd_id" required>
                                         <option value="">Selecciona una unidad</option>
@@ -978,6 +987,7 @@
                 $('#prd_prv_id').val(String(data.prd_prv_id || ''));
                 $('#prd_lna_id').val(String(data.prd_lna_id || ''));
                 $('#prd_ctg_id').val(String(data.prd_ctg_id || ''));
+                $('#prd_dsc_id').val(String(data.prd_dsc_id || ''));
                 $('#prd_umd_id').val(String(data.prd_umd_id || ''));
                 $('#prd_estatus').val(data.prd_estatus || 'activo');
                 $('input[name="prd_tipo"][value="' + (data.prd_tipo || 'simple') + '"]').prop('checked', true);
@@ -1034,6 +1044,7 @@
                     ['Stock mínimo', String(data.prd_stock_minimo || 0)],
                     ['Stock máximo', String(data.prd_stock_maximo || 0)],
                     ['Estado', data.prd_estatus === 'activo' ? 'Activo' : 'Inactivo'],
+                    ['Descripción catálogo', data.descripcion_catalogo || '-'],
                     ['Almacenes', (data.almacen_ids || []).join(', ') || '-', true],
                     ['Descripción', data.prd_descripcion || '-', true]
                 ];

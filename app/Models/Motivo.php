@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasLogicalDeletion;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -10,6 +11,11 @@ class Motivo extends Model
 {
     use HasFactory;
     use HasLogicalDeletion;
+
+    public const LOGICAL_DELETION_UNIQUE_COLUMNS = [
+        'mtv_nombre' => 120,
+        'mtv_clave' => 40,
+    ];
 
     public const CREATED_AT = 'mtv_created_at';
     public const UPDATED_AT = 'mtv_updated_at';
@@ -26,4 +32,20 @@ class Motivo extends Model
         'mtv_created_by_usr_id',
         'mtv_updated_by_usr_id',
     ];
+
+    protected function mtvNombre(): Attribute
+    {
+        return Attribute::make(
+            get: fn ($value) => is_string($value) ? mb_strtoupper($value) : $value,
+            set: fn ($value) => is_string($value) ? mb_strtoupper(trim($value)) : $value,
+        );
+    }
+
+    protected function mtvClave(): Attribute
+    {
+        return Attribute::make(
+            get: fn ($value) => is_string($value) ? mb_strtoupper($value) : $value,
+            set: fn ($value) => is_string($value) ? mb_strtoupper(trim($value)) : $value,
+        );
+    }
 }
