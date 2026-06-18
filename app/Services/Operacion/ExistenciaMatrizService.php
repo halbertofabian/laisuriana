@@ -167,6 +167,7 @@ class ExistenciaMatrizService
                 'modelo_nombre' => (string) ($fila->modelo_nombre ?? ''),
                 'linea_nombre' => (string) ($fila->linea_nombre ?? ''),
                 'concepto_nombre' => (string) ($fila->concepto_nombre ?? ''),
+                'descripcion_nombre' => (string) ($fila->descripcion_nombre ?? ''),
                 'color_nombre' => (string) ($fila->color_nombre ?? 'Sin color'),
                 'color_vat_id' => $colorId > 0 ? $colorId : null,
                 'sku_total' => $skuTotal,
@@ -411,6 +412,7 @@ class ExistenciaMatrizService
                 'mdl.mdl_nombre',
                 'lna.lna_nombre',
                 'ctg.ctg_nombre',
+                'dsc.dsc_nombre',
                 'color.vat_id',
                 'color.vat_valor'
             )
@@ -425,6 +427,7 @@ class ExistenciaMatrizService
             DB::raw("COALESCE(mdl.mdl_nombre, '') as modelo_nombre"),
             DB::raw("COALESCE(lna.lna_nombre, '') as linea_nombre"),
             DB::raw("COALESCE(ctg.ctg_nombre, '') as concepto_nombre"),
+            DB::raw("COALESCE(dsc.dsc_nombre, '') as descripcion_nombre"),
             DB::raw('COALESCE(color.vat_id, 0) as color_vat_id'),
             DB::raw("COALESCE(color.vat_valor, 'Sin color') as color_nombre"),
             DB::raw('COUNT(psk.psk_id) as sku_total'),

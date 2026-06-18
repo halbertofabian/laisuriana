@@ -24,7 +24,11 @@ class ProductoSkuService
     {
         $query = ProductoSku::query()
             ->with([
-                'producto:prd_id,prd_codigo,prd_nombre',
+                'producto:prd_id,prd_codigo,prd_nombre,prd_mrc_id,prd_mdl_id,prd_ctg_id,prd_dsc_id',
+                'producto.marca:mrc_id,mrc_nombre',
+                'producto.modelo:mdl_id,mdl_nombre',
+                'producto.categoria:ctg_id,ctg_nombre',
+                'producto.descripcionCatalogo:dsc_id,dsc_nombre',
                 'valoresAtributo:vat_id,vat_atr_id,vat_valor,vat_clave',
                 'valoresAtributo.atributo:atr_id,atr_nombre,atr_clave',
             ])
@@ -57,11 +61,12 @@ class ProductoSkuService
     {
         $query = ProductoSku::query()
             ->with([
-                'producto:prd_id,prd_codigo,prd_nombre,prd_mrc_id,prd_mdl_id,prd_lna_id,prd_ctg_id',
+                'producto:prd_id,prd_codigo,prd_nombre,prd_mrc_id,prd_mdl_id,prd_lna_id,prd_ctg_id,prd_dsc_id',
                 'producto.marca:mrc_id,mrc_nombre',
                 'producto.modelo:mdl_id,mdl_nombre',
                 'producto.linea:lna_id,lna_nombre',
                 'producto.categoria:ctg_id,ctg_nombre',
+                'producto.descripcionCatalogo:dsc_id,dsc_nombre',
                 'valoresAtributo:vat_id,vat_atr_id,vat_valor,vat_clave',
                 'valoresAtributo.atributo:atr_id,atr_nombre,atr_clave',
             ])
@@ -136,6 +141,7 @@ class ProductoSkuService
                     'modelo_nombre' => (string) ($producto->modelo?->mdl_nombre ?? ''),
                     'linea_nombre' => (string) ($producto->linea?->lna_nombre ?? ''),
                     'concepto_nombre' => (string) ($producto->categoria?->ctg_nombre ?? ''),
+                    'descripcion_catalogo' => (string) ($producto->descripcionCatalogo?->dsc_nombre ?? ''),
                     'color_nombre' => $colorNombre,
                     'color_vat_id' => $colorId > 0 ? $colorId : null,
                     'variantes' => [],

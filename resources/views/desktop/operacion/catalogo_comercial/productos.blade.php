@@ -246,10 +246,9 @@
             <table id="desktop-productos-table" class="desktop-list">
                 <thead>
                     <tr>
-                        <th>Código</th>
                         <th>Producto</th>
                         <th>Detalles</th>
-                        <th>Categoría</th>
+                        <th>Línea</th>
                         <th>Corridas</th>
                         <th style="width:104px;">Estado</th>
                         <th style="width:56px; text-align:right;">Acciones</th>
@@ -702,34 +701,43 @@
                     },
                     columns: [
                         {
-                            data: 'prd_codigo',
-                            render: function (value, type, row) {
-                                return '<span class="desktop-list__name">' + escapeHtml(value || '-') + '</span>' +
-                                    '<span class="desktop-list__meta">' + escapeHtml(row.prd_codigo_barras || 'Sin código de barras') + '</span>';
-                            }
-                        },
-                        {
                             data: 'prd_nombre',
                             render: function (value, type, row) {
+                                const detalleProducto = [
+                                    row.marca || 'S/M',
+                                    row.modelo || 'S/Mo',
+                                    row.categoria || 'S/C',
+                                    row.descripcion_catalogo || 'S/D',
+                                    row.prd_codigo || 'S/CI'
+                                ].join(' - ');
+
                                 return '<div class="desktop-cell-primary">' +
                                     '<span class="desktop-avatar-sm">' + escapeHtml(initials(value)) + '</span>' +
                                     '<span><span class="desktop-list__name">' + escapeHtml(value) + '</span>' +
-                                    '<span class="desktop-list__meta">' + escapeHtml(row.marca || 'Sin marca') + (row.proveedor ? ' · ' + escapeHtml(row.proveedor) : '') + '</span></span></div>';
+                                    '<span class="desktop-list__meta">' + escapeHtml(detalleProducto) + '</span></span></div>';
                             }
                         },
                         {
                             data: null,
                             render: function (row) {
+                                const costoMinimo = row.costo_minimo_sku !== null && row.costo_minimo_sku !== undefined
+                                    ? Number(row.costo_minimo_sku)
+                                    : Number(row.prd_costo || 0);
+                                const costoMaximo = row.costo_maximo_sku !== null && row.costo_maximo_sku !== undefined
+                                    ? Number(row.costo_maximo_sku)
+                                    : Number(row.prd_costo || 0);
+                                const costoTexto = costoMinimo === costoMaximo
+                                    ? '$' + escapeHtml(costoMinimo.toFixed(2))
+                                    : '$' + escapeHtml(costoMinimo.toFixed(2)) + ' a $' + escapeHtml(costoMaximo.toFixed(2));
+
                                 return '<span class="desktop-list__name">$' + escapeHtml(Number(row.prd_precio_base || 0).toFixed(2)) + '</span>' +
-                                    '<span class="desktop-list__meta">Costo $' + escapeHtml(Number(row.prd_costo || 0).toFixed(2)) + ' · ' + escapeHtml(row.unidad || 'Sin unidad') + '</span>';
+                                    '<span class="desktop-list__meta">Costo ' + costoTexto + ' · ' + escapeHtml(row.unidad || 'Sin unidad') + '</span>';
                             }
                         },
                         {
                             data: null,
                             render: function (row) {
-                                const categoria = [row.linea, row.categoria].filter(Boolean).join(' / ');
-                                return '<span class="desktop-list__name">' + escapeHtml(categoria || 'Sin clasificación') + '</span>' +
-                                    '<span class="desktop-list__meta">' + escapeHtml(row.prd_clave_sat || 'Sin clave SAT') + '</span>';
+                                return '<span class="desktop-list__name">' + escapeHtml(row.linea || 'Sin linea') + '</span>';
                             }
                         },
                         {

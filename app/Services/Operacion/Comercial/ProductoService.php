@@ -33,6 +33,7 @@ class ProductoService
         return Producto::query()
             ->with([
                 'marca:mrc_id,mrc_nombre',
+                'modelo:mdl_id,mdl_nombre',
                 'linea:lna_id,lna_nombre',
                 'proveedor:prv_id,prv_nombre_empresa',
                 'categoria:ctg_id,ctg_nombre',
@@ -45,6 +46,23 @@ class ProductoService
                 'skus as skus_total' => fn ($query) => $query->where('psk_deleted', false)->whereNull('psk_deleted_at'),
                 'skus as skus_activos' => fn ($query) => $query->where('psk_deleted', false)->whereNull('psk_deleted_at')->where('psk_estatus', 'activo'),
             ])
+            ->select('tbl_productos_prd.*')
+            ->selectSub(
+                ProductoSku::query()
+                    ->selectRaw('MIN(psk_costo)')
+                    ->whereColumn('psk_prd_id', 'tbl_productos_prd.prd_id')
+                    ->where('psk_deleted', false)
+                    ->whereNull('psk_deleted_at'),
+                'costo_minimo_sku'
+            )
+            ->selectSub(
+                ProductoSku::query()
+                    ->selectRaw('MAX(psk_costo)')
+                    ->whereColumn('psk_prd_id', 'tbl_productos_prd.prd_id')
+                    ->where('psk_deleted', false)
+                    ->whereNull('psk_deleted_at'),
+                'costo_maximo_sku'
+            )
             ->when(!empty($filtros['buscar']), function ($query) use ($filtros): void {
                 $buscar = trim((string) $filtros['buscar']);
                 $query->where(function ($sub) use ($buscar): void {

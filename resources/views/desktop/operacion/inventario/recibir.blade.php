@@ -75,9 +75,10 @@
         /* ===== Matriz (captura) — más aire, menos "Excel" ===== */
         .desktop-rcb-matrix { display: flex; flex-direction: column; gap: 16px; }
         .desktop-rcb-mp { border: 1px solid var(--stroke); border-radius: var(--r-md); overflow: hidden; }
-        .desktop-rcb-mp__head { display: flex; align-items: baseline; gap: 8px; padding: 4px 10px; background: var(--surface-alt); border-bottom: 1px solid var(--divider); }
+        .desktop-rcb-mp__head { display: flex; align-items: flex-start; gap: 8px; padding: 6px 10px; background: var(--surface-alt); border-bottom: 1px solid var(--divider); }
+        .desktop-rcb-mp__meta { display: grid; gap: 1px; min-width: 0; }
         .desktop-rcb-mp__name { font-weight: 700; font-size: .82rem; }
-        .desktop-rcb-mp__brand { font-size: .73rem; color: var(--text-2); }
+        .desktop-rcb-mp__sub { font-size: .73rem; color: var(--text-2); line-height: 1.25; }
         .desktop-rcb-mp__skus { margin-left: auto; font-size: .72rem; color: var(--text-3); font-weight: 600; white-space: nowrap; }
         .desktop-rcb-mwrap { overflow-x: auto; }
         .desktop-rcb-mtable { border-collapse: collapse; font-size: .8rem; width: 100%; }
@@ -839,7 +840,15 @@
                             }).join('') + '</tr>';
                     }).join('');
 
-                    return '<div class="desktop-rcb-mp" data-prd="' + p.prd_id + '"><div class="desktop-rcb-mp__head"><span class="desktop-rcb-mp__name">' + esc(p.prd_nombre) + '</span><span class="desktop-rcb-mp__brand">' + esc(p.marca_nombre || '') + '</span><span class="desktop-rcb-mp__skus">' + lineas.length + ' SKU</span></div><div class="desktop-rcb-mwrap"><table class="desktop-rcb-mtable"><thead>' + thead + '</thead><tbody>' + costrow + filas + '</tbody></table></div></div>';
+                    const metaProducto = [
+                        p.marca_nombre || 'S/M',
+                        p.modelo_nombre || 'S/Mo',
+                        p.concepto_nombre || 'S/C',
+                        p.descripcion_nombre || 'S/D',
+                        p.prd_codigo || 'S/CI'
+                    ].join(' · ');
+
+                    return '<div class="desktop-rcb-mp" data-prd="' + p.prd_id + '"><div class="desktop-rcb-mp__head"><div class="desktop-rcb-mp__meta"><span class="desktop-rcb-mp__name">' + esc(p.prd_nombre) + '</span><span class="desktop-rcb-mp__sub">' + esc(metaProducto) + '</span></div><span class="desktop-rcb-mp__skus">' + lineas.length + ' SKU</span></div><div class="desktop-rcb-mwrap"><table class="desktop-rcb-mtable"><thead>' + thead + '</thead><tbody>' + costrow + filas + '</tbody></table></div></div>';
                 }).join('');
 
                 $shell.html(html || '<div class="desktop-rcb-empty">No hay variantes que coincidan con los atributos seleccionados.</div>');
@@ -1006,13 +1015,18 @@
             function rowProducto(p) {
                 const yaAgregado = !!state.meta[p.id];
                 const checked = (prodSel.has(Number(p.id)) || yaAgregado) ? 'checked' : '';
-                const meta = (p.prd_tipo === 'variable' ? 'Variable' : 'Simple') + ' · ' + (p.skus_activos || 0) + ' SKU' +
-                    (p.marca_nombre ? ' · ' + p.marca_nombre : '');
+                const meta = [
+                    p.marca_nombre || 'S/M',
+                    p.modelo_nombre || 'S/Mo',
+                    p.concepto_nombre || 'S/C',
+                    p.descripcion_nombre || 'S/D',
+                    p.prd_codigo || 'S/CI'
+                ].join(' · ');
                 return '<label class="desktop-rcb-prowitem' + (yaAgregado ? ' is-added' : '') + '">' +
                     '<input type="checkbox" data-prd="' + p.id + '" ' + checked + (yaAgregado ? ' disabled' : '') + '>' +
                     '<span class="desktop-rcb-prowitem__main">' +
                         '<span class="desktop-rcb-prowitem__name">' + esc(p.prd_nombre || p.text) + '</span>' +
-                        '<span class="desktop-rcb-prowitem__meta">' + esc(p.prd_codigo || '') + ' · ' + esc(meta) + '</span>' +
+                        '<span class="desktop-rcb-prowitem__meta">' + esc(meta) + '</span>' +
                     '</span>' +
                     (yaAgregado ? '<span class="desktop-rcb-prowitem__tag">Agregado</span>' : '') +
                 '</label>';

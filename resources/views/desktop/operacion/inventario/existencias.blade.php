@@ -669,13 +669,18 @@
                 return $('<div>').text(text ?? '').html();
             }
 
-            // Celda Producto: máximo 2 líneas (título + marca·código·línea·concepto).
+            // Celda Producto: 2 líneas compactas con la misma composición usada en catálogo.
             // Solo presentación; las columnas originales siguen existiendo ocultas
             // para no alterar el mapeo de orden server-side por índice de columna.
             function renderProducto(_, __, row) {
                 const title = row.producto_nombre || row.concepto_nombre || '-';
-                const sub = [row.marca_nombre, row.linea_nombre, row.concepto_nombre, row.producto_codigo]
-                    .filter(Boolean).join(' · ');
+                const sub = [
+                    row.marca_nombre || 'S/M',
+                    row.modelo_nombre || 'S/Mo',
+                    row.concepto_nombre || 'S/C',
+                    row.descripcion_nombre || 'S/D',
+                    row.producto_codigo || 'S/CI'
+                ].join(' · ');
                 const tip = title + (sub ? ' · ' + sub : '');
                 return '<div class="desktop-inv-prod" title="' + escapeHtml(tip) + '">' +
                     '<span class="desktop-inv-prod__title">' + escapeHtml(title) + '</span>' +

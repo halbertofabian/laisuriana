@@ -120,7 +120,12 @@ class InventarioBaseService
         $porPagina = max(10, min($porPagina, 50));
 
         $query = Producto::query()
-            ->with('marca:mrc_id,mrc_nombre')
+            ->with([
+                'marca:mrc_id,mrc_nombre',
+                'modelo:mdl_id,mdl_nombre',
+                'categoria:ctg_id,ctg_nombre',
+                'descripcionCatalogo:dsc_id,dsc_nombre',
+            ])
             ->withCount([
                 'skus as skus_activos' => fn ($q) => $q
                     ->where('psk_deleted', false)
@@ -164,6 +169,9 @@ class InventarioBaseService
             'prd_costo' => (float) ($producto->prd_costo ?? 0),
             'prd_precio_base' => (float) ($producto->prd_precio_base ?? 0),
             'marca_nombre' => (string) ($producto->marca?->mrc_nombre ?? ''),
+            'modelo_nombre' => (string) ($producto->modelo?->mdl_nombre ?? ''),
+            'concepto_nombre' => (string) ($producto->categoria?->ctg_nombre ?? ''),
+            'descripcion_nombre' => (string) ($producto->descripcionCatalogo?->dsc_nombre ?? ''),
         ])->values()->all();
 
         return [
@@ -347,6 +355,9 @@ class InventarioBaseService
         $producto = Producto::query()
             ->with([
                 'marca:mrc_id,mrc_nombre',
+                'modelo:mdl_id,mdl_nombre',
+                'categoria:ctg_id,ctg_nombre',
+                'descripcionCatalogo:dsc_id,dsc_nombre',
                 'atributos:atr_id,atr_nombre',
                 'skus' => fn ($query) => $query
                     ->where('psk_deleted', false)
@@ -422,6 +433,9 @@ class InventarioBaseService
                 'prd_nombre' => $producto->prd_nombre,
                 'prd_tipo' => $producto->prd_tipo,
                 'marca_nombre' => (string) ($producto->marca?->mrc_nombre ?? ''),
+                'modelo_nombre' => (string) ($producto->modelo?->mdl_nombre ?? ''),
+                'concepto_nombre' => (string) ($producto->categoria?->ctg_nombre ?? ''),
+                'descripcion_nombre' => (string) ($producto->descripcionCatalogo?->dsc_nombre ?? ''),
                 'prd_costo' => (float) ($producto->prd_costo ?? 0),
                 'prd_precio_base' => (float) ($producto->prd_precio_base ?? 0),
             ],
@@ -1495,7 +1509,11 @@ class InventarioBaseService
         $skuIds = $movimientos->pluck('min_psk_id')->unique()->values();
         $skus = ProductoSku::query()
             ->with([
-                'producto:prd_id,prd_codigo,prd_nombre,prd_tipo,prd_precio_base,prd_costo',
+                'producto:prd_id,prd_codigo,prd_nombre,prd_tipo,prd_precio_base,prd_costo,prd_mrc_id,prd_mdl_id,prd_ctg_id,prd_dsc_id',
+                'producto.marca:mrc_id,mrc_nombre',
+                'producto.modelo:mdl_id,mdl_nombre',
+                'producto.categoria:ctg_id,ctg_nombre',
+                'producto.descripcionCatalogo:dsc_id,dsc_nombre',
                 'valoresAtributo' => fn ($q) => $q
                     ->where('vat_deleted', false)
                     ->whereNull('vat_deleted_at')
@@ -1522,7 +1540,15 @@ class InventarioBaseService
 
             $producto = $sku->producto;
             $productoId = (int) $producto->prd_id;
-            $productoLabel = trim((string) $producto->prd_codigo . ' - ' . (string) $producto->prd_nombre);
+            $productoMeta = implode(' · ', [
+                (string) ($producto->marca?->mrc_nombre ?? 'S/M'),
+                (string) ($producto->modelo?->mdl_nombre ?? 'S/Mo'),
+                (string) ($producto->categoria?->ctg_nombre ?? 'S/C'),
+                (string) ($producto->descripcionCatalogo?->dsc_nombre ?? 'S/D'),
+                (string) ($producto->prd_codigo ?? 'S/CI'),
+            ]);
+            $productoLabel = '<span style="font-weight:bold;">' . $this->esc((string) $producto->prd_nombre) . '</span><br>' .
+                '<span style="font-size:7px;color:#64748b;">' . $this->esc($productoMeta) . '</span>';
             $tipoProducto = (string) ($producto->prd_tipo ?? 'simple');
 
             $atributosById = [];
@@ -1543,19 +1569,54 @@ class InventarioBaseService
             $colLabel = 'Existencia';
             $compatibleDominante = false;
 
-            if ($tipoProducto === 'variable' && $dominanteAtrId > 0 && isset($atributosById[$dominanteAtrId])) {
-                $compatibleDominante = true;
-                $dominanteNombre = (string) $atributosById[$dominanteAtrId]['nombre'];
-                $dominanteValor = (string) $atributosById[$dominanteAtrId]['valor'];
+            if ($tipoProducto === 'variable') {
+                $colorAtrId = null;
+                $tallaAtrId = null;
 
-                $resto = collect($atributosById)
-                    ->reject(fn ($item, $id) => (int) $id === $dominanteAtrId)
-                    ->map(fn ($item) => (string) $item['valor'])
-                    ->values()
-                    ->all();
+                foreach ($atributosById as $atrId => $item) {
+                    $nombreAttr = (string) ($item['nombre'] ?? '');
+                    if ($colorAtrId === null && $this->esAtributoColor($nombreAttr)) {
+                        $colorAtrId = (int) $atrId;
+                    }
+                    if ($tallaAtrId === null && $this->esAtributoTalla($nombreAttr)) {
+                        $tallaAtrId = (int) $atrId;
+                    }
+                }
 
-                $colLabel = !empty($resto) ? implode(' / ', $resto) : 'Existencia';
-                $colKey = !empty($resto) ? implode('||', $resto) : '__base__';
+                $rowAtrId = $colorAtrId ?? ($dominanteAtrId > 0 && isset($atributosById[$dominanteAtrId]) ? $dominanteAtrId : null);
+                $colAtrId = $tallaAtrId;
+
+                if ($rowAtrId !== null && isset($atributosById[$rowAtrId])) {
+                    $compatibleDominante = true;
+                    $dominanteNombre = (string) $atributosById[$rowAtrId]['nombre'];
+                    $dominanteValor = (string) $atributosById[$rowAtrId]['valor'];
+
+                    $restoFila = collect($atributosById)
+                        ->reject(fn ($item, $id) => (int) $id === (int) $rowAtrId || (int) $id === (int) $colAtrId)
+                        ->map(fn ($item) => (string) $item['valor'])
+                        ->filter()
+                        ->values()
+                        ->all();
+
+                    if (!empty($restoFila)) {
+                        $dominanteValor .= ' / ' . implode(' / ', $restoFila);
+                    }
+                }
+
+                if ($colAtrId !== null && isset($atributosById[$colAtrId])) {
+                    $colLabel = (string) $atributosById[$colAtrId]['valor'];
+                    $colKey = $colLabel !== '' ? $colLabel : '__base__';
+                } elseif ($rowAtrId !== null) {
+                    $restoCol = collect($atributosById)
+                        ->reject(fn ($item, $id) => (int) $id === (int) $rowAtrId)
+                        ->map(fn ($item) => (string) $item['valor'])
+                        ->filter()
+                        ->values()
+                        ->all();
+
+                    $colLabel = !empty($restoCol) ? implode(' / ', $restoCol) : 'Existencia';
+                    $colKey = !empty($restoCol) ? implode('||', $restoCol) : '__base__';
+                }
             }
 
             if (!isset($columnasMap[$colKey])) {
@@ -1576,7 +1637,7 @@ class InventarioBaseService
                     'compatible_dominante' => $compatibleDominante || $tipoProducto === 'simple',
                 ];
                 $rowSort[$rowId] = [
-                    'producto' => mb_strtolower($productoLabel),
+                    'producto' => mb_strtolower(trim(strip_tags($productoLabel))),
                     'dominante' => mb_strtolower($dominanteValor),
                 ];
             }
@@ -1606,7 +1667,7 @@ class InventarioBaseService
             ]);
         }
 
-        asort($columnasMap);
+        uasort($columnasMap, fn ($a, $b) => strnatcasecmp((string) $a, (string) $b));
         uasort($filasMap, function (array $a, array $b): int {
             $cmpProducto = strcmp((string) mb_strtolower($a['producto']), (string) mb_strtolower($b['producto']));
             if ($cmpProducto !== 0) {
@@ -1888,7 +1949,7 @@ class InventarioBaseService
             // Producto: se muestra en cada fila pero visualmente agrupado por borde
             if ($esNuevoProducto) {
                 $html .= '<td style="' . $stProducto . 'background-color:' . $bgFila . ';font-weight:bold;' . $borderTopProducto . '">'
-                       . $this->esc((string) $row['producto']) . '</td>';
+                       . (string) $row['producto'] . '</td>';
             } else {
                 $html .= '<td style="' . $stProducto . 'background-color:' . $bgFila . ';border-top:1px dashed ' . $colorBorderTbl . ';">&nbsp;</td>';
             }

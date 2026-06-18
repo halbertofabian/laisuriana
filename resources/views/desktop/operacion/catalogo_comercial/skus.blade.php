@@ -210,14 +210,20 @@
             color: var(--text-3);
             border-bottom: 1px solid var(--stroke);
         }
-        /* Columna Producto: nombre + taxonomía + código en una sola línea, con ellipsis */
+        /* Columna Producto: nombre arriba y meta debajo para no truncar descripción */
         .desktop-sku-group-table td.is-clip {
-            max-width: 0;
+            min-width: 340px;
+            max-width: 560px;
             overflow: hidden;
-            text-overflow: ellipsis;
+            white-space: normal;
+        }
+        .desktop-sku-line {
+            display: grid;
+            gap: 2px;
+            line-height: 1.3;
         }
         .desktop-sku-line__name { font-weight: 600; color: var(--text); }
-        .desktop-sku-line__meta { color: var(--text-2); }
+        .desktop-sku-line__meta { color: var(--text-2); word-break: break-word; }
         .desktop-sku-line__code { color: var(--text-3); font-variant-numeric: tabular-nums; }
         .desktop-sku-line__sep { color: var(--text-3); margin: 0 6px; }
         /* Color en una sola línea */
@@ -487,8 +493,6 @@
                         <tr>
                             <th>Producto</th>
                             <th>SKU</th>
-                            <th>Barcode SKU</th>
-                            <th>Nombre</th>
                             <th>Combinación</th>
                             <th>Precio</th>
                             <th>Stock</th>
@@ -1005,15 +1009,21 @@
                         {
                             data: null,
                             render: function (row) {
+                                const metaProducto = [
+                                    row.marca_nombre || 'S/M',
+                                    row.modelo_nombre || 'S/Mo',
+                                    row.concepto_nombre || 'S/C',
+                                    row.descripcion_catalogo || 'S/D',
+                                    row.producto_codigo || 'S/CI'
+                                ].join(' · ');
+
                                 return '<div class="desktop-cell-primary">' +
                                     '<span class="desktop-avatar-sm">' + escapeHtml(initials(row.producto || row.producto_codigo)) + '</span>' +
                                     '<span><span class="desktop-list__name">' + escapeHtml(row.producto || 'Sin producto') + '</span>' +
-                                    '<span class="desktop-list__meta">' + escapeHtml(row.producto_codigo || 'Sin código') + '</span></span></div>';
+                                    '<span class="desktop-list__meta">' + escapeHtml(metaProducto) + '</span></span></div>';
                             }
                         },
                         { data: 'psk_codigo', render: function (v) { return '<span class="desktop-list__name">' + escapeHtml(v || '-') + '</span>'; } },
-                        { data: 'psk_codigo_barras', render: function (v) { return v ? escapeHtml(v) : '<span class="desktop-list__meta">Sin barcode</span>'; } },
-                        { data: 'psk_nombre', render: function (v) { return v ? escapeHtml(v) : '<span class="desktop-list__meta">Usa nombre del producto base</span>'; } },
                         { data: 'combinacion', orderable: false, searchable: false, render: renderCombinacion },
                         { data: 'psk_precio', render: function (v) { return '<span class="desktop-list__name">$' + escapeHtml(Number(v || 0).toFixed(2)) + '</span>'; } },
                         { data: null, render: function (row) { return '<span class="desktop-list__name">Min ' + escapeHtml(row.psk_stock_minimo ?? 0) + '</span><span class="desktop-list__meta">Max ' + escapeHtml(row.psk_stock_maximo ?? 0) + '</span>'; } },
@@ -1113,16 +1123,22 @@
                             '</button>';
                         }).join('');
 
-                        const sep = '<span class="desktop-sku-line__sep">·</span>';
                         const title = row.producto_nombre || row.concepto_nombre || row.marca_nombre || 'Sin producto';
-                        const taxoParts = [row.marca_nombre, row.modelo_nombre, row.linea_nombre, row.concepto_nombre].filter(Boolean);
-                        const lineParts = ['<span class="desktop-sku-line__name">' + escapeHtml(title) + '</span>'];
-                        if (taxoParts.length) lineParts.push('<span class="desktop-sku-line__meta">' + escapeHtml(taxoParts.join(' · ')) + '</span>');
-                        if (row.producto_codigo) lineParts.push('<span class="desktop-sku-line__code">' + escapeHtml(row.producto_codigo) + '</span>');
-                        const lineText = [title].concat(taxoParts).concat(row.producto_codigo ? [row.producto_codigo] : []).join(' · ');
+                        const metaProducto = [
+                            row.marca_nombre || 'S/M',
+                            row.modelo_nombre || 'S/Mo',
+                            row.concepto_nombre || 'S/C',
+                            row.descripcion_catalogo || 'S/D',
+                            row.producto_codigo || 'S/CI'
+                        ];
+                        const lineParts = '<div class="desktop-sku-line">' +
+                            '<span class="desktop-sku-line__name">' + escapeHtml(title) + '</span>' +
+                            '<span class="desktop-sku-line__meta">' + escapeHtml(metaProducto.join(' · ')) + '</span>' +
+                        '</div>';
+                        const lineText = [title].concat(metaProducto).join(' · ');
 
                         return '<tr>' +
-                            '<td class="is-clip" title="' + escapeHtml(lineText) + '">' + lineParts.join(sep) + '</td>' +
+                            '<td class="is-clip" title="' + escapeHtml(lineText) + '">' + lineParts + '</td>' +
                             '<td><span class="desktop-sku-color" title="' + escapeHtml(row.color_nombre || '') + '">' + escapeHtml(row.color_nombre || '—') + '</span></td>' +
                             '<td><div class="desktop-sku-strip">' + (pills || '<span class="desktop-list__meta">Sin variantes</span>') + '</div></td>' +
                         '</tr>';
