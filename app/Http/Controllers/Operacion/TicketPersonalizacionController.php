@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Operacion;
 
 use App\Http\Controllers\Controller;
 use App\Models\PosTicketConfiguracion;
+use App\Services\Operacion\TicketLogoService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -17,9 +18,9 @@ class TicketPersonalizacionController extends Controller
 
         return view('operacion.ticket_personalizacion.index', [
             'config' => $config,
-            'logoUrl' => $config->ptc_logo_path ? asset('storage/' . $config->ptc_logo_path) : null,
+            'logoUrl' => $config->ptc_logo_path ? '/storage/' . ltrim($config->ptc_logo_path, '/') : null,
             'preview' => [
-                'empresa' => config('app.name', 'La Suriana'),
+                'empresa' => 'Matriz Comitán',
                 'fecha' => now()->format('d/m/Y H:i'),
                 'almacen' => 'I. Suriana',
                 'cliente' => 'Cliente de ejemplo',
@@ -58,7 +59,7 @@ class TicketPersonalizacionController extends Controller
                 Storage::disk('public')->delete($config->ptc_logo_path);
             }
 
-            $payload['ptc_logo_path'] = $request->file('logo')->store('tickets/personalizacion', 'public');
+            $payload['ptc_logo_path'] = app(TicketLogoService::class)->store($request->file('logo'));
         }
 
         $config->fill($payload);

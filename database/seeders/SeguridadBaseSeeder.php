@@ -199,7 +199,7 @@ class SeguridadBaseSeeder extends Seeder
             [
                 'usr_nombre' => 'Administrador General',
                 'usr_email' => 'admin@lasuriana.local',
-                'usr_password' => Hash::make('Admin1234!'),
+                'usr_password' => Hash::make('12345678'),
                 'usr_estatus' => 'activo',
                 'usr_deleted' => false,
                 'usr_deleted_at' => null,

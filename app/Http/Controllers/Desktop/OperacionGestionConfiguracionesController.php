@@ -17,6 +17,7 @@ use App\Services\Operacion\AlmacenService;
 use App\Services\Operacion\CajaService;
 use App\Services\Operacion\ClienteService;
 use App\Services\Operacion\SucursalService;
+use App\Services\Operacion\TicketLogoService;
 use App\Services\Operacion\TipoAlmacenService;
 use App\Models\Almacen;
 use App\Models\PosTicketConfiguracion;
@@ -157,9 +158,9 @@ class OperacionGestionConfiguracionesController extends Controller
         return view('desktop.operacion.gestion_configuraciones.ticket', [
             'submenus' => $this->submenus(),
             'config' => $config,
-            'logoUrl' => $config->ptc_logo_path ? asset('storage/' . $config->ptc_logo_path) : null,
+            'logoUrl' => $config->ptc_logo_path ? '/storage/' . ltrim($config->ptc_logo_path, '/') : null,
             'preview' => [
-                'empresa' => config('app.name', 'La Suriana'),
+                'empresa' => 'Matriz Comitán',
                 'fecha' => now()->format('d/m/Y H:i'),
                 'almacen' => 'I. Suriana',
                 'cliente' => 'Cliente de ejemplo',
@@ -624,7 +625,7 @@ class OperacionGestionConfiguracionesController extends Controller
                 Storage::disk('public')->delete($config->ptc_logo_path);
             }
 
-            $payload['ptc_logo_path'] = $request->file('logo')->store('tickets/personalizacion', 'public');
+            $payload['ptc_logo_path'] = app(TicketLogoService::class)->store($request->file('logo'));
         }
 
         $config->fill($payload);

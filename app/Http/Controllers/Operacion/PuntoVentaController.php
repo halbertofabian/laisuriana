@@ -249,7 +249,7 @@ class PuntoVentaController extends Controller
         $altoBase = 165 + ($lineas * 12);
         $altoEncabezado = $ticketConfig?->ptc_texto_encabezado ? min(32, 8 + (int) ceil(mb_strlen((string) $ticketConfig->ptc_texto_encabezado) / 34) * 4) : 0;
         $altoPie = $ticketConfig?->ptc_texto_pie ? min(34, 8 + (int) ceil(mb_strlen((string) $ticketConfig->ptc_texto_pie) / 34) * 4) : 0;
-        $altoLogo = $ticketConfig?->ptc_logo_path ? 24 : 0;
+        $altoLogo = $ticketConfig?->ptc_logo_path ? 42 : 0;
         $alto = max(185, min(620, $altoBase + $altoEncabezado + $altoPie + $altoLogo));
 
         $pdf = new \TCPDF('P', 'mm', [80, $alto], true, 'UTF-8', false, false);
@@ -265,6 +265,7 @@ class PuntoVentaController extends Controller
 
         $fmt = static fn ($v) => number_format((float) $v, 2, '.', ',');
         $metodo = strtoupper((string) ($venta->psv_metodo_pago ?? ''));
+        $ticketBrand = 'Matriz Comitán';
         $fecha = optional($venta->psv_fecha_cobro)->format('d/m/Y H:i') ?? now()->format('d/m/Y H:i');
         $clienteNombre = trim((string) ($venta->cliente?->cli_razon_social
             ?: implode(' ', array_filter([
@@ -302,13 +303,13 @@ class PuntoVentaController extends Controller
 
         if ($ticketConfig?->ptc_logo_path) {
             $logoFile = storage_path('app/public/' . $ticketConfig->ptc_logo_path);
-            if (is_file($logoFile)) {
-                $pdf->Image($logoFile, 24, 5, 32, 16, '', '', '', false, 300, '', false, false, 0, false, false, false);
-                $pdf->Ln(18);
+            if (is_file($logoFile) && $this->tcpdfCanRenderLogo($logoFile)) {
+                $pdf->Image($logoFile, 9, 5, 62, 32, '', '', '', false, 300, '', false, false, 0, false, false, false);
+                $pdf->Ln(26);
             }
         }
 
-        $html = '<div style="text-align:center;font-size:11px;font-weight:bold;">' . e((string) config('app.name', 'La Suriana')) . '</div>';
+        $html = '<div style="text-align:center;font-size:12px;font-weight:bold;">' . e($ticketBrand) . '</div>';
         if ($ticketConfig?->ptc_texto_encabezado) {
             $html .= '<div style="font-size:7px;line-height:1.5;margin-top:3px;text-align:center;">' . nl2br(e((string) $ticketConfig->ptc_texto_encabezado)) . '</div>';
         }
@@ -430,5 +431,33 @@ class PuntoVentaController extends Controller
             ]);
 
         return response()->json(['data' => $rows]);
+    }
+
+    private function tcpdfCanRenderLogo(string $path): bool
+    {
+        if (!$this->isPngWithAlphaChannel($path)) {
+            return true;
+        }
+
+        return extension_loaded('gd') || extension_loaded('imagick');
+    }
+
+    private function isPngWithAlphaChannel(string $path): bool
+    {
+        $handle = @fopen($path, 'rb');
+        if (!$handle) {
+            return false;
+        }
+
+        $header = fread($handle, 26);
+        fclose($handle);
+
+        if (strlen($header) < 26 || substr($header, 0, 8) !== "\x89PNG\r\n\x1a\n") {
+            return false;
+        }
+
+        $colorType = ord($header[25]);
+
+        return in_array($colorType, [4, 6], true);
     }
 }
