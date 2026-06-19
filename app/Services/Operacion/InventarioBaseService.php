@@ -1237,6 +1237,793 @@ class InventarioBaseService
         ], false);
     }
 
+    public function descargarReporteRecepcionMercanciaTermicoPdf(Request $request, int $recepcionId): array
+    {
+        $recepcion = RecepcionMercancia::query()
+            ->with(['sucursal:scl_id,scl_nombre', 'almacen:alm_id,alm_nombre', 'proveedor:prv_id,prv_nombre_empresa'])
+            ->findOrFail($recepcionId);
+
+        $movimientos = MovimientoInventario::query()
+            ->with([
+                'sku:psk_id,psk_prd_id,psk_codigo,psk_nombre,psk_precio,psk_costo',
+                'sku.producto:prd_id,prd_codigo,prd_nombre,prd_precio_base,prd_costo',
+                'sku.valoresAtributo' => fn ($q) => $q
+                    ->where('vat_deleted', false)
+                    ->whereNull('vat_deleted_at')
+                    ->where('vat_estatus', 'activo')
+                    ->with(['atributo:atr_id,atr_nombre'])
+                    ->orderBy('vat_valor'),
+            ])
+            ->where('min_rme_id', $recepcionId)
+            ->where('min_deleted', false)
+            ->whereNull('min_deleted_at')
+            ->where('min_estatus', 'activo')
+            ->where('min_signo', '>', 0)
+            ->orderBy('min_id')
+            ->get();
+
+        if ($movimientos->isEmpty()) {
+            throw ValidationException::withMessages([
+                'recepcion' => 'La recepcion no tiene movimientos definitivos para generar reporte termico.',
+            ]);
+        }
+
+        $tipoEntrada = (string) ($recepcion->rme_documento_tipo ?? $movimientos->first()->min_documento_tipo ?? 'entrada_normal');
+        $tipoEntradaLabel = match ($tipoEntrada) {
+            'inventario_inicial' => 'Entrada normal (inventario inicial)',
+            'entrada_normal' => 'Entrada normal',
+            'compra_remision' => 'Compra con remision',
+            'compra_factura' => 'Compra con factura',
+            default => Str::headline(str_replace('_', ' ', $tipoEntrada)),
+        };
+
+        $subtotalMonetario = round((float) $movimientos->sum('min_subtotal_linea'), 2);
+        $descuentoTipo = (string) ($recepcion->rme_descuento_tipo ?? $movimientos->first()->min_descuento_tipo ?? 'ninguno');
+        $descuentoValor = round((float) ($recepcion->rme_descuento_valor ?? $movimientos->first()->min_descuento_valor ?? 0), 2);
+        $descuentoMonetario = round((float) $movimientos->sum('min_descuento_linea'), 2);
+        if ($descuentoMonetario <= 0 && $descuentoValor > 0) {
+            $descuentoMonetario = $descuentoTipo === 'porcentaje'
+                ? round($subtotalMonetario * ($descuentoValor / 100), 2)
+                : min($subtotalMonetario, $descuentoValor);
+        }
+        $fleteTotal = round((float) ($recepcion->rme_flete_total ?? $movimientos->first()->min_flete_total ?? 0), 2);
+        $ivaPorcentaje = round((float) ($recepcion->rme_iva_porcentaje ?? $movimientos->first()->min_iva_porcentaje ?? 0), 2);
+        $ivaMonetario = round((float) $movimientos->sum('min_iva_linea'), 2);
+        $totalMonetario = round((float) $movimientos->sum('min_total_linea'), 2);
+        if ($totalMonetario <= 0) {
+            $baseMonetaria = max(0, round($subtotalMonetario - $descuentoMonetario + $fleteTotal, 2));
+            $ivaMonetario = $tipoEntrada === 'compra_factura'
+                ? round($baseMonetaria * ($ivaPorcentaje / 100), 2)
+                : 0.0;
+            $totalMonetario = round($baseMonetaria + $ivaMonetario, 2);
+        }
+
+        $folioRecepcion = (string) ($recepcion->rme_folio ?? ('RME-' . $recepcionId));
+        $fechaCaptura = optional($recepcion->rme_fecha_captura ?? $movimientos->first()->min_fecha_movimiento)->format('d/m/Y H:i') ?? 'N/D';
+        $referencia = trim((string) ($recepcion->rme_documento_referencia ?? $movimientos->first()->min_documento_referencia ?? ''));
+        $observaciones = trim((string) ($recepcion->rme_observaciones ?? $movimientos->first()->min_observaciones ?? ''));
+        $totalArticulos = (float) $movimientos->sum('min_cantidad');
+
+        $columnasMap = [];
+        $filasMap = [];
+        foreach ($movimientos as $movimiento) {
+            $sku = $movimiento->sku;
+            $producto = $sku?->producto;
+            if (!$sku || !$producto) {
+                continue;
+            }
+
+            $color = 'GENERAL';
+            $talla = (string) ($sku->psk_codigo ?? 'SKU');
+            foreach ($sku->valoresAtributo as $valor) {
+                $atrNombre = (string) ($valor->atributo?->atr_nombre ?? '');
+                $atrValor = (string) ($valor->vat_valor ?? '-');
+                if ($this->esAtributoColor($atrNombre)) {
+                    $color = $atrValor;
+                    continue;
+                }
+                if ($this->esAtributoTalla($atrNombre)) {
+                    $talla = $atrValor;
+                }
+            }
+
+            $colKey = $talla !== '' ? $talla : (string) ($sku->psk_codigo ?? 'SKU');
+            $columnasMap[$colKey] = $colKey;
+
+            $rowKey = (int) $producto->prd_id . '|' . $color;
+            if (!isset($filasMap[$rowKey])) {
+                $filasMap[$rowKey] = [
+                    'producto' => (string) ($producto->prd_nombre ?? $sku->psk_nombre ?? 'Producto'),
+                    'codigo' => (string) ($producto->prd_codigo ?? $sku->psk_codigo ?? ''),
+                    'color' => $color,
+                    'cells' => [],
+                    'total' => 0.0,
+                ];
+            }
+
+            $cantidad = (float) $movimiento->min_cantidad;
+            $filasMap[$rowKey]['cells'][$colKey] = (float) ($filasMap[$rowKey]['cells'][$colKey] ?? 0) + $cantidad;
+            $filasMap[$rowKey]['total'] += $cantidad;
+        }
+
+        uasort($columnasMap, fn ($a, $b) => strnatcasecmp((string) $a, (string) $b));
+        uasort($filasMap, function (array $a, array $b): int {
+            $cmp = strnatcasecmp((string) $a['producto'], (string) $b['producto']);
+            return $cmp !== 0 ? $cmp : strnatcasecmp((string) $a['color'], (string) $b['color']);
+        });
+
+        $filas = array_values($filasMap);
+        $columnas = array_values($columnasMap);
+        $rowsPerStrip = 6;
+        $chunks = array_chunk($filas, $rowsPerStrip);
+        $totalPages = max(1, count($chunks));
+        $productoWidth = 56;
+        $colorWidth = 24;
+        $totalWidth = 16;
+        $colWidth = 10;
+        $pageWidth = max(240, 6 + $productoWidth + $colorWidth + $totalWidth + (count($columnas) * $colWidth));
+
+        $pdf = new TCPDF('L', 'mm', [$pageWidth, 80], true, 'UTF-8', false, false);
+        $pdf->SetCreator(config('app.name', 'La Suriana Retail'));
+        $pdf->SetAuthor((string) ($request->user()?->usr_nombre ?? config('app.name', 'La Suriana Retail')));
+        $pdf->SetTitle('Reporte termico de recepcion');
+        $pdf->SetSubject($folioRecepcion);
+        $pdf->setPrintHeader(false);
+        $pdf->setPrintFooter(false);
+        $pdf->SetMargins(3, 3, 3);
+        $pdf->SetAutoPageBreak(false, 0);
+        $pdf->SetDrawColor(0, 0, 0);
+        $pdf->SetLineWidth(0.12);
+        $pdf->SetTextColor(0, 0, 0);
+
+        $text = function (float $x, float $y, float $w, float $h, string $value, int|float $size = 6.2, string $style = '', string $align = 'L') use ($pdf): void {
+            $pdf->SetFont('helvetica', $style, $size);
+            $pdf->MultiCell($w, $h, $value, 0, $align, false, 1, $x, $y, true, 0, false, true, $h, 'T', true);
+        };
+
+        $cell = function (float $x, float $y, float $w, float $h, string $value, int|float $size = 6.2, string $style = '', string $align = 'L') use ($pdf): void {
+            $pdf->Rect($x, $y, $w, $h);
+            $pdf->SetFont('helvetica', $style, $size);
+            $pdf->MultiCell($w - 1.2, $h, $value, 0, $align, false, 1, $x + 0.6, $y + 0.25, true, 0, false, true, $h - 0.5, 'M', true);
+        };
+
+        foreach ($chunks as $pageIndex => $chunk) {
+            $pdf->AddPage();
+
+            $text(4, 4, 50, 10, "Consulta Entrada de\nMercancia", 10, 'B');
+            $text(4, 18, 72, 4, 'No. Entrada: ' . $folioRecepcion, 6.2, 'B');
+            $text(60, 4, 58, 14, "Fecha: {$fechaCaptura}\nTienda: " . (string) ($recepcion->sucursal?->scl_nombre ?? 'N/D') . "\nAlmacen: " . (string) ($recepcion->almacen?->alm_nombre ?? 'N/D'), 6.4, 'B');
+            $text(124, 4, 70, 14, "Proveedor: " . (string) ($recepcion->proveedor?->prv_nombre_empresa ?? 'N/D') . "\nReferencia: " . ($referencia !== '' ? $referencia : '-') . "\nComentario: " . ($observaciones !== '' ? $observaciones : '-'), 6.2, 'B');
+            $text(200, 4, 50, 10, "Linea: TODAS LAS LINEAS\nMarca: TODAS LAS MARCAS", 6.4, 'B');
+            $text($pageWidth - 42, 4, 38, 6, 'Pagina ' . ($pageIndex + 1) . ' de ' . $totalPages, 6.8, 'B', 'R');
+
+            $x = 4;
+            $y = 24;
+            $headerH = 5;
+            $rowH = 7.2;
+            $cell($x, $y, $productoWidth, $headerH, 'Producto', 6.3, 'B');
+            $x += $productoWidth;
+            $cell($x, $y, $colorWidth, $headerH, 'Color', 6.3, 'B');
+            $x += $colorWidth;
+            foreach ($columnas as $col) {
+                $cell($x, $y, $colWidth, $headerH, (string) $col, 6.1, 'B', 'C');
+                $x += $colWidth;
+            }
+            $cell($x, $y, $totalWidth, $headerH, 'Total', 6.2, 'B', 'C');
+
+            $y += $headerH;
+            foreach ($chunk as $row) {
+                $x = 4;
+                $productoTexto = trim((string) $row['producto'] . "\n" . (string) $row['codigo']);
+                $cell($x, $y, $productoWidth, $rowH, $productoTexto, 6.2, 'B');
+                $x += $productoWidth;
+                $cell($x, $y, $colorWidth, $rowH, (string) $row['color'], 6.2);
+                $x += $colorWidth;
+                foreach ($columnas as $col) {
+                    $valor = (float) ($row['cells'][$col] ?? 0);
+                    $cell($x, $y, $colWidth, $rowH, $valor > 0 ? number_format($valor, 0, '.', ',') : '', 6.4, '', 'C');
+                    $x += $colWidth;
+                }
+                $cell($x, $y, $totalWidth, $rowH, number_format((float) $row['total'], 0, '.', ','), 6.5, 'B', 'R');
+                $y += $rowH;
+            }
+
+            if ($pageIndex === $totalPages - 1) {
+                $x = 4;
+                $summaryW = $productoWidth + $colorWidth + (count($columnas) * $colWidth);
+                $cell($x, $y, $summaryW, 5.5, 'Total articulos', 6.4, 'B', 'R');
+                $cell($x + $summaryW, $y, $totalWidth, 5.5, number_format($totalArticulos, 0, '.', ','), 6.6, 'B', 'R');
+                $text(4, 70, 42, 5, 'TIENDAS L. SURIANA', 6.8, 'B');
+                $text(60, 70, 55, 5, 'Subtotal: $ ' . number_format($subtotalMonetario, 2, '.', ',') . '   Desc: $ ' . number_format($descuentoMonetario, 2, '.', ','), 6.4);
+                $text(126, 70, 58, 5, 'Flete: $ ' . number_format($fleteTotal, 2, '.', ',') . '   IVA: $ ' . number_format($ivaMonetario, 2, '.', ','), 6.4);
+                $text($pageWidth - 52, 70, 48, 5, 'Total: $ ' . number_format($totalMonetario, 2, '.', ','), 7.0, 'B', 'R');
+            } else {
+                $text(4, 70, 42, 5, 'TIENDAS L. SURIANA', 6.8, 'B');
+            }
+        }
+
+        $safeFolio = Str::slug($folioRecepcion, '-') ?: ('recepcion-' . $recepcionId);
+
+        return [
+            'content' => $pdf->Output('', 'S'),
+            'file_name' => 'recepcion-termica-' . $safeFolio . '-' . now()->format('Ymd-His') . '.pdf',
+        ];
+    }
+
+    public function obtenerReporteCompactoRecepcion(int $recepcionId): array
+    {
+        $recepcion = RecepcionMercancia::query()
+            ->with(['sucursal:scl_id,scl_nombre', 'almacen:alm_id,alm_nombre', 'proveedor:prv_id,prv_nombre_empresa'])
+            ->findOrFail($recepcionId);
+
+        $movimientos = MovimientoInventario::query()
+            ->with([
+                'sku:psk_id,psk_prd_id,psk_codigo,psk_nombre',
+                'sku.producto:prd_id,prd_codigo,prd_nombre',
+                'sku.valoresAtributo' => fn ($q) => $q
+                    ->where('vat_deleted', false)
+                    ->whereNull('vat_deleted_at')
+                    ->where('vat_estatus', 'activo')
+                    ->with(['atributo:atr_id,atr_nombre'])
+                    ->orderBy('vat_valor'),
+            ])
+            ->where('min_rme_id', $recepcionId)
+            ->where('min_deleted', false)
+            ->whereNull('min_deleted_at')
+            ->where('min_estatus', 'activo')
+            ->where('min_signo', '>', 0)
+            ->orderBy('min_id')
+            ->get();
+
+        if ($movimientos->isEmpty()) {
+            throw ValidationException::withMessages([
+                'recepcion' => 'La recepcion no tiene movimientos definitivos para generar el reporte.',
+            ]);
+        }
+
+        $grupos = [];
+        foreach ($movimientos as $mov) {
+            $sku = $mov->sku;
+            $producto = $sku?->producto;
+            if (!$sku || !$producto) {
+                continue;
+            }
+
+            $color = 'GENERAL';
+            $talla = (string) ($sku->psk_codigo ?? 'SKU');
+            foreach ($sku->valoresAtributo as $valor) {
+                $atrNombre = (string) ($valor->atributo?->atr_nombre ?? '');
+                $atrValor = trim((string) ($valor->vat_valor ?? ''));
+                if ($this->esAtributoColor($atrNombre)) {
+                    $color = $atrValor !== '' ? $atrValor : 'GENERAL';
+                } elseif ($this->esAtributoTalla($atrNombre)) {
+                    $talla = $atrValor !== '' ? $atrValor : $talla;
+                }
+            }
+
+            $gKey = (string) $producto->prd_id;
+            if (!isset($grupos[$gKey])) {
+                $grupos[$gKey] = [
+                    'codigo' => (string) ($producto->prd_codigo ?? ''),
+                    'nombre' => (string) ($producto->prd_nombre ?? $sku->psk_nombre ?? 'Producto'),
+                    'total' => 0.0,
+                    'colores' => [],
+                ];
+            }
+
+            $cKey = Str::lower(Str::ascii($color));
+            if (!isset($grupos[$gKey]['colores'][$cKey])) {
+                $grupos[$gKey]['colores'][$cKey] = [
+                    'nombre' => $color,
+                    'total' => 0.0,
+                    'tallas' => [],
+                ];
+            }
+
+            $cantidad = (float) $mov->min_cantidad;
+            $grupos[$gKey]['colores'][$cKey]['tallas'][$talla] = ($grupos[$gKey]['colores'][$cKey]['tallas'][$talla] ?? 0.0) + $cantidad;
+            $grupos[$gKey]['colores'][$cKey]['total'] += $cantidad;
+            $grupos[$gKey]['total'] += $cantidad;
+        }
+
+        uasort($grupos, fn (array $a, array $b): int => strnatcasecmp($a['nombre'], $b['nombre']));
+
+        foreach ($grupos as &$grupo) {
+            uasort($grupo['colores'], fn (array $a, array $b): int => strnatcasecmp($a['nombre'], $b['nombre']));
+            foreach ($grupo['colores'] as &$colorData) {
+                uksort($colorData['tallas'], 'strnatcasecmp');
+            }
+            unset($colorData);
+        }
+        unset($grupo);
+
+        $subtotal = round((float) $movimientos->sum('min_subtotal_linea'), 2);
+        $descuento = round((float) $movimientos->sum('min_descuento_linea'), 2);
+        $flete = round((float) ($recepcion->rme_flete_total ?? 0), 2);
+        $iva = round((float) $movimientos->sum('min_iva_linea'), 2);
+        $total = round((float) $movimientos->sum('min_total_linea'), 2);
+        $articulos = (float) $movimientos->sum('min_cantidad');
+
+        if ($total <= 0 && ($subtotal > 0 || $flete > 0)) {
+            $ivaPct = round((float) ($recepcion->rme_iva_porcentaje ?? 0), 2);
+            $tipoDoc = (string) ($recepcion->rme_documento_tipo ?? '');
+            $base = max(0.0, round($subtotal - $descuento + $flete, 2));
+            $iva = $tipoDoc === 'compra_factura' ? round($base * $ivaPct / 100, 2) : 0.0;
+            $total = round($base + $iva, 2);
+        }
+
+        return [
+            'folio'         => (string) ($recepcion->rme_folio ?? 'RME-' . $recepcionId),
+            'fecha'         => optional($recepcion->rme_fecha_captura)->format('d/m/Y H:i') ?? 'N/D',
+            'sucursal'      => (string) ($recepcion->sucursal?->scl_nombre ?? 'N/D'),
+            'almacen'       => (string) ($recepcion->almacen?->alm_nombre ?? 'N/D'),
+            'proveedor'     => (string) ($recepcion->proveedor?->prv_nombre_empresa ?? 'N/D'),
+            'referencia'    => trim((string) ($recepcion->rme_documento_referencia ?? '')),
+            'observaciones' => trim((string) ($recepcion->rme_observaciones ?? '')),
+            'grupos'        => array_values($grupos),
+            'totales'       => [
+                'articulos' => $articulos,
+                'subtotal'  => $subtotal,
+                'descuento' => $descuento,
+                'flete'     => $flete,
+                'iva'       => $iva,
+                'total'     => $total,
+            ],
+        ];
+    }
+
+    public function obtenerReporteRecepcionMercanciaTermicoHtml(int $recepcionId): array
+    {
+        $recepcion = RecepcionMercancia::query()
+            ->with(['sucursal:scl_id,scl_nombre', 'almacen:alm_id,alm_nombre', 'proveedor:prv_id,prv_nombre_empresa'])
+            ->findOrFail($recepcionId);
+
+        $movimientos = MovimientoInventario::query()
+            ->with([
+                'sku:psk_id,psk_prd_id,psk_codigo,psk_nombre',
+                'sku.producto:prd_id,prd_codigo,prd_nombre',
+                'sku.valoresAtributo' => fn ($q) => $q
+                    ->where('vat_deleted', false)
+                    ->whereNull('vat_deleted_at')
+                    ->where('vat_estatus', 'activo')
+                    ->with(['atributo:atr_id,atr_nombre'])
+                    ->orderBy('vat_valor'),
+            ])
+            ->where('min_rme_id', $recepcionId)
+            ->where('min_deleted', false)
+            ->whereNull('min_deleted_at')
+            ->where('min_estatus', 'activo')
+            ->where('min_signo', '>', 0)
+            ->orderBy('min_id')
+            ->get();
+
+        if ($movimientos->isEmpty()) {
+            throw ValidationException::withMessages([
+                'recepcion' => 'La recepcion no tiene movimientos definitivos para generar el reporte termico.',
+            ]);
+        }
+
+        $gruposMap = [];
+
+        foreach ($movimientos as $movimiento) {
+            $sku = $movimiento->sku;
+            $producto = $sku?->producto;
+            if (!$sku || !$producto) {
+                continue;
+            }
+
+            $color = 'GENERAL';
+            $talla = (string) ($sku->psk_codigo ?? 'SKU');
+            foreach ($sku->valoresAtributo as $valor) {
+                $atrNombre = (string) ($valor->atributo?->atr_nombre ?? '');
+                $atrValor = trim((string) ($valor->vat_valor ?? '-'));
+                if ($this->esAtributoColor($atrNombre)) {
+                    $color = $atrValor !== '' ? $atrValor : 'GENERAL';
+                    continue;
+                }
+                if ($this->esAtributoTalla($atrNombre)) {
+                    $talla = $atrValor !== '' ? $atrValor : $talla;
+                }
+            }
+
+            $groupKey = (string) $producto->prd_id;
+            if (!isset($gruposMap[$groupKey])) {
+                $gruposMap[$groupKey] = [
+                    'producto_id' => (int) $producto->prd_id,
+                    'producto' => (string) ($producto->prd_nombre ?? $sku->psk_nombre ?? 'Producto'),
+                    'codigo' => (string) ($producto->prd_codigo ?? $sku->psk_codigo ?? ''),
+                    'tallas' => [],
+                    'rows' => [],
+                    'total' => 0.0,
+                ];
+            }
+
+            $gruposMap[$groupKey]['tallas'][$talla] = $talla;
+
+            $rowKey = Str::lower(Str::ascii($color));
+            if (!isset($gruposMap[$groupKey]['rows'][$rowKey])) {
+                $gruposMap[$groupKey]['rows'][$rowKey] = [
+                    'color' => $color,
+                    'cells' => [],
+                    'total' => 0.0,
+                ];
+            }
+
+            $cantidad = (float) $movimiento->min_cantidad;
+            $gruposMap[$groupKey]['rows'][$rowKey]['cells'][$talla] = (float) ($gruposMap[$groupKey]['rows'][$rowKey]['cells'][$talla] ?? 0) + $cantidad;
+            $gruposMap[$groupKey]['rows'][$rowKey]['total'] += $cantidad;
+            $gruposMap[$groupKey]['total'] += $cantidad;
+        }
+
+        uasort($gruposMap, function (array $a, array $b): int {
+            $cmp = strnatcasecmp((string) $a['producto'], (string) $b['producto']);
+            return $cmp !== 0 ? $cmp : strnatcasecmp((string) $a['codigo'], (string) $b['codigo']);
+        });
+
+        $layout = [
+            'table_width' => 1180,
+            'group_col_width' => 250,
+            'color_col_width' => 144,
+            'total_col_width' => 88,
+            'size_col_min_width' => 54,
+            'size_col_padding' => 18,
+        ];
+
+        $bloques = [];
+        $indiceBloqueGlobal = 1;
+
+        foreach ($gruposMap as $grupo) {
+            $tallas = array_values($grupo['tallas']);
+            usort($tallas, fn ($a, $b) => strnatcasecmp((string) $a, (string) $b));
+
+            $rows = array_values($grupo['rows']);
+            usort($rows, fn ($a, $b) => strnatcasecmp((string) $a['color'], (string) $b['color']));
+
+            $columnas = array_map(function (string $talla) use ($layout): array {
+                return [
+                    'key' => $talla,
+                    'label' => $talla,
+                    'width' => $this->anchoColumnaTallaTermica($talla, $layout['size_col_min_width'], $layout['size_col_padding']),
+                ];
+            }, $tallas);
+
+            $segmentos = $this->segmentarColumnasTermicasHtml(
+                $columnas,
+                $layout['table_width'] - $layout['group_col_width'] - $layout['color_col_width'] - $layout['total_col_width']
+            );
+
+            foreach ($segmentos as $segmentIndex => $segmento) {
+                $segmentColumns = $segmento['columns'];
+                $tableWidth = $layout['group_col_width'] + $layout['color_col_width'] + $layout['total_col_width'] + array_sum(array_column($segmentColumns, 'width'));
+                $filas = [];
+
+                foreach ($rows as $rowIndex => $row) {
+                    $segmentTotal = 0.0;
+                    $cells = [];
+                    foreach ($segmentColumns as $col) {
+                        $value = (float) ($row['cells'][$col['key']] ?? 0);
+                        $segmentTotal += $value;
+                        $cells[] = [
+                            'key' => $col['key'],
+                            'value' => $value,
+                        ];
+                    }
+
+                    $filas[] = [
+                        'show_group_cell' => $rowIndex === 0,
+                        'group_rowspan' => count($rows),
+                        'group_label' => trim(($grupo['codigo'] !== '' ? $grupo['codigo'] . ' · ' : '') . $grupo['producto']),
+                        'color' => $row['color'],
+                        'cells' => $cells,
+                        'segment_total' => $segmentTotal,
+                        'row_total' => (float) $row['total'],
+                    ];
+                }
+
+                $bloques[] = [
+                    'index' => $indiceBloqueGlobal++,
+                    'group_index' => $segmentIndex + 1,
+                    'group_total_segments' => count($segmentos),
+                    'is_group_continuation' => $segmentIndex > 0,
+                    'producto' => $grupo['producto'],
+                    'codigo' => $grupo['codigo'],
+                    'group_total' => (float) $grupo['total'],
+                    'columns' => $segmentColumns,
+                    'rows' => $filas,
+                    'table_width' => $tableWidth,
+                    'show_receipt_header' => empty($bloques),
+                ];
+            }
+        }
+
+        $subtotalMonetario = round((float) $movimientos->sum('min_subtotal_linea'), 2);
+        $descuentoMonetario = round((float) $movimientos->sum('min_descuento_linea'), 2);
+        $fleteTotal = round((float) ($recepcion->rme_flete_total ?? $movimientos->first()->min_flete_total ?? 0), 2);
+        $ivaMonetario = round((float) $movimientos->sum('min_iva_linea'), 2);
+        $totalMonetario = round((float) $movimientos->sum('min_total_linea'), 2);
+        $totalArticulos = (float) $movimientos->sum('min_cantidad');
+
+        return [
+            'folio' => (string) ($recepcion->rme_folio ?? ('RME-' . $recepcionId)),
+            'fecha' => optional($recepcion->rme_fecha_captura ?? $movimientos->first()->min_fecha_movimiento)->format('d/m/Y H:i') ?? 'N/D',
+            'sucursal' => (string) ($recepcion->sucursal?->scl_nombre ?? 'N/D'),
+            'almacen' => (string) ($recepcion->almacen?->alm_nombre ?? 'N/D'),
+            'proveedor' => (string) ($recepcion->proveedor?->prv_nombre_empresa ?? 'N/D'),
+            'referencia' => trim((string) ($recepcion->rme_documento_referencia ?? $movimientos->first()->min_documento_referencia ?? '')),
+            'observaciones' => trim((string) ($recepcion->rme_observaciones ?? $movimientos->first()->min_observaciones ?? '')),
+            'blocks' => $bloques,
+            'receipt_totals' => [
+                'articulos' => $totalArticulos,
+                'subtotal' => $subtotalMonetario,
+                'descuento' => $descuentoMonetario,
+                'flete' => $fleteTotal,
+                'iva' => $ivaMonetario,
+                'total' => $totalMonetario,
+            ],
+        ];
+    }
+
+    public function imprimirRecepcionMercanciaTermicoDirecto(Request $request, int $recepcionId): array
+    {
+        $printerName = (string) env('THERMAL_PRINTER_NAME', 'POS-80');
+        $payload = $this->construirTicketEscposTextoRecepcion($recepcionId);
+        $this->enviarPayloadRawWindows($printerName, $payload);
+
+        return [
+            'message' => 'Ticket enviado a ' . $printerName . '.',
+            'printer' => $printerName,
+            'recepcion' => $recepcionId,
+        ];
+    }
+
+    private function construirTicketEscposTextoRecepcion(int $recepcionId): string
+    {
+        $recepcion = RecepcionMercancia::query()
+            ->with(['sucursal:scl_id,scl_nombre', 'almacen:alm_id,alm_nombre', 'proveedor:prv_id,prv_nombre_empresa'])
+            ->findOrFail($recepcionId);
+
+        $movimientos = MovimientoInventario::query()
+            ->with([
+                'sku:psk_id,psk_prd_id,psk_codigo,psk_nombre',
+                'sku.producto:prd_id,prd_codigo,prd_nombre',
+                'sku.valoresAtributo' => fn ($q) => $q
+                    ->where('vat_deleted', false)
+                    ->whereNull('vat_deleted_at')
+                    ->where('vat_estatus', 'activo')
+                    ->with(['atributo:atr_id,atr_nombre'])
+                    ->orderBy('vat_valor'),
+            ])
+            ->where('min_rme_id', $recepcionId)
+            ->where('min_deleted', false)
+            ->whereNull('min_deleted_at')
+            ->where('min_estatus', 'activo')
+            ->where('min_signo', '>', 0)
+            ->orderBy('min_id')
+            ->get();
+
+        if ($movimientos->isEmpty()) {
+            throw ValidationException::withMessages([
+                'recepcion' => 'La recepcion no tiene movimientos definitivos para imprimir.',
+            ]);
+        }
+
+        $width = max(32, min(64, (int) env('THERMAL_CHARS_WIDTH', 42)));
+
+        // ── Agrupar por producto → color → talla ─────────────────────────
+        $grupos = [];
+        foreach ($movimientos as $mov) {
+            $sku = $mov->sku;
+            $producto = $sku?->producto;
+            if (!$sku || !$producto) {
+                continue;
+            }
+
+            $color = 'GENERAL';
+            $talla = $this->thermalAscii((string) ($sku->psk_codigo ?? 'SKU'));
+            foreach ($sku->valoresAtributo as $valor) {
+                $atrNombre = (string) ($valor->atributo?->atr_nombre ?? '');
+                $atrValor = trim((string) ($valor->vat_valor ?? ''));
+                if ($this->esAtributoColor($atrNombre)) {
+                    $color = $atrValor !== '' ? $atrValor : 'GENERAL';
+                } elseif ($this->esAtributoTalla($atrNombre)) {
+                    $talla = $atrValor !== '' ? $this->thermalAscii($atrValor) : $talla;
+                }
+            }
+
+            $gKey = (string) $producto->prd_id;
+            if (!isset($grupos[$gKey])) {
+                $grupos[$gKey] = [
+                    'codigo' => $this->thermalAscii((string) ($producto->prd_codigo ?? '')),
+                    'nombre' => $this->thermalAscii((string) ($producto->prd_nombre ?? $sku->psk_nombre ?? 'Producto')),
+                    'total' => 0.0,
+                    'colores' => [],
+                ];
+            }
+
+            $cKey = Str::lower(Str::ascii($color));
+            if (!isset($grupos[$gKey]['colores'][$cKey])) {
+                $grupos[$gKey]['colores'][$cKey] = [
+                    'nombre' => $this->thermalAscii($color),
+                    'total' => 0.0,
+                    'tallas' => [],
+                ];
+            }
+
+            $cantidad = (float) $mov->min_cantidad;
+            $grupos[$gKey]['colores'][$cKey]['tallas'][$talla] = ($grupos[$gKey]['colores'][$cKey]['tallas'][$talla] ?? 0.0) + $cantidad;
+            $grupos[$gKey]['colores'][$cKey]['total'] += $cantidad;
+            $grupos[$gKey]['total'] += $cantidad;
+        }
+
+        uasort($grupos, fn (array $a, array $b): int => strnatcasecmp($a['nombre'], $b['nombre']));
+
+        // ── Calcular totales monetarios ───────────────────────────────────
+        $subtotal = round((float) $movimientos->sum('min_subtotal_linea'), 2);
+        $descuento = round((float) $movimientos->sum('min_descuento_linea'), 2);
+        $flete = round((float) ($recepcion->rme_flete_total ?? 0), 2);
+        $iva = round((float) $movimientos->sum('min_iva_linea'), 2);
+        $total = round((float) $movimientos->sum('min_total_linea'), 2);
+        $articulos = (float) $movimientos->sum('min_cantidad');
+
+        if ($total <= 0 && ($subtotal > 0 || $flete > 0)) {
+            $ivaPct = round((float) ($recepcion->rme_iva_porcentaje ?? 0), 2);
+            $tipoDoc = (string) ($recepcion->rme_documento_tipo ?? '');
+            $base = max(0.0, round($subtotal - $descuento + $flete, 2));
+            $iva = $tipoDoc === 'compra_factura' ? round($base * $ivaPct / 100, 2) : 0.0;
+            $total = round($base + $iva, 2);
+        }
+
+        // ── Constantes ESC/POS ────────────────────────────────────────────
+        $ESC = "\x1B";
+        $GS  = "\x1D";
+        $LF  = "\n";
+        $INIT     = $ESC . '@';
+        $LEFT     = $ESC . 'a' . "\x00";
+        $CENTER   = $ESC . 'a' . "\x01";
+        $BOLD_ON  = $ESC . 'E' . "\x01";
+        $BOLD_OFF = $ESC . 'E' . "\x00";
+        $CUT      = "\n\n\n\n" . $GS . 'V' . "\x00";
+        $sep      = str_repeat('-', $width);
+        $sepD     = str_repeat('=', $width);
+
+        // ── Construir ticket ──────────────────────────────────────────────
+        $p = $INIT;
+
+        // Encabezado
+        $p .= $CENTER . $BOLD_ON . 'ENTRADA DE MERCANCIA' . $LF . $BOLD_OFF;
+        $p .= $CENTER . 'Comprobante de recepcion' . $LF;
+        $p .= $LEFT . $sep . $LF;
+
+        // Metadatos
+        $folio    = $this->thermalAscii((string) ($recepcion->rme_folio ?? 'RME-' . $recepcionId));
+        $fecha    = optional($recepcion->rme_fecha_captura)->format('d/m/Y H:i') ?? 'N/D';
+        $sucursal = $this->thermalAscii((string) ($recepcion->sucursal?->scl_nombre ?? 'N/D'));
+        $almacen  = $this->thermalAscii((string) ($recepcion->almacen?->alm_nombre ?? 'N/D'));
+        $proveedor = $this->thermalAscii((string) ($recepcion->proveedor?->prv_nombre_empresa ?? 'N/D'));
+        $ref = trim($this->thermalAscii((string) ($recepcion->rme_documento_referencia ?? '')));
+        $obs = trim($this->thermalAscii((string) ($recepcion->rme_observaciones ?? '')));
+
+        $p .= $BOLD_ON . $this->escposTcRow('Folio: ' . $folio, $fecha, $width) . $LF . $BOLD_OFF;
+        $p .= $this->escposTcRow('Sucursal', substr($sucursal, 0, $width - 10), $width) . $LF;
+        $p .= $this->escposTcRow('Almacen', substr($almacen, 0, $width - 9), $width) . $LF;
+
+        foreach (str_split($proveedor, $width - 12) as $idx => $chunk) {
+            $p .= ($idx === 0 ? 'Proveedor: ' : '           ') . $chunk . $LF;
+        }
+
+        if ($ref !== '') {
+            $p .= 'Ref: ' . $ref . $LF;
+        }
+        if ($obs !== '') {
+            foreach (str_split($obs, $width - 5) as $idx => $chunk) {
+                $p .= ($idx === 0 ? 'Obs: ' : '     ') . $chunk . $LF;
+            }
+        }
+
+        $p .= $sep . $LF;
+
+        // Productos
+        foreach ($grupos as $grupo) {
+            $prodLabel = $grupo['codigo'] !== '' ? $grupo['codigo'] . ' ' . $grupo['nombre'] : $grupo['nombre'];
+            $totalStr = number_format($grupo['total'], 0, '.', ',') . 'pz';
+            $maxProdLen = $width - strlen($totalStr) - 1;
+            $p .= $BOLD_ON . $this->escposTcRow(
+                substr($prodLabel, 0, $maxProdLen),
+                $totalStr,
+                $width
+            ) . $LF . $BOLD_OFF;
+
+            foreach ($grupo['colores'] as $colorData) {
+                $colorNombre = $colorData['nombre'];
+                $colorTotal = number_format($colorData['total'], 0, '.', ',');
+                $indent = '  ';
+                $p .= $indent . $this->escposTcRow(
+                    substr($colorNombre, 0, $width - strlen($indent) - strlen($colorTotal) - 1),
+                    $colorTotal,
+                    $width - strlen($indent)
+                ) . $LF;
+
+                // Tallas compactas en líneas que respetan el ancho
+                uksort($colorData['tallas'], 'strnatcasecmp');
+                $tallaIndent = '    ';
+                $lineWidth = $width - strlen($tallaIndent);
+                $lineBuffer = '';
+                foreach ($colorData['tallas'] as $talla => $qty) {
+                    if ((int) $qty <= 0) {
+                        continue;
+                    }
+                    $chip = $talla . ':' . number_format($qty, 0);
+                    $needs = $lineBuffer !== '' ? strlen($lineBuffer) + 2 + strlen($chip) : strlen($chip);
+                    if ($lineBuffer !== '' && $needs > $lineWidth) {
+                        $p .= $tallaIndent . $lineBuffer . $LF;
+                        $lineBuffer = $chip;
+                    } else {
+                        $lineBuffer .= ($lineBuffer !== '' ? '  ' : '') . $chip;
+                    }
+                }
+                if ($lineBuffer !== '') {
+                    $p .= $tallaIndent . $lineBuffer . $LF;
+                }
+            }
+
+            $p .= $sep . $LF;
+        }
+
+        // Totales
+        $p .= $BOLD_ON . 'TOTALES' . $LF . $BOLD_OFF;
+        $p .= $this->escposTcRow('Articulos', number_format($articulos, 0) . ' pzas', $width) . $LF;
+
+        if ($subtotal > 0) {
+            $p .= $this->escposTcRow('Subtotal', '$ ' . number_format($subtotal, 2, '.', ','), $width) . $LF;
+        }
+        if ($descuento > 0) {
+            $p .= $this->escposTcRow('Descuento', '-$ ' . number_format($descuento, 2, '.', ','), $width) . $LF;
+        }
+        if ($flete > 0) {
+            $p .= $this->escposTcRow('Flete', '$ ' . number_format($flete, 2, '.', ','), $width) . $LF;
+        }
+        if ($iva > 0) {
+            $p .= $this->escposTcRow('IVA', '$ ' . number_format($iva, 2, '.', ','), $width) . $LF;
+        }
+
+        if ($total > 0) {
+            $p .= $sep . $LF;
+            $p .= $BOLD_ON . $this->escposTcRow('TOTAL', '$ ' . number_format($total, 2, '.', ','), $width) . $LF . $BOLD_OFF;
+        }
+
+        $p .= $LF . $CENTER . now()->format('d/m/Y H:i') . $LF;
+        $p .= $CUT;
+
+        return $p;
+    }
+
+    private function escposTcRow(string $left, string $right, int $width): string
+    {
+        $rightLen = strlen($right);
+        $maxLeft = $width - $rightLen - 1;
+        if (strlen($left) > $maxLeft) {
+            $left = substr($left, 0, $maxLeft);
+        }
+        $spaces = $width - strlen($left) - $rightLen;
+        return $left . str_repeat(' ', max(1, $spaces)) . $right;
+    }
+
+    public function imprimirRecepcionMercanciaTermicoHtmlDirecto(Request $request, int $recepcionId, string $printUrl): array
+    {
+        $reporte = $this->obtenerReporteRecepcionMercanciaTermicoHtml($recepcionId);
+        $browserPath = $this->resolverNavegadorImpresionSilenciosa();
+        $printerName = (string) env('THERMAL_PRINTER_NAME', 'POS-80');
+
+        $this->lanzarImpresionSilenciosaNavegador($browserPath, $printUrl);
+
+        return [
+            'message' => 'Impresion termica enviada a ' . $printerName . ' usando impresion silenciosa.',
+            'printer' => $printerName,
+            'recepcion' => $reporte['folio'],
+            'url' => $printUrl,
+        ];
+    }
+
     public function guardarRecepcionMercanciaBorrador(Request $request, array $datos): RecepcionMercancia
     {
         return DB::transaction(function () use ($request, $datos): RecepcionMercancia {
@@ -2951,6 +3738,741 @@ class InventarioBaseService
             'ultimos_3_anios' => [$hoy->copy()->subYearsNoOverflow(2)->startOfYear(), $hoy->copy()->endOfDay()],
             default => [$hoy->copy()->startOfMonth(), $hoy->copy()->endOfDay()],
         };
+    }
+
+    private function construirDatosRecepcionTermicaDirecta(int $recepcionId): array
+    {
+        $recepcion = RecepcionMercancia::query()
+            ->with(['sucursal:scl_id,scl_nombre', 'almacen:alm_id,alm_nombre', 'proveedor:prv_id,prv_nombre_empresa'])
+            ->findOrFail($recepcionId);
+
+        $movimientos = MovimientoInventario::query()
+            ->with([
+                'sku:psk_id,psk_prd_id,psk_codigo,psk_nombre',
+                'sku.producto:prd_id,prd_codigo,prd_nombre',
+                'sku.valoresAtributo' => fn ($q) => $q
+                    ->where('vat_deleted', false)
+                    ->whereNull('vat_deleted_at')
+                    ->where('vat_estatus', 'activo')
+                    ->with(['atributo:atr_id,atr_nombre'])
+                    ->orderBy('vat_valor'),
+            ])
+            ->where('min_rme_id', $recepcionId)
+            ->where('min_deleted', false)
+            ->whereNull('min_deleted_at')
+            ->where('min_estatus', 'activo')
+            ->where('min_signo', '>', 0)
+            ->orderBy('min_id')
+            ->get();
+
+        if ($movimientos->isEmpty()) {
+            throw ValidationException::withMessages([
+                'recepcion' => 'La recepcion no tiene movimientos definitivos para impresion directa.',
+            ]);
+        }
+
+        $columnasMap = [];
+        $filasMap = [];
+        foreach ($movimientos as $movimiento) {
+            $sku = $movimiento->sku;
+            $producto = $sku?->producto;
+            if (!$sku || !$producto) {
+                continue;
+            }
+
+            $color = 'GENERAL';
+            $talla = (string) ($sku->psk_codigo ?? 'SKU');
+            foreach ($sku->valoresAtributo as $valor) {
+                $atrNombre = (string) ($valor->atributo?->atr_nombre ?? '');
+                $atrValor = (string) ($valor->vat_valor ?? '-');
+                if ($this->esAtributoColor($atrNombre)) {
+                    $color = $atrValor;
+                    continue;
+                }
+                if ($this->esAtributoTalla($atrNombre)) {
+                    $talla = $atrValor;
+                }
+            }
+
+            $colKey = $talla !== '' ? $talla : (string) ($sku->psk_codigo ?? 'SKU');
+            $columnasMap[$colKey] = $colKey;
+
+            $rowKey = (int) $producto->prd_id . '|' . $color;
+            if (!isset($filasMap[$rowKey])) {
+                $filasMap[$rowKey] = [
+                    'producto' => (string) ($producto->prd_nombre ?? $sku->psk_nombre ?? 'Producto'),
+                    'codigo' => (string) ($producto->prd_codigo ?? $sku->psk_codigo ?? ''),
+                    'color' => $color,
+                    'cells' => [],
+                    'total' => 0.0,
+                ];
+            }
+
+            $cantidad = (float) $movimiento->min_cantidad;
+            $filasMap[$rowKey]['cells'][$colKey] = (float) ($filasMap[$rowKey]['cells'][$colKey] ?? 0) + $cantidad;
+            $filasMap[$rowKey]['total'] += $cantidad;
+        }
+
+        uasort($columnasMap, fn ($a, $b) => strnatcasecmp((string) $a, (string) $b));
+        uasort($filasMap, function (array $a, array $b): int {
+            $cmp = strnatcasecmp((string) $a['producto'], (string) $b['producto']);
+            return $cmp !== 0 ? $cmp : strnatcasecmp((string) $a['color'], (string) $b['color']);
+        });
+
+        $subtotalMonetario = round((float) $movimientos->sum('min_subtotal_linea'), 2);
+        $descuentoMonetario = round((float) $movimientos->sum('min_descuento_linea'), 2);
+        $fleteTotal = round((float) ($recepcion->rme_flete_total ?? $movimientos->first()->min_flete_total ?? 0), 2);
+        $ivaMonetario = round((float) $movimientos->sum('min_iva_linea'), 2);
+        $totalMonetario = round((float) $movimientos->sum('min_total_linea'), 2);
+        $totalArticulos = (float) $movimientos->sum('min_cantidad');
+        $tipoEntrada = (string) ($recepcion->rme_documento_tipo ?? $movimientos->first()->min_documento_tipo ?? 'entrada_normal');
+        $tipoEntradaLabel = match ($tipoEntrada) {
+            'inventario_inicial' => 'Entrada normal',
+            'entrada_normal' => 'Entrada normal',
+            'compra_remision' => 'Compra remision',
+            'compra_factura' => 'Compra factura',
+            default => Str::headline(str_replace('_', ' ', $tipoEntrada)),
+        };
+
+        return [
+            'folio' => (string) ($recepcion->rme_folio ?? ('RME-' . $recepcionId)),
+            'fecha' => optional($recepcion->rme_fecha_captura ?? $movimientos->first()->min_fecha_movimiento)->format('d/m/Y H:i') ?? 'N/D',
+            'sucursal' => (string) ($recepcion->sucursal?->scl_nombre ?? 'N/D'),
+            'almacen' => (string) ($recepcion->almacen?->alm_nombre ?? 'N/D'),
+            'proveedor' => (string) ($recepcion->proveedor?->prv_nombre_empresa ?? 'N/D'),
+            'referencia' => trim((string) ($recepcion->rme_documento_referencia ?? $movimientos->first()->min_documento_referencia ?? '')),
+            'observaciones' => trim((string) ($recepcion->rme_observaciones ?? $movimientos->first()->min_observaciones ?? '')),
+            'tipo' => $tipoEntradaLabel,
+            'filas' => array_values($filasMap),
+            'column_groups' => array_chunk(array_values($columnasMap), 4),
+            'total_pages' => max(1, count(array_chunk(array_values($columnasMap), 4))),
+            'subtotal' => $subtotalMonetario,
+            'descuento' => $descuentoMonetario,
+            'flete' => $fleteTotal,
+            'iva' => $ivaMonetario,
+            'total' => $totalMonetario,
+            'total_articulos' => $totalArticulos,
+        ];
+    }
+
+    private function construirPayloadEscPosRecepcion(array $datos): string
+    {
+        $payload = '';
+        $pages = $datos['column_groups'];
+        $totalPages = (int) $datos['total_pages'];
+
+        foreach ($pages as $pageIndex => $cols) {
+            $image = $this->renderRecepcionStripImage($datos, $cols, $pageIndex + 1, $totalPages);
+            try {
+                $payload .= "\x1B@\x1Ba\x00" . $this->escposRasterFromImage($image) . "\n\n";
+            } finally {
+                imagedestroy($image);
+            }
+        }
+
+        $payload .= "\n\n\n\n\x1DV\x00";
+
+        return $payload;
+    }
+
+    private function enviarPayloadRawWindows(string $printerName, string $payload): void
+    {
+        $dataPath = tempnam(sys_get_temp_dir(), 'rme-raw-');
+        $scriptBase = tempnam(sys_get_temp_dir(), 'rme-ps-');
+        if ($dataPath === false || $scriptBase === false) {
+            throw ValidationException::withMessages([
+                'printer' => 'No fue posible preparar la impresion termica.',
+            ]);
+        }
+
+        $scriptPath = $scriptBase . '.ps1';
+        file_put_contents($dataPath, $payload);
+        file_put_contents($scriptPath, <<<'PS1'
+param([string]$PrinterName,[string]$Path)
+$signature = @"
+using System;
+using System.Runtime.InteropServices;
+public class RawPrinterHelper {
+  [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Unicode)]
+  public class DOCINFOA {
+    [MarshalAs(UnmanagedType.LPWStr)] public string pDocName;
+    [MarshalAs(UnmanagedType.LPWStr)] public string pOutputFile;
+    [MarshalAs(UnmanagedType.LPWStr)] public string pDataType;
+  }
+  [DllImport("winspool.drv", EntryPoint="OpenPrinterW", SetLastError=true, CharSet=CharSet.Unicode)]
+  public static extern bool OpenPrinter(string pPrinterName, out IntPtr phPrinter, IntPtr pDefault);
+  [DllImport("winspool.drv", SetLastError=true)] public static extern bool ClosePrinter(IntPtr hPrinter);
+  [DllImport("winspool.drv", SetLastError=true, CharSet=CharSet.Unicode)]
+  public static extern bool StartDocPrinter(IntPtr hPrinter, Int32 Level, [In, MarshalAs(UnmanagedType.LPStruct)] DOCINFOA pDocInfo);
+  [DllImport("winspool.drv", SetLastError=true)] public static extern bool EndDocPrinter(IntPtr hPrinter);
+  [DllImport("winspool.drv", SetLastError=true)] public static extern bool StartPagePrinter(IntPtr hPrinter);
+  [DllImport("winspool.drv", SetLastError=true)] public static extern bool EndPagePrinter(IntPtr hPrinter);
+  [DllImport("winspool.drv", SetLastError=true)] public static extern bool WritePrinter(IntPtr hPrinter, byte[] pBytes, Int32 dwCount, out Int32 dwWritten);
+}
+"@
+Add-Type -TypeDefinition $signature -Language CSharp
+$bytes = [System.IO.File]::ReadAllBytes($Path)
+$hPrinter = [IntPtr]::Zero
+$docInfo = New-Object RawPrinterHelper+DOCINFOA
+$docInfo.pDocName = "Recepcion termica"
+$docInfo.pDataType = "RAW"
+if (-not [RawPrinterHelper]::OpenPrinter($PrinterName, [ref]$hPrinter, [IntPtr]::Zero)) { throw "No se pudo abrir la impresora '$PrinterName'." }
+try {
+  if (-not [RawPrinterHelper]::StartDocPrinter($hPrinter, 1, $docInfo)) { throw "No se pudo iniciar el documento." }
+  try {
+    if (-not [RawPrinterHelper]::StartPagePrinter($hPrinter)) { throw "No se pudo iniciar la pagina." }
+    try {
+      $written = 0
+      if (-not [RawPrinterHelper]::WritePrinter($hPrinter, $bytes, $bytes.Length, [ref]$written)) { throw "No se pudieron enviar los datos." }
+      if ($written -ne $bytes.Length) { throw "Se enviaron $written de $($bytes.Length) bytes." }
+    } finally { [void][RawPrinterHelper]::EndPagePrinter($hPrinter) }
+  } finally { [void][RawPrinterHelper]::EndDocPrinter($hPrinter) }
+} finally { [void][RawPrinterHelper]::ClosePrinter($hPrinter) }
+PS1);
+
+        $command = 'powershell -NoProfile -ExecutionPolicy Bypass -File '
+            . escapeshellarg($scriptPath)
+            . ' -PrinterName '
+            . escapeshellarg($printerName)
+            . ' -Path '
+            . escapeshellarg($dataPath)
+            . ' 2>&1';
+        exec($command, $output, $exitCode);
+        @unlink($dataPath);
+        @unlink($scriptPath);
+        @unlink($scriptBase);
+
+        if ($exitCode !== 0) {
+            throw ValidationException::withMessages([
+                'printer' => trim(implode("\n", $output)) ?: 'No fue posible imprimir directamente en la termica.',
+            ]);
+        }
+    }
+
+    private function thermalColumnsHeader(array $cols): string
+    {
+        $line = '';
+        foreach ($cols as $col) {
+            $line .= $this->thermalPad((string) $col, 4, STR_PAD_LEFT);
+        }
+        return $line;
+    }
+
+    private function thermalPad(string $value, int $width, int $padType = STR_PAD_RIGHT): string
+    {
+        $clean = $this->thermalSlice($value, $width, 0);
+        $len = strlen($clean);
+        return $len >= $width ? $clean : str_pad($clean, $width, ' ', $padType);
+    }
+
+    private function thermalSlice(string $value, int $width, int $offset = 0): string
+    {
+        return substr($this->thermalAscii($value), $offset, $width);
+    }
+
+    private function thermalAscii(string $value): string
+    {
+        $ascii = Str::ascii($value);
+        return preg_replace('/[^\x20-\x7E]/', ' ', $ascii) ?? '';
+    }
+
+    private function escposText(string $value): string
+    {
+        return $value;
+    }
+
+    private function escposAlign(string $align): string
+    {
+        return match (strtoupper($align)) {
+            'C' => "\x1Ba\x01",
+            'R' => "\x1Ba\x02",
+            default => "\x1Ba\x00",
+        };
+    }
+
+    private function escposEmphasis(bool $enabled): string
+    {
+        return $enabled ? "\x1BE\x01" : "\x1BE\x00";
+    }
+
+    private function renderRecepcionStripImage(array $datos, array $cols, int $pageNo, int $totalPages)
+    {
+        $fontRegular = $this->thermalFontPath(false);
+        $fontBold = $this->thermalFontPath(true);
+        $isFirstPage = $pageNo === 1;
+        $isLastPage = $pageNo === $totalPages;
+        $scaleX = 1.18;
+        $scaleY = 1.04;
+        $fontScale = 1.12;
+        $sx = static fn (int $value): int => (int) round($value * $scaleX);
+        $sy = static fn (int $value): int => (int) round($value * $scaleY);
+        $fs = static fn (int $value): int => max(8, (int) round($value * $fontScale));
+
+        $margin = $sx(18);
+        $topGap = $isFirstPage ? $sy(14) : $sy(8);
+        $headerH = $isFirstPage ? $sy(110) : $topGap;
+        $tableHeaderH = $sy(26);
+        $rowH = $sy(38);
+        $footerH = $isLastPage ? $sy(46) : $sy(10);
+        $productW = $sx(330);
+        $colorW = $sx(150);
+        $colW = $sx(74);
+        $totalW = $sx(84);
+        $pageW = $margin * 2 + $productW + $colorW + (count($cols) * $colW) + $totalW;
+        $summaryH = $isLastPage ? $sy(26) : 0;
+        $rowsH = count($datos['filas']) * $rowH;
+        $pageH = $headerH + $tableHeaderH + $rowsH + $summaryH + $footerH + $sy(14);
+
+        $img = \imagecreatetruecolor($pageW, $pageH);
+        $white = \imagecolorallocate($img, 255, 255, 255);
+        $black = \imagecolorallocate($img, 0, 0, 0);
+        $gray = \imagecolorallocate($img, 90, 90, 90);
+        \imagefilledrectangle($img, 0, 0, $pageW, $pageH, $white);
+
+        $text = function (string $text, int $x, int $y, int $size = 11, bool $bold = false, int $color = null) use ($img, $fontRegular, $fontBold, $black, $fs): void {
+            \imagettftext($img, $fs($size), 0, $x, $y, $color ?? $black, $bold ? $fontBold : $fontRegular, $text);
+        };
+
+        if ($isFirstPage) {
+            $text('Consulta Entrada de', $margin, $sy(28), 16, true);
+            $text('Mercancia', $margin, $sy(48), 16, true);
+            $text('Fecha: ' . $this->thermalAscii($datos['fecha']), $sx(285), $sy(28), 10, true);
+            $text('Tienda: ' . $this->thermalAscii($datos['sucursal']), $sx(285), $sy(47), 10, true);
+            $text('Almacen: ' . $this->thermalAscii($datos['almacen']), $sx(285), $sy(66), 10, true);
+            $text('Proveedor: ' . $this->thermalAscii($datos['proveedor']), $sx(565), $sy(28), 10, true);
+            $text('Referencia: ' . $this->thermalAscii($datos['referencia'] !== '' ? $datos['referencia'] : '-'), $sx(565), $sy(47), 10, true);
+            $text('Comentario: ' . $this->thermalAscii($datos['observaciones'] !== '' ? $datos['observaciones'] : '-'), $sx(565), $sy(66), 10, true);
+            $text('Linea: TODAS LAS LINEAS', $sx(875), $sy(28), 10, true);
+            $text('Marca: TODAS LAS MARCAS', $sx(875), $sy(47), 10, true);
+            $pageLabel = 'Pagina ' . $pageNo . ' de ' . $totalPages;
+            $bbox = imagettfbbox($fs(10), 0, $fontBold, $pageLabel);
+            $pageLabelWidth = abs($bbox[2] - $bbox[0]);
+            $text($pageLabel, $pageW - $margin - $pageLabelWidth, $sy(28), 10, true);
+            $text('No. Entrada: ' . $this->thermalAscii($datos['folio']), $margin, $sy(96), 10, true);
+        }
+
+        $x = $margin;
+        $y = $headerH;
+        \imagerectangle($img, $x, $y, $x + $productW, $y + $tableHeaderH, $black);
+        $text('Producto', $x + $sx(10), $y + $sy(18), 10, true);
+        $x += $productW;
+        \imagerectangle($img, $x, $y, $x + $colorW, $y + $tableHeaderH, $black);
+        $text('Color', $x + $sx(10), $y + $sy(18), 10, true);
+        $x += $colorW;
+        foreach ($cols as $col) {
+            \imagerectangle($img, $x, $y, $x + $colW, $y + $tableHeaderH, $black);
+            $colText = $this->thermalWrapLabel((string) $col, 8);
+            $lines = explode("\n", $colText);
+            $lineY = $y + $sy(12);
+            foreach ($lines as $line) {
+                $bbox = imagettfbbox($fs(8), 0, $fontBold, $line);
+                $lw = abs($bbox[2] - $bbox[0]);
+                $text($line, (int) ($x + (($colW - $lw) / 2)), $lineY, 8, true);
+                $lineY += $sy(10);
+            }
+            $x += $colW;
+        }
+        \imagerectangle($img, $x, $y, $x + $totalW, $y + $tableHeaderH, $black);
+        $text('Total', $x + $sx(14), $y + $sy(18), 10, true);
+
+        $bodyY = $headerH + $tableHeaderH;
+        foreach ($datos['filas'] as $fila) {
+            $x = $margin;
+            \imagerectangle($img, $x, $bodyY, $x + $productW, $bodyY + $rowH, $black);
+            $prod1 = $this->thermalSlice($fila['producto'], 28, 0);
+            $prod2 = trim($this->thermalSlice($fila['producto'], 28, 28) . ' ' . $fila['codigo']);
+            $text($prod1, $x + $sx(8), $bodyY + $sy(16), 10, true);
+            if ($prod2 !== '') {
+                $text($prod2, $x + $sx(8), $bodyY + $sy(31), 9, true, $gray);
+            }
+            $x += $productW;
+            \imagerectangle($img, $x, $bodyY, $x + $colorW, $bodyY + $rowH, $black);
+            $text($this->thermalSlice($fila['color'], 14, 0), $x + $sx(8), $bodyY + $sy(24), 10, false);
+            $x += $colorW;
+            foreach ($cols as $col) {
+                \imagerectangle($img, $x, $bodyY, $x + $colW, $bodyY + $rowH, $black);
+                $valor = (float) ($fila['cells'][$col] ?? 0);
+                if ($valor > 0) {
+                    $v = number_format($valor, 0, '.', ',');
+                    $bbox = imagettfbbox($fs(10), 0, $fontRegular, $v);
+                    $vw = abs($bbox[2] - $bbox[0]);
+                    $text($v, (int) ($x + (($colW - $vw) / 2)), $bodyY + $sy(24), 10, false);
+                }
+                $x += $colW;
+            }
+            \imagerectangle($img, $x, $bodyY, $x + $totalW, $bodyY + $rowH, $black);
+            $totalText = number_format((float) $fila['total'], 0, '.', ',');
+            $bbox = imagettfbbox($fs(10), 0, $fontBold, $totalText);
+            $tw = abs($bbox[2] - $bbox[0]);
+            $text($totalText, $x + $totalW - $tw - $sx(8), $bodyY + $sy(24), 10, true);
+            $bodyY += $rowH;
+        }
+
+        if ($isLastPage) {
+            $sumW = $productW + $colorW + (count($cols) * $colW);
+            \imagerectangle($img, $margin, $bodyY, $margin + $sumW, $bodyY + $sy(24), $black);
+            $sumText = 'Total articulos';
+            $bbox = imagettfbbox($fs(10), 0, $fontBold, $sumText);
+            $sw = abs($bbox[2] - $bbox[0]);
+            $text($sumText, $margin + $sumW - $sw - $sx(8), $bodyY + $sy(17), 10, true);
+            \imagerectangle($img, $margin + $sumW, $bodyY, $margin + $sumW + $totalW, $bodyY + $sy(24), $black);
+            $artText = number_format((float) $datos['total_articulos'], 0, '.', ',');
+            $bbox = imagettfbbox($fs(10), 0, $fontBold, $artText);
+            $aw = abs($bbox[2] - $bbox[0]);
+            $text($artText, $margin + $sumW + $totalW - $aw - $sx(8), $bodyY + $sy(17), 10, true);
+            $bodyY += $sy(26);
+        }
+
+        $footerY = $pageH - $footerH;
+        if ($isLastPage) {
+            $text('TIENDAS L. SURIANA', $margin, $footerY + $sy(18), 12, true);
+            $text('Subtotal: $ ' . number_format((float) $datos['subtotal'], 2, '.', ',') . '   Desc: $ ' . number_format((float) $datos['descuento'], 2, '.', ','), $sx(285), $footerY + $sy(18), 11, false);
+            $text('Flete: $ ' . number_format((float) $datos['flete'], 2, '.', ',') . '   IVA: $ ' . number_format((float) $datos['iva'], 2, '.', ','), $sx(655), $footerY + $sy(18), 11, false);
+            $totalLabel = 'Total: $ ' . number_format((float) $datos['total'], 2, '.', ',');
+            $bbox = imagettfbbox($fs(12), 0, $fontBold, $totalLabel);
+            $tw = abs($bbox[2] - $bbox[0]);
+            $text($totalLabel, $pageW - $margin - $tw, $footerY + $sy(18), 12, true);
+        }
+
+        $rotated = \imagerotate($img, -90, $white);
+        \imagedestroy($img);
+        return $rotated;
+    }
+
+    private function escposRasterFromImage($image): string
+    {
+        $width = imagesx($image);
+        $height = imagesy($image);
+        $widthBytes = (int) ceil($width / 8);
+        $data = '';
+
+        for ($y = 0; $y < $height; $y++) {
+            for ($xb = 0; $xb < $widthBytes; $xb++) {
+                $byte = 0;
+                for ($bit = 0; $bit < 8; $bit++) {
+                    $x = ($xb * 8) + $bit;
+                    if ($x >= $width) {
+                        continue;
+                    }
+                    $rgb = imagecolorat($image, $x, $y);
+                    $r = ($rgb >> 16) & 0xFF;
+                    $g = ($rgb >> 8) & 0xFF;
+                    $b = $rgb & 0xFF;
+                    $luma = (0.299 * $r) + (0.587 * $g) + (0.114 * $b);
+                    if ($luma < 200) {
+                        $byte |= (1 << (7 - $bit));
+                    }
+                }
+                $data .= chr($byte);
+            }
+        }
+
+        return "\x1D\x76\x30\x00"
+            . chr($widthBytes & 0xFF)
+            . chr(($widthBytes >> 8) & 0xFF)
+            . chr($height & 0xFF)
+            . chr(($height >> 8) & 0xFF)
+            . $data;
+    }
+
+    private function thermalFontPath(bool $bold = false): string
+    {
+        $paths = $bold
+            ? ['C:\\Windows\\Fonts\\arialbd.ttf', 'C:\\Windows\\Fonts\\calibrib.ttf']
+            : ['C:\\Windows\\Fonts\\arial.ttf', 'C:\\Windows\\Fonts\\calibri.ttf'];
+
+        foreach ($paths as $path) {
+            if (is_file($path)) {
+                return $path;
+            }
+        }
+
+        throw ValidationException::withMessages([
+            'printer' => 'No se encontro una fuente TrueType de Windows para imprimir el ticket raster.',
+        ]);
+    }
+
+    private function thermalWrapLabel(string $value, int $segment = 8): string
+    {
+        $clean = $this->thermalAscii($value);
+        return trim(chunk_split($clean, $segment, "\n"));
+    }
+
+    private function construirPayloadEscPosRecepcionDinamica(array $reporte): string
+    {
+        $payload = '';
+        $blocks = array_values($reporte['blocks'] ?? []);
+        $lastIndex = count($blocks) - 1;
+
+        foreach ($blocks as $index => $block) {
+            $image = $this->renderRecepcionDynamicBlockImage($reporte, $block, $index === 0, $index === $lastIndex);
+            try {
+                $payload .= "\x1B@\x1Ba\x00" . $this->escposRasterFromImage($image) . "\n\n";
+            } finally {
+                imagedestroy($image);
+            }
+        }
+
+        $payload .= "\n\n\n\n\x1DV\x00";
+
+        return $payload;
+    }
+
+    private function renderRecepcionDynamicBlockImage(array $reporte, array $block, bool $isFirstBlock, bool $isLastBlock)
+    {
+        $fontRegular = $this->thermalFontPath(false);
+        $fontBold = $this->thermalFontPath(true);
+        $margin = 16;
+        $headerH = $isFirstBlock ? 106 : 14;
+        $groupBandH = 34;
+        $tableHeaderH = 24;
+        $rowH = 27;
+        $footerH = $isLastBlock ? 62 : 10;
+        $groupW = 250;
+        $colorW = 130;
+        $totalW = 76;
+        $rows = $block['rows'] ?? [];
+        $columnWidths = array_map(
+            fn (array $column): int => max(48, min(88, (int) round(((int) ($column['width'] ?? 54)) * 0.92))),
+            $block['columns'] ?? []
+        );
+        $matrixW = array_sum($columnWidths);
+        $pageW = $margin * 2 + $groupW + $colorW + $matrixW + $totalW;
+        $summaryH = $isLastBlock ? 24 : 0;
+        $pageH = $headerH + $groupBandH + $tableHeaderH + (count($rows) * $rowH) + $summaryH + $footerH + 12;
+
+        $img = \imagecreatetruecolor($pageW, $pageH);
+        $white = \imagecolorallocate($img, 255, 255, 255);
+        $black = \imagecolorallocate($img, 0, 0, 0);
+        $gray = \imagecolorallocate($img, 90, 90, 90);
+        $fill = \imagecolorallocate($img, 236, 239, 244);
+        \imagefilledrectangle($img, 0, 0, $pageW, $pageH, $white);
+
+        $text = function (string $text, int $x, int $y, int $size = 10, bool $bold = false, int $color = null) use ($img, $fontRegular, $fontBold, $black): void {
+            \imagettftext($img, $size, 0, $x, $y, $color ?? $black, $bold ? $fontBold : $fontRegular, $text);
+        };
+        $fitText = function (string $content, int $x, int $y, int $width, int $size = 10, bool $bold = false, string $align = 'L') use ($fontRegular, $fontBold, $text): void {
+            $font = $bold ? $fontBold : $fontRegular;
+            $printSize = $size;
+            $safe = $content;
+            do {
+                $bbox = imagettfbbox($printSize, 0, $font, $safe);
+                $textWidth = abs($bbox[2] - $bbox[0]);
+                if ($textWidth <= $width || $printSize <= 7) {
+                    break;
+                }
+                $printSize--;
+            } while (true);
+
+            $drawX = $x;
+            if ($align === 'C') {
+                $drawX = (int) ($x + (($width - $textWidth) / 2));
+            } elseif ($align === 'R') {
+                $drawX = $x + $width - $textWidth;
+            }
+
+            $text($safe, $drawX, $y, $printSize, $bold);
+        };
+
+        if ($isFirstBlock) {
+            \imagerectangle($img, $margin, 6, $pageW - $margin, $headerH - 10, $black);
+            $text('Consulta Entrada de Mercancia', $margin + 12, 32, 18, true);
+            $text('Recepcion termica horizontal', $margin + 12, 52, 10, false, $gray);
+
+            $metaLeftX = $margin + 290;
+            $metaMidX = $margin + 545;
+            $metaRightX = $margin + 800;
+
+            $text('No. Entrada', $metaLeftX, 20, 8, true);
+            $text($this->thermalAscii((string) $reporte['folio']), $metaLeftX, 35, 11, true);
+            $text('Sucursal', $metaLeftX, 54, 8, true);
+            $text($this->thermalAscii((string) $reporte['sucursal']), $metaLeftX, 69, 10, true);
+            $text('Almacen', $metaLeftX, 86, 8, true);
+            $text($this->thermalAscii((string) $reporte['almacen']), $metaLeftX, 101, 10, true);
+
+            $text('Fecha', $metaMidX, 20, 8, true);
+            $text($this->thermalAscii((string) $reporte['fecha']), $metaMidX, 35, 11, true);
+            $text('Proveedor', $metaMidX, 54, 8, true);
+            $fitText($this->thermalAscii((string) $reporte['proveedor']), $metaMidX, 69, 220, 10, true);
+            $text('Referencia', $metaMidX, 86, 8, true);
+            $fitText($this->thermalAscii((string) (($reporte['referencia'] ?? '') !== '' ? $reporte['referencia'] : '-')), $metaMidX, 101, 220, 10, true);
+
+            $text('Bloques', $metaRightX, 20, 8, true);
+            $text('1 de ' . count($reporte['blocks']), $metaRightX, 35, 11, true);
+            if (($reporte['observaciones'] ?? '') !== '') {
+                $text('Observaciones', $metaRightX, 54, 8, true);
+                $fitText($this->thermalAscii((string) $reporte['observaciones']), $metaRightX, 69, 220, 9, false);
+            }
+        }
+
+        $bandY = $headerH;
+        \imagefilledrectangle($img, $margin, $bandY, $pageW - $margin, $bandY + $groupBandH, $fill);
+        \imagerectangle($img, $margin, $bandY, $pageW - $margin, $bandY + $groupBandH, $black);
+        $groupLabel = trim((($block['codigo'] ?? '') !== '' ? $block['codigo'] . ' · ' : '') . ($block['producto'] ?? 'Producto'));
+        $fitText($this->thermalAscii($groupLabel), $margin + 10, $bandY + 22, 520, 13, true);
+        $tableInfo = 'Tabla ' . ((int) ($block['group_index'] ?? 1)) . ' de ' . ((int) ($block['group_total_segments'] ?? 1));
+        if (!empty($block['is_group_continuation'])) {
+            $tableInfo .= ' CONT.';
+        }
+        $fitText($tableInfo, $pageW - $margin - 170, $bandY + 18, 160, 10, true, 'R');
+        $fitText('Total grupo: ' . number_format((float) ($block['group_total'] ?? 0), 0, '.', ','), $pageW - $margin - 170, $bandY + 31, 160, 10, true, 'R');
+
+        $x = $margin;
+        $y = $bandY + $groupBandH;
+        \imagerectangle($img, $x, $y, $x + $groupW, $y + $tableHeaderH, $black);
+        $text('Producto', $x + 10, $y + 17, 10, true);
+        $x += $groupW;
+        \imagerectangle($img, $x, $y, $x + $colorW, $y + $tableHeaderH, $black);
+        $text('Color', $x + 10, $y + 17, 10, true);
+        $x += $colorW;
+
+        foreach (($block['columns'] ?? []) as $idx => $column) {
+            $colW = $columnWidths[$idx];
+            \imagerectangle($img, $x, $y, $x + $colW, $y + $tableHeaderH, $black);
+            $fitText($this->thermalAscii((string) ($column['label'] ?? '')), $x + 2, $y + 17, $colW - 4, 9, true, 'C');
+            $x += $colW;
+        }
+
+        \imagerectangle($img, $x, $y, $x + $totalW, $y + $tableHeaderH, $black);
+        $fitText('Total', $x + 2, $y + 17, $totalW - 4, 10, true, 'C');
+
+        $bodyY = $y + $tableHeaderH;
+        foreach ($rows as $row) {
+            $x = $margin;
+            if (!empty($row['show_group_cell'])) {
+                $rowspan = max(1, (int) ($row['group_rowspan'] ?? 1));
+                \imagerectangle($img, $x, $bodyY, $x + $groupW, $bodyY + ($rowH * $rowspan), $black);
+                $fitText($this->thermalAscii((string) ($row['group_label'] ?? $groupLabel)), $x + 8, $bodyY + 20, $groupW - 16, 11, true);
+            }
+            $x += $groupW;
+            \imagerectangle($img, $x, $bodyY, $x + $colorW, $bodyY + $rowH, $black);
+            $fitText($this->thermalAscii((string) ($row['color'] ?? '')), $x + 6, $bodyY + 18, $colorW - 12, 10, false);
+            $x += $colorW;
+
+            foreach (($row['cells'] ?? []) as $cellIndex => $cell) {
+                $colW = $columnWidths[$cellIndex];
+                \imagerectangle($img, $x, $bodyY, $x + $colW, $bodyY + $rowH, $black);
+                $value = (float) ($cell['value'] ?? 0);
+                if ($value > 0) {
+                    $fitText(number_format($value, 0, '.', ','), $x + 2, $bodyY + 18, $colW - 4, 10, false, 'C');
+                }
+                $x += $colW;
+            }
+
+            \imagerectangle($img, $x, $bodyY, $x + $totalW, $bodyY + $rowH, $black);
+            $fitText(number_format((float) ($row['row_total'] ?? 0), 0, '.', ','), $x + 2, $bodyY + 18, $totalW - 6, 10, true, 'R');
+            $bodyY += $rowH;
+        }
+
+        if ($isLastBlock) {
+            $sumW = $groupW + $colorW + $matrixW;
+            \imagerectangle($img, $margin, $bodyY, $margin + $sumW, $bodyY + 24, $black);
+            $fitText('Total articulos', $margin + 4, $bodyY + 17, $sumW - 8, 10, true, 'R');
+            \imagerectangle($img, $margin + $sumW, $bodyY, $margin + $sumW + $totalW, $bodyY + 24, $black);
+            $fitText(number_format((float) ($reporte['receipt_totals']['articulos'] ?? 0), 0, '.', ','), $margin + $sumW + 2, $bodyY + 17, $totalW - 6, 10, true, 'R');
+
+            $footerY = $pageH - $footerH + 18;
+            $text('Subtotal: $ ' . number_format((float) ($reporte['receipt_totals']['subtotal'] ?? 0), 2, '.', ','), $margin, $footerY, 10, false);
+            $text('Descuento: $ ' . number_format((float) ($reporte['receipt_totals']['descuento'] ?? 0), 2, '.', ','), $margin + 250, $footerY, 10, false);
+            $text('Flete: $ ' . number_format((float) ($reporte['receipt_totals']['flete'] ?? 0), 2, '.', ','), $margin + 500, $footerY, 10, false);
+            $text('IVA: $ ' . number_format((float) ($reporte['receipt_totals']['iva'] ?? 0), 2, '.', ','), $margin + 700, $footerY, 10, false);
+            $fitText('Total: $ ' . number_format((float) ($reporte['receipt_totals']['total'] ?? 0), 2, '.', ','), $pageW - $margin - 240, $footerY, 230, 12, true, 'R');
+        }
+
+        $rotated = \imagerotate($img, -90, $white);
+        \imagedestroy($img);
+        return $rotated;
+    }
+
+    private function resolverNavegadorImpresionSilenciosa(): string
+    {
+        $paths = [
+            'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+            'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+            'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+            'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+        ];
+
+        foreach ($paths as $path) {
+            if (is_file($path)) {
+                return $path;
+            }
+        }
+
+        throw ValidationException::withMessages([
+            'printer' => 'No se encontro Edge o Chrome para lanzar la impresion silenciosa.',
+        ]);
+    }
+
+    private function lanzarImpresionSilenciosaNavegador(string $browserPath, string $url): void
+    {
+        $scriptBase = tempnam(sys_get_temp_dir(), 'rme-print-');
+        if ($scriptBase === false) {
+            throw ValidationException::withMessages([
+                'printer' => 'No fue posible preparar la impresion directa.',
+            ]);
+        }
+
+        $scriptPath = $scriptBase . '.ps1';
+        file_put_contents($scriptPath, <<<'PS1'
+param([string]$BrowserPath,[string]$Url)
+Start-Process -FilePath $BrowserPath -ArgumentList @('--new-window', '--kiosk-printing', $Url) -WindowStyle Hidden
+PS1);
+
+        $command = 'powershell -NoProfile -ExecutionPolicy Bypass -File '
+            . escapeshellarg($scriptPath)
+            . ' -BrowserPath '
+            . escapeshellarg($browserPath)
+            . ' -Url '
+            . escapeshellarg($url)
+            . ' 2>&1';
+
+        exec($command, $output, $exitCode);
+        @unlink($scriptPath);
+        @unlink($scriptBase);
+
+        if ($exitCode !== 0) {
+            throw ValidationException::withMessages([
+                'printer' => trim(implode("\n", $output)) ?: 'No fue posible lanzar la impresion silenciosa.',
+            ]);
+        }
+    }
+
+    private function anchoColumnaTallaTermica(string $label, int $minWidth, int $padding): int
+    {
+        $length = max(1, strlen($this->thermalAscii($label)));
+        return max($minWidth, ($length * 9) + $padding);
+    }
+
+    private function segmentarColumnasTermicasHtml(array $columnas, int $availableWidth): array
+    {
+        if (empty($columnas)) {
+            return [[
+                'columns' => [],
+            ]];
+        }
+
+        $segmentos = [];
+        $actual = [];
+        $anchoActual = 0;
+
+        foreach ($columnas as $columna) {
+            $colWidth = (int) ($columna['width'] ?? 0);
+            if (!empty($actual) && ($anchoActual + $colWidth) > $availableWidth) {
+                $segmentos[] = ['columns' => $actual];
+                $actual = [];
+                $anchoActual = 0;
+            }
+
+            $actual[] = $columna;
+            $anchoActual += $colWidth;
+        }
+
+        if (!empty($actual)) {
+            $segmentos[] = ['columns' => $actual];
+        }
+
+        return $segmentos;
     }
 
     private function esAtributoTalla(string $nombre, string $clave = ''): bool

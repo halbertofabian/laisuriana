@@ -9,6 +9,7 @@ use App\Models\Cliente;
 use App\Models\PosVenta;
 use App\Models\Caja;
 use App\Models\PosTicketConfiguracion;
+use App\Models\Usuario;
 use App\Services\Operacion\PosCajaSesionService;
 use App\Services\Operacion\PosVentaService;
 use Illuminate\Http\JsonResponse;
@@ -45,8 +46,20 @@ class PuntoVentaController extends Controller
             ])
             ->values();
         $puedeCrearCliente = $usuario?->tienePermiso('cliente.crear') ?? false;
+        $vendedores = Usuario::query()
+            ->where('usr_estatus', 'activo')
+            ->where('usr_deleted', false)
+            ->whereNull('usr_deleted_at')
+            ->orderBy('usr_nombre')
+            ->get(['usr_id', 'usr_nombre', 'usr_usuario'])
+            ->map(fn (Usuario $u) => [
+                'usr_id' => (int) $u->usr_id,
+                'usr_nombre' => (string) $u->usr_nombre,
+                'usr_usuario' => (string) $u->usr_usuario,
+            ])
+            ->values();
 
-        return view('operacion.punto_venta.index', compact('sucursal', 'caja', 'estado', 'almacenesVenta', 'puedeCrearCliente'));
+        return view('operacion.punto_venta.index', compact('sucursal', 'caja', 'estado', 'almacenesVenta', 'puedeCrearCliente', 'vendedores'));
     }
 
     public function estadoCaja(Request $request): JsonResponse
@@ -266,6 +279,7 @@ class PuntoVentaController extends Controller
         $fmt = static fn ($v) => number_format((float) $v, 2, '.', ',');
         $metodo = strtoupper((string) ($venta->psv_metodo_pago ?? ''));
         $ticketBrand = 'Matriz Comitán';
+        $almacenNombre = trim((string) ($venta->almacen?->alm_nombre ?? ''));
         $fecha = optional($venta->psv_fecha_cobro)->format('d/m/Y H:i') ?? now()->format('d/m/Y H:i');
         $clienteNombre = trim((string) ($venta->cliente?->cli_razon_social
             ?: implode(' ', array_filter([
@@ -310,13 +324,15 @@ class PuntoVentaController extends Controller
         }
 
         $html = '<div style="text-align:center;font-size:12px;font-weight:bold;">' . e($ticketBrand) . '</div>';
+        if ($almacenNombre !== '') {
+            $html .= '<div style="text-align:center;font-size:8px;font-weight:bold;line-height:1;">' . e($almacenNombre) . '</div>';
+        }
         if ($ticketConfig?->ptc_texto_encabezado) {
             $html .= '<div style="font-size:7px;line-height:1.5;margin-top:3px;text-align:center;">' . nl2br(e((string) $ticketConfig->ptc_texto_encabezado)) . '</div>';
         }
         $html .= '<div style="font-size:7px;margin-top:3px;">Fecha: ' . e($fecha) . '<br/>Método: ' . e($metodo) . '</div>';
         $html .= '<hr/>';
         $html .= '<table cellspacing="0" cellpadding="1" style="font-size:7px;width:100%;margin-bottom:2px;">';
-        $html .= '<tr><td width="34%"><b>Almacén</b></td><td width="66%" align="right">' . e((string) ($venta->almacen?->alm_nombre ?? 'Sin almacén')) . '</td></tr>';
         $html .= '<tr><td width="34%"><b>Cliente</b></td><td width="66%" align="right">' . e($clienteNombre !== '' ? $clienteNombre : 'Mostrador') . '</td></tr>';
         $html .= '<tr><td width="34%"><b>Artículos</b></td><td width="66%" align="right">' . e((string) $articulosVendidos) . '</td></tr>';
         $html .= '<tr><td width="34%"><b>Vendedor' . ($vendedores->count() > 1 ? 'es' : '') . '</b></td><td width="66%" align="right">' . e($vendedores->isNotEmpty() ? $vendedores->implode(', ') : 'Sin vendedor') . '</td></tr>';

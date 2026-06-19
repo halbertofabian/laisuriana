@@ -7,10 +7,12 @@ use App\Http\Requests\Operacion\Inventario\ConfirmRecepcionMercanciaRequest;
 use App\Http\Requests\Operacion\Inventario\ListExistenciaMatrizRequest;
 use App\Http\Requests\Operacion\Inventario\ShowKardexDetalleRequest;
 use App\Http\Requests\Operacion\Inventario\StoreRecepcionMercanciaDraftRequest;
+use App\Services\Operacion\EscposRecepcionHorizontalService;
 use App\Services\Operacion\ExistenciaMatrizService;
 use App\Services\Operacion\InventarioBaseService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 
 class OperacionInventarioController extends Controller
@@ -215,6 +217,45 @@ class OperacionInventarioController extends Controller
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="' . $pdf['file_name'] . '"',
             'Cache-Control' => 'no-store, no-cache, must-revalidate',
+        ]);
+    }
+
+    public function reporteTermicoPdfRecepcion(int $recepcion): \Illuminate\Http\Response
+    {
+        $pdf = $this->inventarioService->descargarReporteRecepcionMercanciaTermicoPdf(request(), $recepcion);
+
+        return response($pdf['content'], 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $pdf['file_name'] . '"',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate',
+        ]);
+    }
+
+    public function reporteTermicoRecepcion(int $recepcion)
+    {
+        return view('desktop.operacion.inventario.recepcion_termica', [
+            'reporte' => $this->inventarioService->obtenerReporteCompactoRecepcion($recepcion),
+            'autoPrint' => request()->boolean('autoprint'),
+        ]);
+    }
+
+    public function imprimirTermicoDirectoRecepcion(int $recepcion): JsonResponse
+    {
+        $resultado = $this->inventarioService->imprimirRecepcionMercanciaTermicoDirecto(request(), $recepcion);
+
+        return response()->json([
+            'message' => $resultado['message'],
+            'data' => Arr::except($resultado, ['message']),
+        ]);
+    }
+
+    public function imprimirHorizontalRecepcion(int $recepcion): JsonResponse
+    {
+        $resultado = app(EscposRecepcionHorizontalService::class)->imprimir($recepcion);
+
+        return response()->json([
+            'message' => $resultado['message'],
+            'data'    => Arr::except($resultado, ['message']),
         ]);
     }
 

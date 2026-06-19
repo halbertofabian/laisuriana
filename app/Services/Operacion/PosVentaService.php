@@ -43,9 +43,10 @@ class PosVentaService
 
             $skuIds = collect($datos['items'])->pluck('psk_id')->map(fn ($v) => (int) $v)->unique()->values();
             $skus = ProductoSku::query()->whereIn('psk_id', $skuIds)->get()->keyBy('psk_id');
+            $pedidoDetalles = $this->pedidoDetallesParaVenta($datos);
 
             $subtotal = 0.0;
-            $detalle = collect($datos['items'])->map(function ($item) use (&$subtotal, $skus) {
+            $detalle = collect($datos['items'])->map(function ($item) use (&$subtotal, $skus, $pedidoDetalles, $usuario) {
                 $skuId = (int) $item['psk_id'];
                 $cantidad = round((float) $item['cantidad'], 2);
                 $sku = $skus->get($skuId);
@@ -58,7 +59,7 @@ class PosVentaService
 
                 return [
                     'psk_id' => $skuId,
-                    'usr_id' => (int) ($item['usr_id'] ?? 0),
+                    'usr_id' => $this->resolverVendedorLinea($item, $pedidoDetalles, $usuario),
                     'cantidad' => $cantidad,
                     'precio' => $precio,
                     'descuento_porcentaje' => $descuentoPct,
@@ -180,5 +181,61 @@ class PosVentaService
         }
 
         return $prefix . str_pad((string) $next, 6, '0', STR_PAD_LEFT);
+    }
+
+    private function pedidoDetallesParaVenta(array $datos): array
+    {
+        if (empty($datos['pedido_id'])) {
+            return [
+                'por_id' => collect(),
+                'por_sku' => collect(),
+            ];
+        }
+
+        $detalles = DB::table('tbl_pedido_piso_detalle_ppd')
+            ->where('ppd_pdp_id', (int) $datos['pedido_id'])
+            ->where('ppd_deleted', false)
+            ->whereNull('ppd_deleted_at')
+            ->get(['ppd_id', 'ppd_psk_id', 'ppd_usr_id']);
+
+        return [
+            'por_id' => $detalles->keyBy(fn ($d) => (int) $d->ppd_id),
+            'por_sku' => $detalles->groupBy(fn ($d) => (int) $d->ppd_psk_id),
+        ];
+    }
+
+    private function resolverVendedorLinea(array $item, array $pedidoDetalles, Usuario $usuario): int
+    {
+        $origen = (string) ($item['origen'] ?? '');
+        $pedidoDetalleId = (int) ($item['pedido_detalle_id'] ?? 0);
+        $skuId = (int) ($item['psk_id'] ?? 0);
+
+        if ($origen === 'pedido' || ($origen === '' && $pedidoDetalleId > 0)) {
+            $detallePedido = $pedidoDetalleId > 0
+                ? $pedidoDetalles['por_id']->get($pedidoDetalleId)
+                : null;
+
+            if (!$detallePedido && $skuId > 0) {
+                $detallePedido = $pedidoDetalles['por_sku']->get($skuId)?->first();
+            }
+
+            if (!$detallePedido) {
+                throw ValidationException::withMessages([
+                    'items' => 'No fue posible validar el vendedor del pedido para una partida.',
+                ]);
+            }
+
+            if ((int) ($detallePedido->ppd_psk_id ?? 0) !== $skuId) {
+                throw ValidationException::withMessages([
+                    'items' => 'Una partida no coincide con el detalle del pedido seleccionado.',
+                ]);
+            }
+
+            $vendedorPedidoId = (int) ($detallePedido->ppd_usr_id ?? 0);
+            return $vendedorPedidoId > 0 ? $vendedorPedidoId : (int) $usuario->usr_id;
+        }
+
+        $vendedorLineaId = (int) ($item['usr_id'] ?? 0);
+        return $vendedorLineaId > 0 ? $vendedorLineaId : (int) $usuario->usr_id;
     }
 }

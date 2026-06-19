@@ -339,11 +339,15 @@
         /* Input zone */
         .pos-input-zone {
             display: grid;
-            grid-template-columns: 3fr 2fr;
+            grid-template-columns: 3fr 1.5fr 2fr;
             gap: 0.65rem;
             padding: 0.7rem 1.1rem;
             background: var(--ls-surface);
             border-bottom: 1px solid var(--ls-border);
+        }
+
+        @media (max-width: 920px) {
+            .pos-input-zone { grid-template-columns: 1fr; }
         }
 
         .pos-field__label {

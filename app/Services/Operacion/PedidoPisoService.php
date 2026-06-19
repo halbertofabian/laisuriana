@@ -136,6 +136,7 @@ class PedidoPisoService
                 'almacen:alm_id,alm_nombre',
                 'usuario:usr_id,usr_nombre,usr_usuario',
                 'detalle.sku:psk_id,psk_codigo,psk_codigo_barras,psk_nombre,psk_precio',
+                'detalle.capturista:usr_id,usr_nombre,usr_usuario',
             ])
             ->where('pdp_folio', $folio)
             ->first();

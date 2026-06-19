@@ -287,6 +287,9 @@
             <div class="desktop-modal__foot">
                 <button type="button" class="desktop-btn desktop-btn--default" data-close-rme>Cerrar</button>
                 <a href="#" target="_blank" class="desktop-btn desktop-btn--primary" id="rme-modal-pdf">Ver PDF</a>
+                <a href="#" target="_blank" class="desktop-btn desktop-btn--default" id="rme-modal-termico">Reporte termico</a>
+                <button type="button" class="desktop-btn desktop-btn--default" id="rme-modal-imprimir-directo">Imprimir compacto</button>
+                <button type="button" class="desktop-btn desktop-btn--default" id="rme-modal-imprimir-horizontal">Imprimir horizontal</button>
             </div>
         </div>
     </div>
@@ -303,6 +306,9 @@
                 data: @json(route('desktop.operacion.inventario.recepciones.data')),
                 show: @json(url('/desktop/operacion/inventario/recepciones/__ID__')),
                 pdf: @json(url('/desktop/operacion/inventario/recepciones/__ID__/reporte-pdf')),
+                termico: @json(url('/desktop/operacion/inventario/recepciones/__ID__/reporte-termico')),
+                imprimirDirecto:     @json(url('/desktop/operacion/inventario/recepciones/__ID__/imprimir-termico-directo')),
+                imprimirHorizontal: @json(url('/desktop/operacion/inventario/recepciones/__ID__/imprimir-horizontal')),
                 cancelar: @json(url('/desktop/operacion/inventario/recepciones/__ID__/cancelar')),
                 recibir: @json(route('desktop.operacion.inventario.recibir.index')),
             };
@@ -421,7 +427,12 @@
                         '<button type="button" class="desktop-menu__item desktop-menu__item--danger" data-act="cancelar" data-id="' + id + '">Descartar borrador</button>';
                 } else {
                     items = '<button type="button" class="desktop-menu__item" data-act="ver" data-id="' + id + '">Ver detalle</button>' +
-                        '<a class="desktop-menu__item" href="' + urlFor(rutas.pdf, id) + '" target="_blank">Ver PDF</a>';
+                        '<div class="desktop-menu__divider"></div>' +
+                        '<button type="button" class="desktop-menu__item" data-act="imprimir-directo" data-id="' + id + '">Imprimir compacto</button>' +
+                        '<button type="button" class="desktop-menu__item" data-act="imprimir-horizontal" data-id="' + id + '">Imprimir horizontal</button>' +
+                        '<div class="desktop-menu__divider"></div>' +
+                        '<a class="desktop-menu__item" href="' + urlFor(rutas.pdf, id) + '" target="_blank">Ver PDF A4</a>' +
+                        '<a class="desktop-menu__item" href="' + urlFor(rutas.termico, id) + '" target="_blank">Reporte termico 80 mm</a>';
                 }
                 return '<div class="desktop-rowmenu">' +
                     '<button type="button" class="desktop-overflow" data-overflow aria-haspopup="true" aria-expanded="false" aria-label="Más acciones">' + ICONS.dots + '</button>' +
@@ -517,10 +528,13 @@
             // ===== Modal de detalle =====
             function abrirModal() { $('#rme-modal').addClass('is-open').attr('aria-hidden', 'false'); }
             function cerrarModal() { $('#rme-modal').removeClass('is-open').attr('aria-hidden', 'true'); }
+            let recepcionActualId = 0;
 
             function verDetalle(id) {
                 abrirModal();
+                recepcionActualId = Number(id || 0);
                 $('#rme-modal-pdf').attr('href', urlFor(rutas.pdf, id));
+                $('#rme-modal-termico').attr('href', urlFor(rutas.termico, id));
                 $('#rme-modal-body').html('<div style="padding:24px; text-align:center; color:var(--text-2);">Cargando…</div>');
                 $.getJSON(urlFor(rutas.show, id)).done(function (resp) {
                     const d = resp.data || {};
@@ -587,6 +601,30 @@
                 window.location.href = rutas.recibir + '?rme_id=' + encodeURIComponent(String(id));
             }
 
+            function imprimirDirecto(id) {
+                $.ajax({
+                    url: urlFor(rutas.imprimirDirecto, id),
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': csrf },
+                }).done(function (resp) {
+                    notify('Impresion enviada', resp.message || 'Se envio el ticket compacto a la impresora termica.', 'success');
+                }).fail(function (xhr) {
+                    notify('Error', xhr.responseJSON?.message || 'No fue posible imprimir directamente.', 'error');
+                });
+            }
+
+            function imprimirHorizontal(id) {
+                $.ajax({
+                    url: urlFor(rutas.imprimirHorizontal, id),
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': csrf },
+                }).done(function (resp) {
+                    notify('Impresion enviada', resp.message || 'Se envio el ticket horizontal a la impresora termica.', 'success');
+                }).fail(function (xhr) {
+                    notify('Error', xhr.responseJSON?.message || 'No fue posible imprimir el ticket horizontal.', 'error');
+                });
+            }
+
             async function cancelar(id) {
                 const ok = await DesktopUI.confirm({
                     title: 'Descartar borrador',
@@ -635,8 +673,12 @@
             });
 
             $table.on('click', '[data-act="ver"]', function () { verDetalle($(this).data('id')); });
+            $table.on('click', '[data-act="imprimir-directo"]', function () { imprimirDirecto($(this).data('id')); });
+            $table.on('click', '[data-act="imprimir-horizontal"]', function () { imprimirHorizontal($(this).data('id')); });
             $table.on('click', '[data-act="continuar"]', function () { continuar($(this).data('id')); });
             $table.on('click', '[data-act="cancelar"]', function () { cancelar($(this).data('id')); });
+            $('#rme-modal-imprimir-directo').on('click', function () { if (recepcionActualId > 0) imprimirDirecto(recepcionActualId); });
+            $('#rme-modal-imprimir-horizontal').on('click', function () { if (recepcionActualId > 0) imprimirHorizontal(recepcionActualId); });
             $(document).on('click', '[data-close-rme]', cerrarModal);
             $('#rme-modal').on('click', function (e) { if (e.target === this) cerrarModal(); });
             $(document).on('keydown', function (e) { if (e.key === 'Escape') cerrarModal(); });

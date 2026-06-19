@@ -2,6 +2,10 @@
 
 @section('title', 'Punto de Venta')
 
+@push('pos-styles')
+    <link rel="stylesheet" href="{{ asset('vendor-template/assets/vendor/libs/select2/select2.css') }}" />
+@endpush
+
 @section('content')
 <div
     class="pos-shell"
@@ -11,6 +15,74 @@
 >
     <style>[x-cloak]{display:none !important;}</style>
     <style>
+        .pos-vendedor-select-wrap .select2-container {
+            width: 100% !important;
+            display: block;
+        }
+        .pos-vendedor-select-wrap .select2-container--default .select2-selection--single {
+            height: 40px;
+            min-height: 40px;
+            border: 1.5px solid var(--ls-border);
+            border-radius: var(--ls-radius);
+            background: var(--ls-surface);
+            display: flex;
+            align-items: center;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .pos-vendedor-select-wrap .select2-container--default.select2-container--focus .select2-selection--single,
+        .pos-vendedor-select-wrap .select2-container--default.select2-container--open .select2-selection--single {
+            border-color: var(--ls-accent);
+            box-shadow: 0 0 0 3px var(--ls-accent-light);
+        }
+        .pos-vendedor-select-wrap .select2-container--default .select2-selection--single .select2-selection__rendered {
+            width: 100%;
+            padding-left: 2.1rem;
+            padding-right: 2rem;
+            color: var(--ls-text-primary);
+            font-size: 0.84rem;
+            line-height: 38px;
+        }
+        .pos-vendedor-select-wrap .select2-container--default .select2-selection--single .select2-selection__placeholder {
+            color: var(--ls-text-muted);
+        }
+        .pos-vendedor-select-wrap .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 38px;
+            right: 0.45rem;
+        }
+        .pos-vendedor-select-dropdown {
+            border: 1px solid var(--ls-border);
+            border-radius: var(--ls-radius);
+            background: var(--ls-surface);
+            box-shadow: var(--ls-shadow-lg);
+            overflow: hidden;
+        }
+        .pos-vendedor-select-dropdown .select2-search--dropdown {
+            padding: 0.5rem;
+            background: var(--ls-surface);
+        }
+        .pos-vendedor-select-dropdown .select2-search__field {
+            height: 34px;
+            border: 1px solid var(--ls-border);
+            border-radius: var(--ls-radius-sm);
+            padding: 0 0.55rem;
+            color: var(--ls-text-primary);
+            outline: none;
+        }
+        .pos-vendedor-select-dropdown .select2-results__options {
+            background: var(--ls-surface);
+        }
+        .pos-vendedor-select-dropdown .select2-results__option {
+            padding: 0.45rem 0.65rem;
+            font-size: 0.84rem;
+            color: var(--ls-text-primary);
+        }
+        .pos-vendedor-select-dropdown .select2-results__option--highlighted.select2-results__option--selectable {
+            background: var(--ls-accent) !important;
+            color: #fff !important;
+        }
+        .pos-vendedor-select-dropdown .select2-results__option--selected {
+            background: var(--ls-surface-3);
+        }
         .pos-search-suggest {
             position: absolute;
             left: 0;
@@ -1106,7 +1178,7 @@
                 </button>
             </div>
 
-            {{-- Input zone: 2 columns (producto 3fr, cliente 2fr) --}}
+            {{-- Input zone --}}
             <div class="pos-input-zone">
                 {{-- Producto --}}
                 <div>
@@ -1146,6 +1218,25 @@
                                 </div>
                             </template>
                         </div>
+                    </div>
+                </div>
+
+                {{-- Vendedor --}}
+                <div>
+                    <label class="pos-field__label">Vendedor</label>
+                    <div class="pos-input-wrap pos-vendedor-select-wrap">
+                        <span class="input-icon"><i class="ti tabler-user-dollar"></i></span>
+                        <select
+                            id="pos-vendedor-select"
+                            class="pos-input pos-vendedor-select"
+                            x-ref="vendedorSelect"
+                            x-model="vendedorSeleccionadoId"
+                        >
+                            <option value=""></option>
+                            <template x-for="v in vendedores" :key="v.usr_id">
+                                <option :value="String(v.usr_id)" x-text="`${v.usr_nombre || v.usr_usuario} (${v.usr_usuario})`"></option>
+                            </template>
+                        </select>
                     </div>
                 </div>
 
@@ -1968,10 +2059,12 @@
 @endsection
 
 @push('pos-scripts')
+<script src="{{ asset('vendor-template/assets/vendor/libs/select2/select2.js') }}"></script>
 <script>
 function posApp() {
     const estadoInicial = @json($estado ?? []);
     const almacenesVentaInicial = @json($almacenesVenta ?? []);
+    const vendedoresInicial = @json($vendedores ?? []);
     const usuarioActualId = {{ (int) (auth()->user()->usr_id ?? 0) }};
     const usuarioActualNombre = @json((string) (auth()->user()->usr_nombre ?? auth()->user()->usr_usuario ?? 'Sin vendedor'));
     const rutaBuscarProducto = '{{ route('operacion.escaneo_productos.buscar') }}';
@@ -2012,6 +2105,8 @@ function posApp() {
         pedidosPendientes: [],
         cargandoPedidosPendientes: false,
         almacenesVenta: Array.isArray(almacenesVentaInicial) ? almacenesVentaInicial : [],
+        vendedores: Array.isArray(vendedoresInicial) ? vendedoresInicial : [],
+        vendedorSeleccionadoId: '',
         ventaAlmacenId: '',
         ventaAlmacenNombre: '',
         mostrarModalAlmacenVenta: false,
@@ -2123,7 +2218,31 @@ function posApp() {
             setInterval(() => this.actualizarReloj(), 1000);
             this.validarSesionCaja();
             this.aplicarAlmacenPorSesion();
-            this.$nextTick(() => this.$refs.productoInput?.focus());
+            this.$nextTick(() => {
+                this.initVendedorSelect2();
+                this.$refs.productoInput?.focus();
+            });
+        },
+
+        initVendedorSelect2() {
+            const select = this.$refs.vendedorSelect;
+            if (!select || !window.jQuery || typeof window.jQuery(select).select2 !== 'function') return;
+
+            const $select = window.jQuery(select);
+            if ($select.hasClass('select2-hidden-accessible')) {
+                $select.select2('destroy');
+            }
+
+            $select
+                .select2({
+                    placeholder: 'Sin seleccionar',
+                    allowClear: true,
+                    width: '100%',
+                    dropdownCssClass: 'pos-vendedor-select-dropdown',
+                })
+                .on('change', () => {
+                    this.vendedorSeleccionadoId = String($select.val() || '');
+                });
         },
 
         async validarSesionCaja() {
@@ -2745,6 +2864,8 @@ function posApp() {
         aplicarPedidoEnTicket(pedido, cerrarModalPedido = false) {
             this.items = (pedido.detalle || []).map((d) => ({
                 pskId: d.ppd_psk_id,
+                origen: 'pedido',
+                pedidoDetalleId: Number(d.ppd_id || 0),
                 usrId: Number(d.ppd_usr_id || 0),
                 vendedor: d.capturista || 'Sin vendedor',
                 nombre: d.nombre || d.sku,
@@ -2833,10 +2954,13 @@ function posApp() {
 
         agregarDesdeBusqueda(item) {
             if (!item?.psk_id) return;
+            const vendedor = this.resolverVendedorManual();
             this.agregarItem({
                 pskId: item.psk_id,
-                usrId: usuarioActualId,
-                vendedor: usuarioActualNombre,
+                origen: 'manual',
+                pedidoDetalleId: null,
+                usrId: vendedor.usrId,
+                vendedor: vendedor.nombre,
                 nombre: item.psk_nombre || item.producto?.prd_nombre || item.psk_codigo,
                 sku: item.psk_codigo,
                 codigoBarras: item.psk_codigo_barras || item.producto?.prd_codigo_barras || '',
@@ -2850,6 +2974,25 @@ function posApp() {
             this.$nextTick(() => this.$refs.productoInput?.focus());
         },
 
+        resolverVendedorManual() {
+            const vendedorId = Number(this.vendedorSeleccionadoId || 0);
+            const vendedor = vendedorId > 0
+                ? this.vendedores.find((v) => Number(v.usr_id) === vendedorId)
+                : null;
+
+            if (vendedor) {
+                return {
+                    usrId: Number(vendedor.usr_id),
+                    nombre: vendedor.usr_nombre || vendedor.usr_usuario || 'Sin vendedor',
+                };
+            }
+
+            return {
+                usrId: usuarioActualId,
+                nombre: usuarioActualNombre,
+            };
+        },
+
         cerrarSelectorVariantes() {
             this.variantesPendientes = [];
             this.mostrarSelectorVariantes = false;
@@ -2860,6 +3003,8 @@ function posApp() {
             const existe = this.items.find(i =>
                 (i.pskId === producto.pskId || i.sku === producto.sku)
                 && Number(i.usrId || 0) === Number(producto.usrId || 0)
+                && String(i.origen || 'manual') === String(producto.origen || 'manual')
+                && Number(i.pedidoDetalleId || 0) === Number(producto.pedidoDetalleId || 0)
             );
             if (existe) {
                 existe.cantidad++;
@@ -2986,7 +3131,7 @@ function posApp() {
         corteCaja()      { alert('Corte de caja — próximamente'); },
         async abandonarCaja()  {
             if (!this.sesionActiva) {
-                window.location.href = '/';
+                window.location.href = '{{ route('desktop.dashboard') }}';
                 return;
             }
             const res = await fetch('{{ route('pos.caja.abandonar') }}', {
@@ -3001,9 +3146,9 @@ function posApp() {
                 alert('No fue posible salir de la caja.');
                 return;
             }
-            window.location.href = '/';
+            window.location.href = '{{ route('desktop.dashboard') }}';
         },
-        salir()          { window.location.href = '/'; },
+        salir()          { window.location.href = '{{ route('desktop.dashboard') }}'; },
         async cobrar()         {
             if (!this.items.length) return;
             if (!this.sesionActiva) {
@@ -3126,6 +3271,8 @@ function posApp() {
                 monto_tarjeta: Number(montoTarjeta || 0),
                 items: this.items.map((i) => ({
                     psk_id: Number(i.pskId),
+                    origen: i.origen || 'manual',
+                    pedido_detalle_id: i.pedidoDetalleId ? Number(i.pedidoDetalleId) : null,
                     usr_id: Number(i.usrId || usuarioActualId || 0),
                     cantidad: Number(i.cantidad || 0),
                     precio: Number(i.precio || 0),

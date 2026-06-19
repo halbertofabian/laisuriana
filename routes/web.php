@@ -163,6 +163,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/recepciones/data', [OperacionInventarioController::class, 'dataRecepciones'])->name('recepciones.data')->middleware('permiso:inventario_base.ver');
         Route::get('/recepciones/{recepcion}', [OperacionInventarioController::class, 'showRecepcion'])->name('recepciones.show')->middleware('permiso:inventario_base.ver');
         Route::get('/recepciones/{recepcion}/reporte-pdf', [OperacionInventarioController::class, 'reportePdfRecepcion'])->name('recepciones.reporte_pdf')->middleware('permiso:inventario_base.ver');
+        Route::get('/recepciones/{recepcion}/reporte-termico', [OperacionInventarioController::class, 'reporteTermicoRecepcion'])->name('recepciones.reporte_termico')->middleware('permiso:inventario_base.ver');
+        Route::get('/recepciones/{recepcion}/reporte-termico-pdf', [OperacionInventarioController::class, 'reporteTermicoPdfRecepcion'])->name('recepciones.reporte_termico_pdf')->middleware('permiso:inventario_base.ver');
+        Route::post('/recepciones/{recepcion}/imprimir-termico-directo', [OperacionInventarioController::class, 'imprimirTermicoDirectoRecepcion'])->name('recepciones.imprimir_termico_directo')->middleware('permiso:inventario_base.ver');
+        Route::post('/recepciones/{recepcion}/imprimir-horizontal', [OperacionInventarioController::class, 'imprimirHorizontalRecepcion'])->name('recepciones.imprimir_horizontal')->middleware('permiso:inventario_base.ver');
         Route::post('/recepciones/{recepcion}/cancelar', [OperacionInventarioController::class, 'cancelarRecepcion'])->name('recepciones.cancelar')->middleware('permiso:inventario_base.cancelar');
         Route::get('/salidas', [OperacionInventarioController::class, 'salidas'])->name('salidas.index')->middleware('permiso:inventario_base.ver');
         Route::get('/salidas/data', [OperacionInventarioController::class, 'dataSalidas'])->name('salidas.data')->middleware('permiso:inventario_base.ver');

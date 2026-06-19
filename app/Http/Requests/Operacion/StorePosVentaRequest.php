@@ -35,7 +35,22 @@ class StorePosVentaRequest extends FormRequest
             'items.*.cantidad' => ['required', 'numeric', 'gt:0'],
             'items.*.precio' => ['nullable', 'numeric', 'min:0'],
             'items.*.descuento' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'items.*.usr_id' => ['nullable', 'integer', 'exists:tbl_usuarios_usr,usr_id'],
+            'items.*.usr_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('tbl_usuarios_usr', 'usr_id')->where(fn ($q) => $q
+                    ->where('usr_deleted', false)
+                    ->whereNull('usr_deleted_at')
+                    ->where('usr_estatus', 'activo')),
+            ],
+            'items.*.origen' => ['nullable', Rule::in(['manual', 'pedido'])],
+            'items.*.pedido_detalle_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('tbl_pedido_piso_detalle_ppd', 'ppd_id')->where(fn ($q) => $q
+                    ->where('ppd_deleted', false)
+                    ->whereNull('ppd_deleted_at')),
+            ],
         ];
     }
 

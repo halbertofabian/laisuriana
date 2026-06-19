@@ -84,6 +84,7 @@ class PedidoPisoController extends Controller
                 'almacen' => $r->almacen?->alm_nombre,
                 'vendedor' => $r->usuario?->usr_nombre,
                 'detalle' => $r->detalle->map(fn ($d) => [
+                    'ppd_id' => (int) $d->ppd_id,
                     'ppd_psk_id' => $d->ppd_psk_id,
                     'sku' => $d->sku?->psk_codigo,
                     'nombre' => $d->sku?->psk_nombre,
@@ -231,6 +232,7 @@ class PedidoPisoController extends Controller
                 'sucursal' => $pedido->sucursal?->scl_nombre,
                 'vendedor' => $pedido->usuario?->usr_nombre,
                 'detalle' => $pedido->detalle->map(fn ($d) => [
+                    'ppd_id' => (int) $d->ppd_id,
                     'ppd_psk_id' => $d->ppd_psk_id,
                     'sku' => $d->sku?->psk_codigo,
                     'nombre' => $d->sku?->psk_nombre,
