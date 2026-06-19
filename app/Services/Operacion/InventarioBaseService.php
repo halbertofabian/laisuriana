@@ -2314,9 +2314,22 @@ class InventarioBaseService
 
         $dominanteAtrId = (int) ($datos['atr_dominante_id'] ?? 0);
         $columnasMap = [];
+        $productColumnasMap = [];
         $filasMap = [];
         $rowSort = [];
         $dominanteNombre = 'Dominante';
+        $tipoEntrada = (string) ($datos['min_documento_tipo'] ?? 'entrada_normal');
+        $descuentoTipo = (string) ($datos['min_descuento_tipo'] ?? ($movimientos->first()->min_descuento_tipo ?? 'ninguno'));
+        $descuentoValor = round((float) ($datos['min_descuento_valor'] ?? ($movimientos->first()->min_descuento_valor ?? 0)), 2);
+        $fleteTotal = round((float) ($datos['min_flete_total'] ?? ($movimientos->first()->min_flete_total ?? 0)), 2);
+        $ivaPorcentaje = round((float) ($datos['min_iva_porcentaje'] ?? ($movimientos->first()->min_iva_porcentaje ?? 16)), 2);
+        $economicos = $this->calcularEconomicosRecepcion(
+            $movimientos,
+            $descuentoTipo,
+            $descuentoValor,
+            $fleteTotal,
+            $ivaPorcentaje,
+        );
 
         foreach ($movimientos as $movimiento) {
             /** @var ProductoSku|null $sku */
@@ -2409,6 +2422,9 @@ class InventarioBaseService
             if (!isset($columnasMap[$colKey])) {
                 $columnasMap[$colKey] = $colLabel;
             }
+            if (!isset($productColumnasMap[$productoId][$colKey])) {
+                $productColumnasMap[$productoId][$colKey] = $colLabel;
+            }
 
             $rowId = $productoId . '|' . $dominanteValor;
             if (!isset($filasMap[$rowId])) {
@@ -2438,10 +2454,7 @@ class InventarioBaseService
             if ($costoReferencia <= 0) {
                 $costoReferencia = (float) ($sku->psk_costo ?? $producto->prd_costo ?? 0);
             }
-            $totalLineaMonetario = (float) ($movimiento->min_total_linea ?? 0);
-            if ($totalLineaMonetario <= 0) {
-                $totalLineaMonetario = round($cantidad * $costoReferencia, 2);
-            }
+            $totalLineaMonetario = (float) ($economicos['lineas'][(int) $movimiento->min_id]['subtotal'] ?? 0);
 
             $filasMap[$rowId]['precio_acumulado'] += ($precioReferencia * $cantidad);
             $filasMap[$rowId]['costo_acumulado'] += ($costoReferencia * $cantidad);
@@ -2455,6 +2468,10 @@ class InventarioBaseService
         }
 
         uasort($columnasMap, fn ($a, $b) => strnatcasecmp((string) $a, (string) $b));
+        foreach ($productColumnasMap as &$pColMap) {
+            uasort($pColMap, fn ($a, $b) => strnatcasecmp((string) $a, (string) $b));
+        }
+        unset($pColMap);
         uasort($filasMap, function (array $a, array $b): int {
             $cmpProducto = strcmp((string) mb_strtolower($a['producto']), (string) mb_strtolower($b['producto']));
             if ($cmpProducto !== 0) {
@@ -2473,7 +2490,6 @@ class InventarioBaseService
             ? (string) (DB::table('tbl_proveedores_prv')->where('prv_id', $proveedorId)->value('prv_nombre_empresa') ?? 'N/D')
             : 'N/D';
 
-        $tipoEntrada = (string) ($datos['min_documento_tipo'] ?? 'entrada_normal');
         $tipoEntradaLabel = match ($tipoEntrada) {
             'inventario_inicial' => 'Entrada normal (inventario inicial)',
             'entrada_normal' => 'Entrada normal',
@@ -2487,26 +2503,10 @@ class InventarioBaseService
         $observaciones = trim((string) ($datos['min_observaciones'] ?? ($datos['observaciones'] ?? ($movimientos->first()->min_observaciones ?? ''))));
         $fechaCaptura = (string) ($datos['min_fecha_movimiento'] ?? now()->toDateTimeString());
         $fechaEmision = (string) ($datos['min_fecha_emision'] ?? ($movimientos->first()->min_fecha_emision ?? ''));
-        $descuentoTipo = (string) ($datos['min_descuento_tipo'] ?? ($movimientos->first()->min_descuento_tipo ?? 'ninguno'));
-        $descuentoValor = round((float) ($datos['min_descuento_valor'] ?? ($movimientos->first()->min_descuento_valor ?? 0)), 2);
-        $fleteTotal = round((float) ($datos['min_flete_total'] ?? ($movimientos->first()->min_flete_total ?? 0)), 2);
-        $ivaPorcentaje = round((float) ($datos['min_iva_porcentaje'] ?? ($movimientos->first()->min_iva_porcentaje ?? 16)), 2);
-        $subtotalMonetario = round((float) $movimientos->sum('min_subtotal_linea'), 2);
-        $descuentoMonetario = round((float) $movimientos->sum('min_descuento_linea'), 2);
-        if ($descuentoMonetario <= 0 && $descuentoValor > 0) {
-            $descuentoMonetario = $descuentoTipo === 'porcentaje'
-                ? round($subtotalMonetario * ($descuentoValor / 100), 2)
-                : min($subtotalMonetario, $descuentoValor);
-        }
-        $ivaMonetario = round((float) $movimientos->sum('min_iva_linea'), 2);
-        $totalMonetario = round((float) $movimientos->sum('min_total_linea'), 2);
-        if ($totalMonetario <= 0) {
-            $baseMonetaria = max(0, round($subtotalMonetario - $descuentoMonetario + $fleteTotal, 2));
-            $ivaMonetario = $tipoEntrada === 'compra_factura'
-                ? round($baseMonetaria * ($ivaPorcentaje / 100), 2)
-                : 0.0;
-            $totalMonetario = round($baseMonetaria + $ivaMonetario, 2);
-        }
+        $subtotalMonetario = (float) $economicos['subtotal'];
+        $descuentoMonetario = (float) $economicos['descuento'];
+        $ivaMonetario = (float) $economicos['iva'];
+        $totalMonetario = (float) $economicos['total'];
 
         // ── Totales globales por columna ────────────────────────────────────
         $totalesPorColumna = [];
@@ -2556,18 +2556,18 @@ class InventarioBaseService
         $html .= '
         <table style="border-collapse:collapse;margin-bottom:2px;">
             <tr>
-                <td style="border:none;padding:10px 14px;background-color:' . $colorPrimario . ';width:75%;">
-                    <div style="font-size:16px;font-weight:bold;color:#ffffff;letter-spacing:0.5px;">
+                <td style="border:none;padding:5px 10px;background-color:' . $colorPrimario . ';width:75%;">
+                    <div style="font-size:13px;font-weight:bold;color:#ffffff;letter-spacing:0.4px;">
                         Reporte de Entradas Registradas
                     </div>
-                    <div style="font-size:8px;color:#9eb4cc;margin-top:2px;letter-spacing:0.3px;">
+                    <div style="font-size:7.5px;color:#9eb4cc;margin-top:1px;letter-spacing:0.3px;">
                         LA I. SURIANA &nbsp;&bull;&nbsp; INVENTARIO BASE
                     </div>
                 </td>
-                <td style="border:none;padding:10px 14px;background-color:' . $colorAccent . ';width:25%;text-align:right;vertical-align:middle;">
-                    <div style="font-size:8px;color:#d0ccff;">Generado</div>
-                    <div style="font-size:11px;font-weight:bold;color:#ffffff;">' . $this->esc(now()->format('d/M/Y')) . '</div>
-                    <div style="font-size:8px;color:#d0ccff;">' . $this->esc(now()->format('H:i:s')) . '</div>
+                <td style="border:none;padding:5px 10px;background-color:' . $colorAccent . ';width:25%;text-align:right;vertical-align:middle;">
+                    <div style="font-size:7px;color:#d0ccff;">Generado</div>
+                    <div style="font-size:10px;font-weight:bold;color:#ffffff;">' . $this->esc(now()->format('d/M/Y')) . '</div>
+                    <div style="font-size:7px;color:#d0ccff;">' . $this->esc(now()->format('H:i:s')) . '</div>
                 </td>
             </tr>
         </table>';
@@ -2578,9 +2578,9 @@ class InventarioBaseService
             : 'N/D';
 
         $html .= '
-        <table style="border-collapse:collapse;margin-bottom:6px;">
+        <table style="border-collapse:collapse;margin-bottom:3px;">
             <tr>
-                <td style="border:none;border-bottom:3px solid ' . $colorAccent . ';background-color:#f0f4f9;padding:6px 10px;width:50%;vertical-align:top;">
+                <td style="border:none;border-bottom:3px solid ' . $colorAccent . ';background-color:#f0f4f9;padding:3px 8px;width:50%;vertical-align:top;">
                     <table style="border-collapse:collapse;width:100%;">
                         <tr>
                             <td style="border:none;padding:1px 3px;font-size:8px;color:#64748b;width:38%;">Sucursal</td>
@@ -2608,7 +2608,7 @@ class InventarioBaseService
                         </tr>
                     </table>
                 </td>
-                <td style="border:none;border-bottom:3px solid ' . $colorAccent . ';background-color:#f0f4f9;padding:6px 10px;width:50%;vertical-align:top;">
+                <td style="border:none;border-bottom:3px solid ' . $colorAccent . ';background-color:#f0f4f9;padding:3px 8px;width:50%;vertical-align:top;">
                     <table style="border-collapse:collapse;width:100%;">
                         <tr>
                             <td style="border:none;padding:1px 3px;font-size:8px;color:#64748b;width:32%;">Dominante</td>
@@ -2632,15 +2632,15 @@ class InventarioBaseService
         </table>';
 
         // ── Anchos fijos en mm (A4 landscape = 297mm, márgenes 7mm c/u → 283mm útiles) ──
-        $mmProducto  = 70;   // columna producto
-        $mmDominante = 26;   // columna dominante (color, talla, etc.)
-        $mmTotalArt  = 18;   // total articulo
-        $mmPrecio    = 22;   // precio
-        $mmCosto     = 22;   // costo
-        $mmTotal     = 24;   // total monetario
+        $mmProducto  = 62;   // columna producto
+        $mmDominante = 24;   // columna dominante (color, talla, etc.)
+        $mmTotalArt  = 14;   // total articulo
+        $mmPrecio    = 17;   // precio
+        $mmCosto     = 17;   // costo
+        $mmTotal     = 20;   // total monetario
         $mmDisponible = 283 - $mmProducto - $mmDominante - $mmTotalArt - $mmPrecio - $mmCosto - $mmTotal;
         $numColumnas  = max(1, count($columnasMap));
-        $mmCol        = max(10, (int) floor($mmDisponible / $numColumnas));
+        $mmCol        = max(8, (int) floor($mmDisponible / $numColumnas));
 
         $baseMonetaria = max(0, round($subtotalMonetario - $descuentoMonetario + $fleteTotal, 2));
         $moneyRow = function (string $label, float $value, bool $grand = false) use ($colorBorderTbl, $colorPrimario, $colorAccent): string {
@@ -2656,153 +2656,160 @@ class InventarioBaseService
         };
 
         $moneyRows = '';
-        if ($tipoEntrada === 'compra_remision') {
-            $moneyRows .= $moneyRow('Descuento', $descuentoMonetario);
-            $moneyRows .= $moneyRow('Flete', $fleteTotal);
-            $moneyRows .= $moneyRow('Total', $totalMonetario, true);
-        } else {
-            $moneyRows .= $moneyRow('Subtotal', $subtotalMonetario);
-            $moneyRows .= $moneyRow('Descuento', $descuentoMonetario);
-            $moneyRows .= $moneyRow('Flete', $fleteTotal);
-            if ($tipoEntrada === 'compra_factura') {
-                $moneyRows .= $moneyRow('IVA (' . number_format($ivaPorcentaje, 2, '.', ',') . '%)', $ivaMonetario);
-            }
-            $moneyRows .= $moneyRow('Total', $totalMonetario, true);
-        }
+        $moneyRows .= $moneyRow('Subtotal', $subtotalMonetario);
+        $moneyRows .= $moneyRow('Descuento', $descuentoMonetario);
+        $moneyRows .= $moneyRow('Flete', $fleteTotal);
+        $moneyRows .= $moneyRow('IVA (' . number_format($ivaPorcentaje, 2, '.', ',') . '%)', $ivaMonetario);
+        $moneyRows .= $moneyRow('Total', $totalMonetario, true);
 
         $summaryHtml = '
-        <table style="border-collapse:collapse;margin-top:10px;margin-bottom:8px;width:283mm;">
+        <table style="border-collapse:collapse;margin-top:4px;margin-bottom:3px;width:283mm;">
             <tr>
-                <td style="border:none;border-top:1px solid ' . $colorBorderTbl . ';padding:10px 8px 8px 0;width:125mm;vertical-align:top;">
-                    <table style="border-collapse:collapse;width:auto;">
-                        <tr>
-                            <td style="border:none;padding:0 26px 0 0;vertical-align:top;">
-                                <div style="font-size:8px;font-weight:700;letter-spacing:0.4px;text-transform:uppercase;color:#8a94a6;">Líneas</div>
-                                <div style="font-size:18px;font-weight:800;color:' . $colorPrimario . ';line-height:1.1;">' . number_format($totalFilas, 0, '.', ',') . '</div>
-                            </td>
-                            <td style="border:none;padding:0;vertical-align:top;">
-                                <div style="font-size:8px;font-weight:700;letter-spacing:0.4px;text-transform:uppercase;color:#8a94a6;">Artículos</div>
-                                <div style="font-size:18px;font-weight:800;color:' . $colorPrimario . ';line-height:1.1;">' . number_format($granTotal, 2, '.', ',') . '</div>
-                            </td>
-                        </tr>
-                    </table>
+                <td style="border:none;border-top:1px solid ' . $colorBorderTbl . ';padding:4px 8px 3px 0;width:110mm;vertical-align:middle;">
+                    <span style="font-size:8px;color:#64748b;">Líneas:</span>
+                    <span style="font-size:9px;font-weight:800;color:' . $colorPrimario . ';">&nbsp;' . number_format($totalFilas, 0, '.', ',') . '</span>
+                    <span style="font-size:8px;color:#c8d3e0;">&nbsp;&nbsp;|&nbsp;&nbsp;</span>
+                    <span style="font-size:8px;color:#64748b;">Artículos:</span>
+                    <span style="font-size:9px;font-weight:800;color:' . $colorPrimario . ';">&nbsp;' . number_format($granTotal, 0, '.', ',') . '</span>
                 </td>
-                <td style="border:none;border-top:1px solid ' . $colorBorderTbl . ';padding:8px 0 8px 18px;width:158mm;vertical-align:top;">
+                <td style="border:none;border-top:1px solid ' . $colorBorderTbl . ';padding:3px 0 3px 12px;width:173mm;vertical-align:top;">
                     <table style="border-collapse:collapse;width:100%;">' . $moneyRows . '</table>
                 </td>
             </tr>
         </table>';
 
-        // ── Tabla de datos con anchos en mm (sin rowspan) ─────────────────
-        $stProducto  = 'width:' . $mmProducto  . 'mm;border:1px solid ' . $colorBorderTbl . ';padding:4px 5px;vertical-align:middle;';
-        $stDominante = 'width:' . $mmDominante . 'mm;border:1px solid ' . $colorBorderTbl . ';padding:4px 5px;text-align:center;vertical-align:middle;';
-        $stCol       = 'width:' . $mmCol       . 'mm;border:1px solid ' . $colorBorderTbl . ';padding:4px 4px;text-align:center;vertical-align:middle;';
-        $stTotalArt  = 'width:' . $mmTotalArt  . 'mm;border:1px solid ' . $colorBorderTbl . ';padding:4px 5px;text-align:center;vertical-align:middle;';
-        $stPrecio    = 'width:' . $mmPrecio    . 'mm;border:1px solid ' . $colorBorderTbl . ';padding:4px 5px;text-align:right;vertical-align:middle;';
-        $stCosto     = 'width:' . $mmCosto     . 'mm;border:1px solid ' . $colorBorderTbl . ';padding:4px 5px;text-align:right;vertical-align:middle;';
-        $stTotal     = 'width:' . $mmTotal     . 'mm;border:1px solid ' . $colorBorderTbl . ';padding:4px 5px;text-align:right;vertical-align:middle;';
+        // ── Tabla de datos con anchos en mm ──────────────────────────────
+        // Cada tabla de producto usa anchos explícitos en todas sus columnas.
+        // Las columnas de tallas reciben el espacio sobrante dividido con round()
+        // para minimizar la diferencia de posición de las columnas finales.
+        $p2  = '2px 3px';   // padding compacto celdas de datos
+        $p2h = '2px 4px';   // padding encabezados
+        $stProducto  = 'width:' . $mmProducto  . 'mm;border:1px solid ' . $colorBorderTbl . ';padding:' . $p2 . ';vertical-align:middle;';
+        $stDominante = 'width:' . $mmDominante . 'mm;border:1px solid ' . $colorBorderTbl . ';padding:' . $p2 . ';text-align:center;vertical-align:middle;';
+        // border-left marcado para separar visualmente la zona de tallas de la zona monetaria
+        $stTotalArt  = 'width:' . $mmTotalArt  . 'mm;border:1px solid ' . $colorBorderTbl . ';border-left:2px solid ' . $colorPrimario . ';padding:' . $p2 . ';text-align:center;vertical-align:middle;';
+        $stPrecio    = 'width:' . $mmPrecio    . 'mm;border:1px solid ' . $colorBorderTbl . ';padding:' . $p2 . ';text-align:right;vertical-align:middle;';
+        $stCosto     = 'width:' . $mmCosto     . 'mm;border:1px solid ' . $colorBorderTbl . ';padding:' . $p2 . ';text-align:right;vertical-align:middle;';
+        $stTotal     = 'width:' . $mmTotal     . 'mm;border:1px solid ' . $colorBorderTbl . ';padding:' . $p2 . ';text-align:right;vertical-align:middle;';
 
-        $html .= '<table style="border-collapse:collapse;font-size:8.5px;width:283mm;">';
-        $html .= '<thead><tr>';
-        $html .= '<th style="' . $stProducto  . 'background-color:' . $colorHeaderBg . ';color:' . $colorHeaderTxt . ';font-weight:bold;text-align:left;">Producto</th>';
-        $html .= '<th style="' . $stDominante . 'background-color:' . $colorHeaderBg . ';color:' . $colorHeaderTxt . ';font-weight:bold;">' . $this->esc($dominanteNombre) . '</th>';
+        // ── Encabezado global (se muestra UNA SOLA VEZ sobre todos los bloques) ──
+        // La zona de tallas se representa con un placeholder; cada producto
+        // mostrará sus propias tallas en su sub-encabezado.
+        $mmEspaciador = $mmDisponible;
+        // Celda fantasma para columnas monetarias en sub-encabezados por producto:
+        // mantiene la estructura de columnas sin repetir el label.
+        $stMoneyGhost = 'border:none;border-bottom:1px solid ' . $colorBorderTbl . ';padding:0;vertical-align:middle;';
 
-        foreach ($columnasMap as $colLabel) {
-            $html .= '<th style="' . $stCol . 'background-color:' . $colorHeaderBg . ';color:' . $colorHeaderTxt . ';font-weight:bold;">'
-                   . $this->esc((string) $colLabel) . '</th>';
+        $html .= '<table style="border-collapse:collapse;font-size:8px;width:283mm;margin-bottom:0;">';
+        $html .= '<tr>';
+        $html .= '<th style="' . $stProducto . 'background-color:' . $colorHeaderBg . ';color:' . $colorHeaderTxt . ';font-weight:bold;text-align:left;padding:' . $p2h . ';">Producto</th>';
+        $html .= '<th style="' . $stDominante . 'background-color:' . $colorHeaderBg . ';color:' . $colorHeaderTxt . ';font-weight:bold;padding:' . $p2h . ';">' . $this->esc($dominanteNombre) . '</th>';
+        $html .= '<th style="width:' . $mmEspaciador . 'mm;border:1px solid ' . $colorBorderTbl . ';background-color:' . $colorHeaderBg . ';color:#9eb4cc;font-weight:normal;font-style:italic;text-align:center;padding:' . $p2h . ';font-size:7.5px;">tallas por producto</th>';
+        $html .= '<th style="' . $stTotalArt . 'background-color:' . $colorAccent . ';color:#ffffff;font-weight:bold;padding:' . $p2h . ';">Total</th>';
+        $html .= '<th style="' . $stCosto . 'background-color:' . $colorHeaderBg . ';color:#ffffff;font-weight:bold;padding:' . $p2h . ';">Costo</th>';
+        $html .= '<th style="' . $stPrecio . 'background-color:' . $colorHeaderBg . ';color:#ffffff;font-weight:bold;padding:' . $p2h . ';">Precio</th>';
+        $html .= '<th style="' . $stTotal . 'background-color:' . $colorAccent . ';color:#ffffff;font-weight:bold;padding:' . $p2h . ';">Total $</th>';
+        $html .= '</tr>';
+        $html .= '</table>';
+
+        // ── Tabla de datos: una tabla por producto ────────────────────────
+        // Agrupar filas por producto_id preservando el orden de $filasMap
+        $filasPorProducto = [];
+        foreach ($filasMap as $row) {
+            if ((float) ($row['total_articulos'] ?? 0) <= 0) {
+                continue;
+            }
+            $filasPorProducto[$row['producto_id']][] = $row;
         }
 
-        $html .= '<th style="' . $stTotalArt . 'background-color:' . $colorAccent . ';color:#ffffff;font-weight:bold;">Total artículo</th>';
-        $html .= '<th style="' . $stPrecio . 'background-color:' . $colorHeaderBg . ';color:#ffffff;font-weight:bold;">Precio cliente</th>';
-        $html .= '<th style="' . $stCosto . 'background-color:' . $colorHeaderBg . ';color:#ffffff;font-weight:bold;">Costo</th>';
-        $html .= '<th style="' . $stTotal . 'background-color:' . $colorAccent . ';color:#ffffff;font-weight:bold;">Total</th>';
-        $html .= '</tr></thead><tbody>';
+        foreach ($filasPorProducto as $productoId => $filas) {
+            $colsProducto  = $productColumnasMap[$productoId] ?? [];
+            $numColsProd   = max(1, count($colsProducto));
+            $mmColProd     = max(8, round($mmDisponible / $numColsProd, 1));
+            $stColProd     = 'width:' . $mmColProd . 'mm;border:1px solid ' . $colorBorderTbl . ';padding:' . $p2 . ';text-align:center;vertical-align:middle;';
+            $esTablaSimple = ($numColsProd === 1 && isset($colsProducto['__simple__']));
+            $firstRow      = $filas[0];
 
-        // ── Filas de datos (sin rowspan, bordeado superior para separar productos) ──
-        $filaIndex       = 0;
-        $productoAnterior = null;
-        foreach ($filasMap as $row) {
-            $esNuevoProducto = ($row['producto_id'] !== $productoAnterior);
-            $esAlt           = ($filaIndex % 2 === 1);
-            $bgFila          = $esAlt ? $colorAltRow : '#ffffff';
+            $html .= '<table style="border-collapse:collapse;font-size:8px;width:283mm;margin-bottom:3px;">';
+            $html .= '<tbody>';
 
-            // Borde superior más grueso al cambiar de producto
-            $borderTopProducto = $esNuevoProducto
-                ? 'border-top:2px solid ' . $colorHeaderBg . ';'
-                : '';
+            if ($esTablaSimple) {
+                // Sub-encabezado: nombre producto + celda dominante vacía + celdas fantasma monetarias
+                $html .= '<tr>';
+                $html .= '<td style="' . $stProducto . 'background-color:' . $colorHeaderBg . ';color:#ffffff;font-weight:bold;">' . (string) $firstRow['producto'] . '</td>';
+                $html .= '<td style="' . $stDominante . 'background-color:' . $colorSubHeader . ';"></td>';
+                $html .= '<td style="width:' . $mmTotalArt . 'mm;border-left:2px solid ' . $colorPrimario . ';' . $stMoneyGhost . '"></td>';
+                $html .= '<td style="width:' . $mmCosto . 'mm;' . $stMoneyGhost . '"></td>';
+                $html .= '<td style="width:' . $mmPrecio . 'mm;' . $stMoneyGhost . '"></td>';
+                $html .= '<td style="width:' . $mmTotal . 'mm;' . $stMoneyGhost . '"></td>';
+                $html .= '</tr>';
 
-            $html .= '<tr>';
+                foreach ($filas as $idx => $row) {
+                    $bgFila = ($idx % 2 === 1) ? $colorAltRow : '#ffffff';
+                    $totalArticulosFila = (float) ($row['total_articulos'] ?? 0);
+                    $precioPromedioFila = $totalArticulosFila > 0 ? ((float) $row['precio_acumulado'] / $totalArticulosFila) : 0;
+                    $costoPromedioFila  = $totalArticulosFila > 0 ? ((float) $row['costo_acumulado'] / $totalArticulosFila) : 0;
+                    $totalMonetarioFila = (float) ($row['total_monetario'] ?? 0);
 
-            // Producto: se muestra en cada fila pero visualmente agrupado por borde
-            if ($esNuevoProducto) {
-                $html .= '<td style="' . $stProducto . 'background-color:' . $bgFila . ';font-weight:bold;' . $borderTopProducto . '">'
-                       . (string) $row['producto'] . '</td>';
+                    $html .= '<tr>';
+                    $html .= '<td style="' . $stProducto . 'background-color:' . $bgFila . ';border-top:1px dashed ' . $colorBorderTbl . ';">&nbsp;</td>';
+                    $html .= '<td style="' . $stDominante . 'background-color:' . $colorSubHeader . ';font-weight:bold;">' . $this->esc((string) $row['dominante']) . '</td>';
+                    $html .= '<td style="' . $stTotalArt . 'background-color:' . $colorTotalBg . ';font-weight:bold;">' . number_format($totalArticulosFila, 0, '.', ',') . '</td>';
+                    $html .= '<td style="' . $stCosto . 'background-color:' . $bgFila . ';font-weight:bold;">' . number_format($costoPromedioFila, 2, '.', ',') . '</td>';
+                    $html .= '<td style="' . $stPrecio . 'background-color:' . $bgFila . ';font-weight:bold;">' . number_format($precioPromedioFila, 2, '.', ',') . '</td>';
+                    $html .= '<td style="' . $stTotal . 'background-color:' . $colorTotalBg . ';font-weight:bold;">' . number_format($totalMonetarioFila, 2, '.', ',') . '</td>';
+                    $html .= '</tr>';
+                }
             } else {
-                $html .= '<td style="' . $stProducto . 'background-color:' . $bgFila . ';border-top:1px dashed ' . $colorBorderTbl . ';">&nbsp;</td>';
-            }
+                // Sub-encabezado: nombre producto + celda dominante vacía + tallas + celdas fantasma monetarias
+                $html .= '<tr>';
+                $html .= '<td style="' . $stProducto . 'background-color:' . $colorHeaderBg . ';color:#ffffff;font-weight:bold;">' . (string) $firstRow['producto'] . '</td>';
+                $html .= '<td style="' . $stDominante . 'background-color:' . $colorSubHeader . ';"></td>';
+                foreach ($colsProducto as $colLabel) {
+                    $html .= '<th style="' . $stColProd . 'background-color:' . $colorHeaderBg . ';color:' . $colorHeaderTxt . ';font-weight:bold;padding:' . $p2h . ';">' . $this->esc((string) $colLabel) . '</th>';
+                }
+                $html .= '<td style="width:' . $mmTotalArt . 'mm;border-left:2px solid ' . $colorPrimario . ';' . $stMoneyGhost . '"></td>';
+                $html .= '<td style="width:' . $mmCosto . 'mm;' . $stMoneyGhost . '"></td>';
+                $html .= '<td style="width:' . $mmPrecio . 'mm;' . $stMoneyGhost . '"></td>';
+                $html .= '<td style="width:' . $mmTotal . 'mm;' . $stMoneyGhost . '"></td>';
+                $html .= '</tr>';
 
-            // Dominante
-            $html .= '<td style="' . $stDominante . 'background-color:' . $colorSubHeader . ';font-weight:bold;' . $borderTopProducto . '">'
-                   . $this->esc((string) $row['dominante']) . '</td>';
+                foreach ($filas as $idx => $row) {
+                    $bgFila = ($idx % 2 === 1) ? $colorAltRow : '#ffffff';
+                    $totalArticulosFila = (float) ($row['total_articulos'] ?? 0);
+                    $precioPromedioFila = $totalArticulosFila > 0 ? ((float) $row['precio_acumulado'] / $totalArticulosFila) : 0;
+                    $costoPromedioFila  = $totalArticulosFila > 0 ? ((float) $row['costo_acumulado'] / $totalArticulosFila) : 0;
+                    $totalMonetarioFila = (float) ($row['total_monetario'] ?? 0);
 
-            // Celdas de valores por columna
-            foreach ($columnasMap as $colKey => $colLabel) {
-                $valor = (float) ($row['cells'][$colKey] ?? 0);
-                if ($valor > 0) {
-                    $html .= '<td style="' . $stCol . 'background-color:' . $colorOkBg . ';color:' . $colorOkTxt . ';font-weight:bold;' . $borderTopProducto . '">'
-                           . number_format($valor, 0, '.', ',') . '</td>';
-                } else {
-                    $html .= '<td style="' . $stCol . 'background-color:' . $colorNaBg . ';color:' . $colorNaTxt . ';' . $borderTopProducto . '">—</td>';
+                    $html .= '<tr>';
+                    $html .= '<td style="' . $stProducto . 'background-color:' . $bgFila . ';border-top:1px dashed ' . $colorBorderTbl . ';">&nbsp;</td>';
+                    $html .= '<td style="' . $stDominante . 'background-color:' . $colorSubHeader . ';font-weight:bold;">' . $this->esc((string) $row['dominante']) . '</td>';
+                    foreach ($colsProducto as $colKey => $colLabel) {
+                        $valor = (float) ($row['cells'][$colKey] ?? 0);
+                        if ($valor > 0) {
+                            $html .= '<td style="' . $stColProd . 'background-color:' . $colorOkBg . ';color:' . $colorOkTxt . ';font-weight:bold;">' . number_format($valor, 0, '.', ',') . '</td>';
+                        } else {
+                            $html .= '<td style="' . $stColProd . 'background-color:' . $colorNaBg . ';color:' . $colorNaTxt . ';">—</td>';
+                        }
+                    }
+                    $html .= '<td style="' . $stTotalArt . 'background-color:' . $colorTotalBg . ';font-weight:bold;">' . number_format($totalArticulosFila, 0, '.', ',') . '</td>';
+                    $html .= '<td style="' . $stCosto . 'background-color:' . $bgFila . ';font-weight:bold;">' . number_format($costoPromedioFila, 2, '.', ',') . '</td>';
+                    $html .= '<td style="' . $stPrecio . 'background-color:' . $bgFila . ';font-weight:bold;">' . number_format($precioPromedioFila, 2, '.', ',') . '</td>';
+                    $html .= '<td style="' . $stTotal . 'background-color:' . $colorTotalBg . ';font-weight:bold;">' . number_format($totalMonetarioFila, 2, '.', ',') . '</td>';
+                    $html .= '</tr>';
                 }
             }
 
-            // Total de fila
-            $totalArticulosFila = (float) ($row['total_articulos'] ?? 0);
-            $precioPromedioFila = $totalArticulosFila > 0 ? ((float) $row['precio_acumulado'] / $totalArticulosFila) : 0;
-            $costoPromedioFila = $totalArticulosFila > 0 ? ((float) $row['costo_acumulado'] / $totalArticulosFila) : 0;
-            $totalMonetarioFila = (float) ($row['total_monetario'] ?? 0);
-
-            $html .= '<td style="' . $stTotalArt . 'background-color:' . $colorTotalBg . ';font-weight:bold;' . $borderTopProducto . '">'
-                   . number_format($totalArticulosFila, 0, '.', ',') . '</td>';
-            $html .= '<td style="' . $stPrecio . 'background-color:' . $bgFila . ';font-weight:bold;' . $borderTopProducto . '">'
-                   . number_format($precioPromedioFila, 2, '.', ',') . '</td>';
-            $html .= '<td style="' . $stCosto . 'background-color:' . $bgFila . ';font-weight:bold;' . $borderTopProducto . '">'
-                   . number_format($costoPromedioFila, 2, '.', ',') . '</td>';
-            $html .= '<td style="' . $stTotal . 'background-color:' . $colorTotalBg . ';font-weight:bold;' . $borderTopProducto . '">'
-                   . number_format($totalMonetarioFila, 2, '.', ',') . '</td>';
-            $html .= '</tr>';
-
-            $productoAnterior = $row['producto_id'];
-            $filaIndex++;
+            $html .= '</tbody></table>';
         }
 
-        // ── Fila de totales globales ──────────────────────────────────────
-        $html .= '<tr>';
-        $html .= '<td colspan="2" style="width:' . ($mmProducto + $mmDominante) . 'mm;border:1px solid ' . $colorBorderTbl . ';border-top:2px solid ' . $colorHeaderBg . ';padding:5px 6px;background-color:' . $colorHeaderBg . ';color:#ffffff;font-weight:bold;text-align:right;font-size:9px;">TOTAL GENERAL</td>';
-
-        foreach ($columnasMap as $colKey => $colLabel) {
-            $tot = (float) ($totalesPorColumna[$colKey] ?? 0);
-            $html .= '<td style="' . $stCol . 'background-color:' . $colorHeaderBg . ';color:#ffffff;font-weight:bold;border-top:2px solid ' . $colorHeaderBg . ';font-size:9px;">'
-                   . ($tot > 0 ? number_format($tot, 0, '.', ',') : '—') . '</td>';
-        }
-
-        $html .= '<td style="' . $stTotalArt . 'background-color:' . $colorAccent . ';color:#ffffff;font-weight:bold;border-top:2px solid ' . $colorHeaderBg . ';font-size:10px;">'
-               . number_format($granTotal, 0, '.', ',') . '</td>';
-        $html .= '<td style="' . $stPrecio . 'background-color:' . $colorHeaderBg . ';color:#ffffff;font-weight:bold;border-top:2px solid ' . $colorHeaderBg . ';font-size:9px;">—</td>';
-        $html .= '<td style="' . $stCosto . 'background-color:' . $colorHeaderBg . ';color:#ffffff;font-weight:bold;border-top:2px solid ' . $colorHeaderBg . ';font-size:9px;">—</td>';
-        $html .= '<td style="' . $stTotal . 'background-color:' . $colorAccent . ';color:#ffffff;font-weight:bold;border-top:2px solid ' . $colorHeaderBg . ';font-size:10px;">'
-               . number_format($totalMonetario, 2, '.', ',') . '</td>';
-        $html .= '</tr>';
-
-        $html .= '</tbody></table>';
         $html .= $summaryHtml;
 
         // ── Pie de página ────────────────────────────────────────────────
         $html .= '
-        <br/>
-        <table style="border-collapse:collapse;margin-top:4px;">
+        <table style="border-collapse:collapse;margin-top:3px;">
             <tr>
-                <td style="border:none;border-top:1px solid ' . $colorBorderTbl . ';padding:4px 0;font-size:7px;color:#94a3b8;">
+                <td style="border:none;border-top:1px solid ' . $colorBorderTbl . ';padding:3px 0;font-size:7px;color:#94a3b8;">
                     Generado por el sistema de inventario de La I. Suriana &nbsp;&bull;&nbsp; ' . $this->esc(now()->format('d/m/Y H:i:s')) . ' &nbsp;&bull;&nbsp; Documento de uso interno.
                 </td>
             </tr>
@@ -3461,9 +3468,47 @@ class InventarioBaseService
 
     private function agruparLineasRecepcionPorProducto(Collection $lineas, array $datos): array
     {
-        return $lineas
-            ->groupBy('prd_id')
-            ->map(function (Collection $lineasProducto, $productoId) use ($datos) {
+        $subtotalGlobal = round((float) $lineas->sum(fn ($linea) => ((float) $linea['min_cantidad']) * ((float) $linea['min_precio_unitario'])), 2);
+        $totalPiezas = max(0.01, (float) $lineas->sum(fn ($linea) => (float) $linea['min_cantidad']));
+        $descuentoTipo = (string) ($datos['min_descuento_tipo'] ?? 'ninguno');
+        $descuentoValor = round((float) ($datos['min_descuento_valor'] ?? 0), 2);
+        $descuentoImporte = $descuentoTipo === 'importe' ? min($subtotalGlobal, $descuentoValor) : 0.0;
+        $fleteTotal = round((float) ($datos['min_flete_total'] ?? 0), 2);
+        $descuentoAsignado = 0.0;
+        $fleteAsignado = 0.0;
+        $grupos = $lineas->groupBy('prd_id')->values();
+        $ultimoGrupo = max(0, $grupos->count() - 1);
+
+        return $grupos
+            ->map(function (Collection $lineasProducto, int $idx) use (
+                $datos,
+                $subtotalGlobal,
+                $totalPiezas,
+                $descuentoTipo,
+                $descuentoValor,
+                $descuentoImporte,
+                $fleteTotal,
+                $ultimoGrupo,
+                &$descuentoAsignado,
+                &$fleteAsignado,
+            ) {
+                $productoId = (int) ($lineasProducto->first()['prd_id'] ?? 0);
+                $subtotalProducto = round((float) $lineasProducto->sum(fn ($linea) => ((float) $linea['min_cantidad']) * ((float) $linea['min_precio_unitario'])), 2);
+                $cantidadProducto = (float) $lineasProducto->sum(fn ($linea) => (float) $linea['min_cantidad']);
+                $proporcion = $subtotalGlobal > 0
+                    ? ($subtotalProducto / max(0.01, $subtotalGlobal))
+                    : ($cantidadProducto / $totalPiezas);
+                $descuentoGrupo = $descuentoTipo === 'importe'
+                    ? ($idx === $ultimoGrupo ? round($descuentoImporte - $descuentoAsignado, 2) : round($descuentoImporte * $proporcion, 2))
+                    : $descuentoValor;
+                $fleteGrupo = $idx === $ultimoGrupo
+                    ? round($fleteTotal - $fleteAsignado, 2)
+                    : round($fleteTotal * $proporcion, 2);
+                if ($descuentoTipo === 'importe') {
+                    $descuentoAsignado += $descuentoGrupo;
+                }
+                $fleteAsignado += $fleteGrupo;
+
                 return [
                     'prd_id' => (int) $productoId,
                     'min_scl_id' => (int) $datos['min_scl_id'],
@@ -3475,9 +3520,9 @@ class InventarioBaseService
                     'min_motivo_texto' => $datos['min_motivo_texto'] ?? 'Recepción de mercancía manual',
                     'min_observaciones' => $datos['min_observaciones'] ?? null,
                     'min_prv_id' => $datos['min_prv_id'] ?? null,
-                    'min_descuento_tipo' => $datos['min_descuento_tipo'] ?? 'ninguno',
-                    'min_descuento_valor' => $datos['min_descuento_valor'] ?? 0,
-                    'min_flete_total' => $datos['min_flete_total'] ?? 0,
+                    'min_descuento_tipo' => $descuentoTipo,
+                    'min_descuento_valor' => $descuentoGrupo,
+                    'min_flete_total' => $fleteGrupo,
                     'min_iva_porcentaje' => $datos['min_iva_porcentaje'] ?? 0,
                     'dominante_atr_id' => $datos['dominante_atr_id'] ?? null,
                     'lineas' => $lineasProducto->map(fn ($linea) => [
@@ -3489,6 +3534,57 @@ class InventarioBaseService
             })
             ->values()
             ->all();
+    }
+
+    private function calcularEconomicosRecepcion(
+        Collection $movimientos,
+        string $descuentoTipo,
+        float $descuentoValor,
+        float $fleteTotal,
+        float $ivaPorcentaje,
+    ): array {
+        $subtotal = round((float) $movimientos->sum(function (MovimientoInventario $movimiento): float {
+            $subtotalLinea = (float) ($movimiento->min_subtotal_linea ?? 0);
+            if ($subtotalLinea > 0) {
+                return $subtotalLinea;
+            }
+
+            return ((float) $movimiento->min_cantidad) * ((float) ($movimiento->min_precio_unitario ?? 0));
+        }), 2);
+        $descuento = 0.0;
+        if ($descuentoTipo === 'porcentaje') {
+            $descuento = round($subtotal * ($descuentoValor / 100), 2);
+        } elseif ($descuentoTipo === 'importe') {
+            $descuento = min($subtotal, $descuentoValor);
+        }
+
+        $targetBase = max(0, round($subtotal - $descuento + $fleteTotal, 2));
+        $targetIva = round($targetBase * (max(0, $ivaPorcentaje) / 100), 2);
+
+        $lineas = [];
+        foreach ($movimientos as $movimiento) {
+            $subtotalLinea = round((float) ($movimiento->min_subtotal_linea ?? 0), 2);
+            if ($subtotalLinea <= 0) {
+                $subtotalLinea = round(((float) $movimiento->min_cantidad) * ((float) ($movimiento->min_precio_unitario ?? 0)), 2);
+            }
+
+            $lineas[(int) $movimiento->min_id] = [
+                'subtotal' => $subtotalLinea,
+                'descuento' => 0.0,
+                'flete' => 0.0,
+                'iva' => 0.0,
+                'total' => $subtotalLinea,
+            ];
+        }
+
+        return [
+            'subtotal' => $subtotal,
+            'descuento' => $descuento,
+            'flete' => $fleteTotal,
+            'iva' => $targetIva,
+            'total' => round($targetBase + $targetIva, 2),
+            'lineas' => $lineas,
+        ];
     }
 
     private function registrarEntradaProductoLote(

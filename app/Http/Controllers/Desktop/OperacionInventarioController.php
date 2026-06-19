@@ -14,6 +14,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class OperacionInventarioController extends Controller
 {
@@ -136,8 +138,35 @@ class OperacionInventarioController extends Controller
 
     public function confirmarRecibir(ConfirmRecepcionMercanciaRequest $request): JsonResponse
     {
-        $resultado = $this->inventarioService->confirmarRecepcionMercancia($request, $request->validated());
-        $recepcion = $resultado['recepcion'];
+        $datos = $request->validated();
+
+        Log::info('Inventario recibir: confirmar solicitud recibida.', [
+            'user_id' => optional($request->user())->usr_id,
+            'rme_id' => $datos['rme_id'] ?? null,
+            'min_scl_id' => $datos['min_scl_id'] ?? null,
+            'min_alm_id' => $datos['min_alm_id'] ?? null,
+            'lineas' => count((array) ($datos['lineas'] ?? [])),
+        ]);
+
+        try {
+            $resultado = $this->inventarioService->confirmarRecepcionMercancia($request, $datos);
+            $recepcion = $resultado['recepcion'];
+        } catch (Throwable $e) {
+            Log::error('Inventario recibir: fallo al confirmar recepcion.', [
+                'user_id' => optional($request->user())->usr_id,
+                'rme_id' => $datos['rme_id'] ?? null,
+                'min_scl_id' => $datos['min_scl_id'] ?? null,
+                'min_alm_id' => $datos['min_alm_id'] ?? null,
+                'lineas' => count((array) ($datos['lineas'] ?? [])),
+                'exception' => $e,
+            ]);
+
+            return response()->json([
+                'message' => config('app.debug')
+                    ? 'No fue posible confirmar la recepcion: ' . $e->getMessage()
+                    : 'No fue posible confirmar la recepcion. Revisa el log de errores.',
+            ], 500);
+        }
 
         return response()->json([
             'message' => 'Recepción registrada correctamente.',

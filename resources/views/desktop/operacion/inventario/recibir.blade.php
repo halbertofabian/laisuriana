@@ -985,9 +985,14 @@
 
             function parseErr(xhr) {
                 const errs = xhr.responseJSON?.errors;
+                const status = xhr.status ? ('HTTP ' + xhr.status) : 'Sin respuesta HTTP';
                 let m = xhr.responseJSON?.message || 'No fue posible procesar la solicitud.';
                 if (errs) { const f = Object.values(errs)[0]; if (f && f[0]) m = f[0]; }
-                return m;
+                if (!xhr.responseJSON && xhr.responseText) {
+                    const plain = $('<div>').html(xhr.responseText).text().replace(/\s+/g, ' ').trim();
+                    if (plain) m = plain.substring(0, 240);
+                }
+                return status + ': ' + m;
             }
 
             function actualizarEstado() {
@@ -1183,7 +1188,7 @@
 
             $('#rcb-borrador').on('click', function () {
                 if (!Object.keys(state.meta).length) { notify('Validación', 'Agrega al menos un producto.', 'error'); return; }
-                $.ajax({ url: rutas.borrador, method: 'POST', headers: { 'X-CSRF-TOKEN': csrf }, data: construirPayload(true) })
+                $.ajax({ url: rutas.borrador, method: 'POST', dataType: 'json', contentType: 'application/json', headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' }, data: JSON.stringify(construirPayload(true)) })
                     .done(function (resp) {
                         state.rmeId = Number(resp.data?.rme_id || 0) || null;
                         state.rmeFolio = resp.data?.rme_folio || null;
@@ -1205,7 +1210,7 @@
                 if (!pass) { notify('Faltan datos', 'Captura tu contraseña.', 'error'); return; }
                 const payload = Object.assign({}, state.pendiente, { confirm_password: pass });
                 const $btn = $(this).prop('disabled', true);
-                $.ajax({ url: rutas.confirmar, method: 'POST', headers: { 'X-CSRF-TOKEN': csrf }, data: payload })
+                $.ajax({ url: rutas.confirmar, method: 'POST', dataType: 'json', contentType: 'application/json', headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' }, data: JSON.stringify(payload) })
                     .done(function (resp) {
                         cerrarModal();
                         notify('Recepción registrada', 'Folio: ' + (resp.data?.rme_folio || ''), 'success');
