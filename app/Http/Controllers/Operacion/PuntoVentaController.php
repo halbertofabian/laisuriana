@@ -9,6 +9,7 @@ use App\Models\Cliente;
 use App\Models\PosVenta;
 use App\Models\Caja;
 use App\Models\PosTicketConfiguracion;
+use App\Models\ProductoSku;
 use App\Models\Usuario;
 use App\Services\Operacion\PosCajaSesionService;
 use App\Services\Operacion\PosVentaService;
@@ -253,7 +254,14 @@ class PuntoVentaController extends Controller
             'almacen:alm_id,alm_nombre',
             'cliente:cli_id,cli_nombre,cli_apellido_paterno,cli_apellido_materno,cli_razon_social',
             'vendedor:usr_id,usr_nombre,usr_usuario',
-            'detalle.sku:psk_id,psk_codigo,psk_nombre',
+            'detalle.sku:psk_id,psk_prd_id,psk_nombre',
+            'detalle.sku.valoresAtributo:vat_id,vat_valor',
+            'detalle.sku.producto:prd_id,prd_nombre,prd_mrc_id,prd_mdl_id,prd_lna_id,prd_ctg_id,prd_dsc_id',
+            'detalle.sku.producto.marca:mrc_id,mrc_nombre',
+            'detalle.sku.producto.modelo:mdl_id,mdl_nombre',
+            'detalle.sku.producto.linea:lna_id,lna_nombre',
+            'detalle.sku.producto.categoria:ctg_id,ctg_nombre',
+            'detalle.sku.producto.descripcionCatalogo:dsc_id,dsc_nombre',
             'detalle.vendedor:usr_id,usr_nombre,usr_usuario',
         ]);
         $ticketConfig = PosTicketConfiguracion::query()->first();
@@ -341,11 +349,10 @@ class PuntoVentaController extends Controller
         $html .= '<table cellspacing="0" cellpadding="2" style="font-size:7px;width:100%;">';
         $html .= '<tr><th align="left" width="46%">Producto</th><th align="left" width="24%">Vendedor</th><th align="right" width="10%">Cant</th><th align="right" width="20%">Imp</th></tr>';
         foreach ($venta->detalle as $d) {
-            $nombre = (string) ($d->sku?->psk_nombre ?: ('SKU ' . $d->pvd_psk_id));
-            $skuCodigo = (string) ($d->sku?->psk_codigo ?: ('ID-' . $d->pvd_psk_id));
+            $nombre = $this->nombreProductoTicket($d->sku);
             $vendedorLinea = trim((string) ($d->vendedor?->usr_nombre ?: $d->vendedor?->usr_usuario ?: ''));
             $html .= '<tr>';
-            $html .= '<td width="46%">' . e($nombre) . '<br/><span style="font-size:6px;color:#555;">SKU: ' . e($skuCodigo) . '</span></td>';
+            $html .= '<td width="46%">' . e($nombre) . '</td>';
             $html .= '<td width="24%">' . e($vendedorLinea !== '' ? $vendedorLinea : '—') . '</td>';
             $html .= '<td align="right" width="10%">' . e($fmt($d->pvd_cantidad)) . '</td>';
             $html .= '<td align="right" width="20%">$' . e($fmt($d->pvd_importe)) . '</td>';
@@ -456,6 +463,25 @@ class PuntoVentaController extends Controller
         }
 
         return extension_loaded('gd') || extension_loaded('imagick');
+    }
+
+    private function nombreProductoTicket(?ProductoSku $sku): string
+    {
+        $producto = $sku?->producto;
+        $partes = [
+            $producto?->prd_nombre,
+            $producto?->marca?->mrc_nombre,
+            $producto?->modelo?->mdl_nombre,
+            $producto?->linea?->lna_nombre,
+            $producto?->categoria?->ctg_nombre,
+            $producto?->descripcionCatalogo?->dsc_nombre,
+        ];
+        $variantes = $sku?->valoresAtributo?->pluck('vat_valor')->all() ?? [];
+
+        return collect(array_merge($partes, $variantes))
+            ->map(fn ($valor) => trim((string) $valor))
+            ->filter()
+            ->implode(' ');
     }
 
     private function isPngWithAlphaChannel(string $path): bool
