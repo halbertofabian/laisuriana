@@ -2632,13 +2632,13 @@ class InventarioBaseService
         </table>';
 
         // ── Anchos fijos en mm (A4 landscape = 297mm, márgenes 7mm c/u → 283mm útiles) ──
-        $mmProducto  = 62;   // columna producto
-        $mmDominante = 24;   // columna dominante (color, talla, etc.)
+        // La columna Color se fusionó con Producto, liberando 24mm extra para tallas.
+        $mmProducto  = 62;   // columna Producto / Color
         $mmTotalArt  = 14;   // total articulo
         $mmPrecio    = 17;   // precio
         $mmCosto     = 17;   // costo
         $mmTotal     = 20;   // total monetario
-        $mmDisponible = 283 - $mmProducto - $mmDominante - $mmTotalArt - $mmPrecio - $mmCosto - $mmTotal;
+        $mmDisponible = 283 - $mmProducto - $mmTotalArt - $mmPrecio - $mmCosto - $mmTotal;
         $numColumnas  = max(1, count($columnasMap));
         $mmCol        = max(8, (int) floor($mmDisponible / $numColumnas));
 
@@ -2685,7 +2685,6 @@ class InventarioBaseService
         $p2  = '2px 3px';   // padding compacto celdas de datos
         $p2h = '2px 4px';   // padding encabezados
         $stProducto  = 'width:' . $mmProducto  . 'mm;border:1px solid ' . $colorBorderTbl . ';padding:' . $p2 . ';vertical-align:middle;';
-        $stDominante = 'width:' . $mmDominante . 'mm;border:1px solid ' . $colorBorderTbl . ';padding:' . $p2 . ';text-align:center;vertical-align:middle;';
         // border-left marcado para separar visualmente la zona de tallas de la zona monetaria
         $stTotalArt  = 'width:' . $mmTotalArt  . 'mm;border:1px solid ' . $colorBorderTbl . ';border-left:2px solid ' . $colorPrimario . ';padding:' . $p2 . ';text-align:center;vertical-align:middle;';
         $stPrecio    = 'width:' . $mmPrecio    . 'mm;border:1px solid ' . $colorBorderTbl . ';padding:' . $p2 . ';text-align:right;vertical-align:middle;';
@@ -2693,17 +2692,17 @@ class InventarioBaseService
         $stTotal     = 'width:' . $mmTotal     . 'mm;border:1px solid ' . $colorBorderTbl . ';padding:' . $p2 . ';text-align:right;vertical-align:middle;';
 
         // ── Encabezado global (se muestra UNA SOLA VEZ sobre todos los bloques) ──
-        // La zona de tallas se representa con un placeholder; cada producto
-        // mostrará sus propias tallas en su sub-encabezado.
+        // ── Encabezado global (UNA SOLA VEZ) ─────────────────────────────
+        // La columna Color se fusionó en Producto / Color.
+        // La zona de tallas muestra un placeholder; cada producto define las suyas.
         $mmEspaciador = $mmDisponible;
-        // Celda fantasma para columnas monetarias en sub-encabezados por producto:
-        // mantiene la estructura de columnas sin repetir el label.
         $stMoneyGhost = 'border:none;border-bottom:1px solid ' . $colorBorderTbl . ';padding:0;vertical-align:middle;';
+        // Estilo de la primera columna para filas de color (diferenciado del producto)
+        $stColor = $stProducto . 'background-color:' . $colorSubHeader . ';font-weight:bold;padding-left:6px;';
 
         $html .= '<table style="border-collapse:collapse;font-size:8px;width:283mm;margin-bottom:0;">';
         $html .= '<tr>';
-        $html .= '<th style="' . $stProducto . 'background-color:' . $colorHeaderBg . ';color:' . $colorHeaderTxt . ';font-weight:bold;text-align:left;padding:' . $p2h . ';">Producto</th>';
-        $html .= '<th style="' . $stDominante . 'background-color:' . $colorHeaderBg . ';color:' . $colorHeaderTxt . ';font-weight:bold;padding:' . $p2h . ';">' . $this->esc($dominanteNombre) . '</th>';
+        $html .= '<th style="' . $stProducto . 'background-color:' . $colorHeaderBg . ';color:' . $colorHeaderTxt . ';font-weight:bold;text-align:left;padding:' . $p2h . ';">Producto / Color</th>';
         $html .= '<th style="width:' . $mmEspaciador . 'mm;border:1px solid ' . $colorBorderTbl . ';background-color:' . $colorHeaderBg . ';color:#9eb4cc;font-weight:normal;font-style:italic;text-align:center;padding:' . $p2h . ';font-size:7.5px;">tallas por producto</th>';
         $html .= '<th style="' . $stTotalArt . 'background-color:' . $colorAccent . ';color:#ffffff;font-weight:bold;padding:' . $p2h . ';">Total</th>';
         $html .= '<th style="' . $stCosto . 'background-color:' . $colorHeaderBg . ';color:#ffffff;font-weight:bold;padding:' . $p2h . ';">Costo</th>';
@@ -2713,7 +2712,6 @@ class InventarioBaseService
         $html .= '</table>';
 
         // ── Tabla de datos: una tabla por producto ────────────────────────
-        // Agrupar filas por producto_id preservando el orden de $filasMap
         $filasPorProducto = [];
         foreach ($filasMap as $row) {
             if ((float) ($row['total_articulos'] ?? 0) <= 0) {
@@ -2734,10 +2732,9 @@ class InventarioBaseService
             $html .= '<tbody>';
 
             if ($esTablaSimple) {
-                // Sub-encabezado: nombre producto + celda dominante vacía + celdas fantasma monetarias
+                // Sub-encabezado: nombre producto (sin columna Color) + fantasmas monetarios
                 $html .= '<tr>';
                 $html .= '<td style="' . $stProducto . 'background-color:' . $colorHeaderBg . ';color:#ffffff;font-weight:bold;">' . (string) $firstRow['producto'] . '</td>';
-                $html .= '<td style="' . $stDominante . 'background-color:' . $colorSubHeader . ';"></td>';
                 $html .= '<td style="width:' . $mmTotalArt . 'mm;border-left:2px solid ' . $colorPrimario . ';' . $stMoneyGhost . '"></td>';
                 $html .= '<td style="width:' . $mmCosto . 'mm;' . $stMoneyGhost . '"></td>';
                 $html .= '<td style="width:' . $mmPrecio . 'mm;' . $stMoneyGhost . '"></td>';
@@ -2752,8 +2749,8 @@ class InventarioBaseService
                     $totalMonetarioFila = (float) ($row['total_monetario'] ?? 0);
 
                     $html .= '<tr>';
-                    $html .= '<td style="' . $stProducto . 'background-color:' . $bgFila . ';border-top:1px dashed ' . $colorBorderTbl . ';">&nbsp;</td>';
-                    $html .= '<td style="' . $stDominante . 'background-color:' . $colorSubHeader . ';font-weight:bold;">' . $this->esc((string) $row['dominante']) . '</td>';
+                    // Color/variante en la columna Producto con sangría visual
+                    $html .= '<td style="' . $stColor . '">' . $this->esc((string) $row['dominante']) . '</td>';
                     $html .= '<td style="' . $stTotalArt . 'background-color:' . $colorTotalBg . ';font-weight:bold;">' . number_format($totalArticulosFila, 0, '.', ',') . '</td>';
                     $html .= '<td style="' . $stCosto . 'background-color:' . $bgFila . ';font-weight:bold;">' . number_format($costoPromedioFila, 2, '.', ',') . '</td>';
                     $html .= '<td style="' . $stPrecio . 'background-color:' . $bgFila . ';font-weight:bold;">' . number_format($precioPromedioFila, 2, '.', ',') . '</td>';
@@ -2761,10 +2758,9 @@ class InventarioBaseService
                     $html .= '</tr>';
                 }
             } else {
-                // Sub-encabezado: nombre producto + celda dominante vacía + tallas + celdas fantasma monetarias
+                // Sub-encabezado: nombre producto + tallas + fantasmas monetarios (sin columna Color)
                 $html .= '<tr>';
                 $html .= '<td style="' . $stProducto . 'background-color:' . $colorHeaderBg . ';color:#ffffff;font-weight:bold;">' . (string) $firstRow['producto'] . '</td>';
-                $html .= '<td style="' . $stDominante . 'background-color:' . $colorSubHeader . ';"></td>';
                 foreach ($colsProducto as $colLabel) {
                     $html .= '<th style="' . $stColProd . 'background-color:' . $colorHeaderBg . ';color:' . $colorHeaderTxt . ';font-weight:bold;padding:' . $p2h . ';">' . $this->esc((string) $colLabel) . '</th>';
                 }
@@ -2782,8 +2778,8 @@ class InventarioBaseService
                     $totalMonetarioFila = (float) ($row['total_monetario'] ?? 0);
 
                     $html .= '<tr>';
-                    $html .= '<td style="' . $stProducto . 'background-color:' . $bgFila . ';border-top:1px dashed ' . $colorBorderTbl . ';">&nbsp;</td>';
-                    $html .= '<td style="' . $stDominante . 'background-color:' . $colorSubHeader . ';font-weight:bold;">' . $this->esc((string) $row['dominante']) . '</td>';
+                    // Color en la columna Producto, con fondo y sangría diferenciados
+                    $html .= '<td style="' . $stColor . '">' . $this->esc((string) $row['dominante']) . '</td>';
                     foreach ($colsProducto as $colKey => $colLabel) {
                         $valor = (float) ($row['cells'][$colKey] ?? 0);
                         if ($valor > 0) {
