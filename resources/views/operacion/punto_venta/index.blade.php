@@ -1346,8 +1346,9 @@
                                             type="number"
                                             class="pos-ticket__qty-input"
                                             x-model.number="item.cantidad"
-                                            min="1"
-                                            @change="recalcular()"
+                                            :min="item.permiteDecimal ? 0.01 : 1"
+                                            :step="item.permiteDecimal ? 0.01 : 1"
+                                            @change="item.cantidad = sanitizeQty(item.cantidad, item); recalcular()"
                                         />
                                         <button class="pos-ticket__qty-btn" @click="incQty(idx)">
                                             <i class="ti tabler-plus" style="font-size:.65rem"></i>
@@ -1361,7 +1362,7 @@
                                         @click="abrirDescuentoItem(idx)"
                                         :disabled="descuentoGlobal > 0">
                                         <i class="ti tabler-percentage" style="font-size:.72rem"></i>
-                                        <span x-text="item.descuento > 0 ? item.descuento + '%' : 'Agregar'"></span>
+                                        <span x-text="item.descuento > 0 ? descuentoItemLabel(item) : 'Agregar'"></span>
                                     </button>
                                 </td>
                                 <td>
@@ -1920,32 +1921,51 @@
                     <i class="ti tabler-x"></i>
                 </button>
             </div>
-            <div class="disc-modal__body">
-                <div class="disc-modal__product">
-                    <div class="disc-modal__name" x-text="descuentoItemNombre"></div>
-                    <div class="disc-modal__copy">Captura un porcentaje entre 0 y 100.</div>
-                </div>
+                <div class="disc-modal__body">
+                    <div class="disc-modal__product">
+                        <div class="disc-modal__name" x-text="descuentoItemNombre"></div>
+                        <div class="disc-modal__copy">Define si el descuento es por porcentaje o monto fijo, y para cuánta cantidad aplica.</div>
+                    </div>
 
-                <div class="disc-modal__field">
-                    <label class="disc-modal__label">Porcentaje</label>
-                    <input
-                        x-ref="descuentoItemInput"
-                        type="number"
-                        class="disc-modal__input"
-                        min="0"
-                        max="100"
-                        step="1"
-                        x-model="descuentoItemValor"
-                        @keydown.enter.prevent="guardarDescuentoItem()"
-                    >
-                </div>
+                    <div class="disc-modal__field">
+                        <label class="disc-modal__label">Tipo</label>
+                        <select class="disc-modal__input" x-model="descuentoItemTipo">
+                            <option value="porcentaje">Porcentaje</option>
+                            <option value="importe">Monto fijo</option>
+                        </select>
+                    </div>
 
-                <div class="disc-modal__actions">
+                    <div class="disc-modal__field">
+                        <label class="disc-modal__label" x-text="descuentoItemTipo === 'importe' ? 'Monto fijo' : 'Porcentaje'"></label>
+                        <input
+                            x-ref="descuentoItemInput"
+                            type="number"
+                            class="disc-modal__input"
+                            min="0"
+                            :max="descuentoItemTipo === 'porcentaje' ? 100 : null"
+                            step="0.01"
+                            x-model="descuentoItemValor"
+                            @keydown.enter.prevent="guardarDescuentoItemPos()"
+                        >
+                    </div>
+
+                    <div class="disc-modal__field">
+                        <label class="disc-modal__label">Cantidad a descontar</label>
+                        <input
+                            type="number"
+                            class="disc-modal__input"
+                            min="0"
+                            :step="descuentoItemPermiteDecimal ? 0.01 : 1"
+                            x-model="descuentoItemCantidad"
+                        >
+                    </div>
+
+                    <div class="disc-modal__actions">
                     <button type="button" class="btn btn-outline-secondary disc-modal__btn" @click="limpiarDescuentoItem()">
                         <i class="ti tabler-eraser"></i>
                         Quitar
                     </button>
-                    <button type="button" class="btn btn-primary disc-modal__btn" @click="guardarDescuentoItem()">
+                    <button type="button" class="btn btn-primary disc-modal__btn" @click="guardarDescuentoItemPos()">
                         <i class="ti tabler-device-floppy"></i>
                         Guardar
                     </button>
@@ -2165,6 +2185,9 @@ function posApp() {
         descuentoItemIndex: -1,
         descuentoItemValor: '',
         descuentoItemNombre: '',
+        descuentoItemTipo: 'porcentaje',
+        descuentoItemCantidad: '',
+        descuentoItemPermiteDecimal: false,
 
         // ── Ticket ───────────────────────────────────────────────
         items:               [],
@@ -2391,8 +2414,17 @@ function posApp() {
         },
 
         // ── Product search ───────────────────────────────────────
+        normalizarCodigoProducto(valor) {
+            return String(valor ?? '').replaceAll("'", '-');
+        },
+
         onInputProducto() {
             clearTimeout(this.timerBusquedaProducto);
+            const normalizado = this.normalizarCodigoProducto(this.queryProducto);
+            if (normalizado !== this.queryProducto) {
+                this.queryProducto = normalizado;
+            }
+
             const q = this.queryProducto.trim();
             if (q.length < 2) {
                 this.sugerenciasProducto = [];
@@ -2655,6 +2687,11 @@ function posApp() {
         },
 
         async buscarProducto() {
+            const normalizado = this.normalizarCodigoProducto(this.queryProducto);
+            if (normalizado !== this.queryProducto) {
+                this.queryProducto = normalizado;
+            }
+
             const q = this.queryProducto.trim();
             if (!q) return;
 
@@ -2873,9 +2910,14 @@ function posApp() {
                 codigoBarras: '',
                 precio: Number(d.precio || 0),
                 cantidad: Number(d.cantidad || 1),
-                descuento: 0,
+                permiteDecimal: Boolean(d.permite_decimal),
+                descuentoTipo: d.descuento_tipo || 'ninguno',
+                descuento: Number(d.descuento_valor || 0),
             }));
             this.notas = pedido.pdp_observaciones || '';
+            this.clienteSeleccionado = pedido.cliente || null;
+            this.queryCliente = pedido.cliente?.nombre || '';
+            this.descuentoGlobal = 0;
             this.pedidoCargado = {
                 pdp_id: pedido.pdp_id,
                 pdp_folio: pedido.pdp_folio,
@@ -2965,7 +3007,9 @@ function posApp() {
                 sku: item.psk_codigo,
                 codigoBarras: item.psk_codigo_barras || item.producto?.prd_codigo_barras || '',
                 precio: parseFloat(item.psk_precio || 0),
+                permiteDecimal: Boolean(item.permite_decimal),
                 cantidad: 1,
+                descuentoTipo: 'ninguno',
                 descuento: 0,
             });
             this.queryProducto = '';
@@ -3005,16 +3049,26 @@ function posApp() {
                 && Number(i.usrId || 0) === Number(producto.usrId || 0)
                 && String(i.origen || 'manual') === String(producto.origen || 'manual')
                 && Number(i.pedidoDetalleId || 0) === Number(producto.pedidoDetalleId || 0)
+                && String(i.descuentoTipo || 'ninguno') === 'ninguno'
             );
             if (existe) {
-                existe.cantidad++;
+                existe.cantidad = Number((Number(existe.cantidad || 0) + (existe.permiteDecimal ? 0.01 : 1)).toFixed(2));
                 this.recalcular();
             } else {
                 this.items.push({ ...producto });
             }
         },
+        qtyStep(item) {
+            return item?.permiteDecimal ? 0.01 : 1;
+        },
+        sanitizeQty(val, item) {
+            const num = Number(String(val ?? '').replace(',', '.'));
+            if (!Number.isFinite(num)) return this.qtyStep(item);
+            if (item?.permiteDecimal) return Math.max(0.01, Number(num.toFixed(2)));
+            return Math.max(1, Math.round(num));
+        },
         tieneDescuentosPorProducto() {
-            return this.items.some((item) => Number(item.descuento || 0) > 0);
+            return this.items.some((item) => Number(item.descuento || 0) > 0 && String(item.descuentoTipo || 'ninguno') !== 'ninguno');
         },
         abrirDescuentoItem(idx) {
             if (this.descuentoGlobal > 0) {
@@ -3025,7 +3079,10 @@ function posApp() {
             if (!item) return;
             this.descuentoItemIndex = idx;
             this.descuentoItemNombre = item.nombre || item.sku || 'Producto';
+            this.descuentoItemTipo = item.descuentoTipo === 'importe' ? 'importe' : 'porcentaje';
             this.descuentoItemValor = String(Number(item.descuento || 0));
+            this.descuentoItemCantidad = String(Number(item.cantidad || 0));
+            this.descuentoItemPermiteDecimal = Boolean(item.permiteDecimal);
             this.mostrarModalDescuentoItem = true;
             this.$nextTick(() => this.$refs.descuentoItemInput?.focus());
         },
@@ -3034,6 +3091,65 @@ function posApp() {
             this.descuentoItemIndex = -1;
             this.descuentoItemValor = '';
             this.descuentoItemNombre = '';
+            this.descuentoItemTipo = 'porcentaje';
+            this.descuentoItemCantidad = '';
+            this.descuentoItemPermiteDecimal = false;
+        },
+        guardarDescuentoItemPos() {
+            if (this.descuentoItemIndex < 0 || !this.items[this.descuentoItemIndex]) {
+                this.cerrarDescuentoItem();
+                return;
+            }
+            const item = this.items[this.descuentoItemIndex];
+            const tipo = this.descuentoItemTipo === 'importe' ? 'importe' : 'porcentaje';
+            const valor = Number(String(this.descuentoItemValor || 0).replace(',', '.'));
+            const cantidadAplicada = this.sanitizeQty(this.descuentoItemCantidad || item.cantidad, item);
+            const cantidadActual = Number(item.cantidad || 0);
+            const subtotalAplicado = Number((Number(item.precio || 0) * cantidadAplicada).toFixed(2));
+
+            if (Number.isNaN(valor) || valor < 0) {
+                AppUI.showMessage('Aviso', 'Captura un descuento válido.', 'warning');
+                return;
+            }
+            if (tipo === 'porcentaje' && valor > 100) {
+                AppUI.showMessage('Aviso', 'El porcentaje no puede ser mayor a 100.', 'warning');
+                return;
+            }
+            if (cantidadAplicada <= 0 || cantidadAplicada > cantidadActual) {
+                AppUI.showMessage('Aviso', 'La cantidad a descontar no es válida.', 'warning');
+                return;
+            }
+            if (tipo === 'importe' && valor > subtotalAplicado) {
+                AppUI.showMessage('Aviso', 'El descuento fijo no puede ser mayor al subtotal aplicado.', 'warning');
+                return;
+            }
+            if (cantidadAplicada === cantidadActual) {
+                item.descuentoTipo = valor > 0 ? tipo : 'ninguno';
+                item.descuento = valor > 0 ? valor : 0;
+                this.recalcular();
+                this.cerrarDescuentoItem();
+                return;
+            }
+
+            const restante = this.sanitizeQty(cantidadActual - cantidadAplicada, item);
+            if (restante <= 0 || restante >= cantidadActual) {
+                AppUI.showMessage('Aviso', 'La cantidad restante no es válida.', 'warning');
+                return;
+            }
+
+            const nuevaLinea = {
+                ...item,
+                cantidad: cantidadAplicada,
+                descuentoTipo: valor > 0 ? tipo : 'ninguno',
+                descuento: valor > 0 ? valor : 0,
+            };
+
+            item.cantidad = restante;
+            item.descuentoTipo = 'ninguno';
+            item.descuento = 0;
+            this.items.splice(this.descuentoItemIndex + 1, 0, nuevaLinea);
+            this.recalcular();
+            this.cerrarDescuentoItem();
         },
         guardarDescuentoItem() {
             if (this.descuentoItemIndex < 0 || !this.items[this.descuentoItemIndex]) {
@@ -3045,12 +3161,14 @@ function posApp() {
                 AppUI.showMessage('Aviso', 'Captura un porcentaje válido.', 'warning');
                 return;
             }
+            this.items[this.descuentoItemIndex].descuentoTipo = valor > 0 ? 'porcentaje' : 'ninguno';
             this.items[this.descuentoItemIndex].descuento = valor;
             this.recalcular();
             this.cerrarDescuentoItem();
         },
         limpiarDescuentoItem() {
             if (this.descuentoItemIndex >= 0 && this.items[this.descuentoItemIndex]) {
+                this.items[this.descuentoItemIndex].descuentoTipo = 'ninguno';
                 this.items[this.descuentoItemIndex].descuento = 0;
                 this.recalcular();
             }
@@ -3060,20 +3178,26 @@ function posApp() {
         quitarItem(idx)  { this.items.splice(idx, 1); },
 
         incQty(idx) {
-            this.items[idx].cantidad++;
+            this.items[idx].cantidad = Number((Number(this.items[idx].cantidad || 0) + this.qtyStep(this.items[idx])).toFixed(2));
             this.recalcular();
         },
 
         decQty(idx) {
-            if (this.items[idx].cantidad > 1) {
-                this.items[idx].cantidad--;
+            if (Number(this.items[idx].cantidad || 0) > this.qtyStep(this.items[idx])) {
+                this.items[idx].cantidad = Number((Number(this.items[idx].cantidad || 0) - this.qtyStep(this.items[idx])).toFixed(2));
                 this.recalcular();
             }
         },
 
         itemImporte(item) {
             const base = item.precio * item.cantidad;
-            return item.descuento > 0 ? base * (1 - item.descuento / 100) : base;
+            if (Number(item.descuento || 0) <= 0 || String(item.descuentoTipo || 'ninguno') === 'ninguno') {
+                return base;
+            }
+            if (String(item.descuentoTipo) === 'importe') {
+                return Math.max(0, base - Number(item.descuento || 0));
+            }
+            return base * (1 - Number(item.descuento || 0) / 100);
         },
 
         recalcular() { this.items = [...this.items]; },
@@ -3276,7 +3400,9 @@ function posApp() {
                     usr_id: Number(i.usrId || usuarioActualId || 0),
                     cantidad: Number(i.cantidad || 0),
                     precio: Number(i.precio || 0),
-                    descuento: Number(i.descuento || 0),
+                    descuento_tipo: i.descuentoTipo || 'ninguno',
+                    descuento_valor: Number(i.descuento || 0),
+                    descuento: i.descuentoTipo === 'porcentaje' ? Number(i.descuento || 0) : 0,
                 })),
             };
 
@@ -3351,6 +3477,13 @@ function posApp() {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2
             });
+        },
+
+        descuentoItemLabel(item) {
+            if (String(item?.descuentoTipo || 'ninguno') === 'importe') {
+                return 'Fijo ' + this.fmt(Number(item?.descuento || 0));
+            }
+            return '% ' + Number(item?.descuento || 0);
         },
     };
 }

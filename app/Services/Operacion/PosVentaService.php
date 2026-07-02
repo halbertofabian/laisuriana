@@ -8,6 +8,7 @@ use App\Models\PosVentaDetalle;
 use App\Models\ProductoSku;
 use App\Models\Usuario;
 use App\Services\AuditoriaService;
+use InvalidArgumentException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -18,6 +19,7 @@ class PosVentaService
         private readonly PosCajaSesionService $posCajaSesionService,
         private readonly InventarioBaseService $inventarioBaseService,
         private readonly AuditoriaService $auditoriaService,
+        private readonly LineaDescuentoService $lineaDescuentoService,
     ) {
     }
 
@@ -44,6 +46,9 @@ class PosVentaService
             $skuIds = collect($datos['items'])->pluck('psk_id')->map(fn ($v) => (int) $v)->unique()->values();
             $skus = ProductoSku::query()->whereIn('psk_id', $skuIds)->get()->keyBy('psk_id');
             $pedidoDetalles = $this->pedidoDetallesParaVenta($datos);
+            $pedido = !empty($datos['pedido_id'])
+                ? PedidoPiso::query()->find((int) $datos['pedido_id'])
+                : null;
 
             $subtotal = 0.0;
             $detalle = collect($datos['items'])->map(function ($item) use (&$subtotal, $skus, $pedidoDetalles, $usuario) {
@@ -51,20 +56,17 @@ class PosVentaService
                 $cantidad = round((float) $item['cantidad'], 2);
                 $sku = $skus->get($skuId);
                 $precio = round((float) ($item['precio'] ?? $sku?->psk_precio ?? 0), 2);
-                $descuentoPct = round((float) ($item['descuento'] ?? 0), 2);
-                $importeBase = round($cantidad * $precio, 2);
-                $descuentoImporte = round($importeBase * ($descuentoPct / 100), 2);
-                $importe = round($importeBase - $descuentoImporte, 2);
-                $subtotal += $importe;
+                $configDescuento = $this->resolverDescuentoLineaVenta($item, $pedidoDetalles, $cantidad, $precio);
+                $subtotal += $configDescuento['total'];
 
                 return [
                     'psk_id' => $skuId,
                     'usr_id' => $this->resolverVendedorLinea($item, $pedidoDetalles, $usuario),
                     'cantidad' => $cantidad,
                     'precio' => $precio,
-                    'descuento_porcentaje' => $descuentoPct,
-                    'descuento_importe' => $descuentoImporte,
-                    'importe' => $importe,
+                    'descuento_porcentaje' => $configDescuento['descuento_porcentaje_equivalente'],
+                    'descuento_importe' => $configDescuento['descuento_importe'],
+                    'importe' => $configDescuento['total'],
                 ];
             })->values();
 
@@ -89,7 +91,7 @@ class PosVentaService
                 'psv_scl_id' => $sucursalId,
                 'psv_alm_id' => $almacenId,
                 'psv_usr_id' => (int) $usuario->usr_id,
-                'psv_cli_id' => !empty($datos['cliente_id']) ? (int) $datos['cliente_id'] : null,
+                'psv_cli_id' => !empty($datos['cliente_id']) ? (int) $datos['cliente_id'] : ($pedido?->pdp_cli_id ? (int) $pedido->pdp_cli_id : null),
                 'psv_pdp_id' => !empty($datos['pedido_id']) ? (int) $datos['pedido_id'] : null,
                 'psv_estatus' => 'cobrada',
                 'psv_subtotal' => $subtotal,
@@ -196,7 +198,14 @@ class PosVentaService
             ->where('ppd_pdp_id', (int) $datos['pedido_id'])
             ->where('ppd_deleted', false)
             ->whereNull('ppd_deleted_at')
-            ->get(['ppd_id', 'ppd_psk_id', 'ppd_usr_id']);
+            ->get([
+                'ppd_id',
+                'ppd_psk_id',
+                'ppd_usr_id',
+                'ppd_descuento_tipo',
+                'ppd_descuento_valor',
+                'ppd_descuento_importe',
+            ]);
 
         return [
             'por_id' => $detalles->keyBy(fn ($d) => (int) $d->ppd_id),
@@ -237,5 +246,38 @@ class PosVentaService
 
         $vendedorLineaId = (int) ($item['usr_id'] ?? 0);
         return $vendedorLineaId > 0 ? $vendedorLineaId : (int) $usuario->usr_id;
+    }
+
+    private function resolverDescuentoLineaVenta(array $item, array $pedidoDetalles, float $cantidad, float $precio): array
+    {
+        $descuentoTipo = (string) ($item['descuento_tipo'] ?? '');
+        $descuentoValor = isset($item['descuento_valor'])
+            ? (float) $item['descuento_valor']
+            : (isset($item['descuento']) ? (float) $item['descuento'] : 0.0);
+
+        if (($item['origen'] ?? '') === 'pedido' || (int) ($item['pedido_detalle_id'] ?? 0) > 0) {
+            $detallePedido = null;
+            $pedidoDetalleId = (int) ($item['pedido_detalle_id'] ?? 0);
+            if ($pedidoDetalleId > 0) {
+                $detallePedido = $pedidoDetalles['por_id']->get($pedidoDetalleId);
+            }
+
+            if (!$detallePedido) {
+                $detallePedido = $pedidoDetalles['por_sku']->get((int) ($item['psk_id'] ?? 0))?->first();
+            }
+
+            if ($detallePedido && $descuentoTipo === '' && !isset($item['descuento_valor']) && !isset($item['descuento'])) {
+                $descuentoTipo = (string) ($detallePedido->ppd_descuento_tipo ?? 'ninguno');
+                $descuentoValor = (float) ($detallePedido->ppd_descuento_valor ?? 0);
+            }
+        }
+
+        try {
+            return $this->lineaDescuentoService->resolver($cantidad, $precio, $descuentoTipo, $descuentoValor);
+        } catch (InvalidArgumentException $e) {
+            throw ValidationException::withMessages([
+                'items' => $e->getMessage(),
+            ]);
+        }
     }
 }

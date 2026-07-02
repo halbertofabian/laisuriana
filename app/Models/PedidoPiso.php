@@ -24,6 +24,7 @@ class PedidoPiso extends Model
         'pdp_scl_id',
         'pdp_alm_id',
         'pdp_usr_id',
+        'pdp_cli_id',
         'pdp_estatus',
         'pdp_subtotal',
         'pdp_total',
@@ -55,6 +56,11 @@ class PedidoPiso extends Model
     public function usuario()
     {
         return $this->belongsTo(Usuario::class, 'pdp_usr_id', 'usr_id');
+    }
+
+    public function cliente()
+    {
+        return $this->belongsTo(Cliente::class, 'pdp_cli_id', 'cli_id');
     }
 
     public function detalle()

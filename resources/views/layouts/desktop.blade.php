@@ -529,6 +529,7 @@
         /* ====================== FORMS (Windows 11 Settings) ====================== */
         .desktop-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
         .desktop-field { display: flex; flex-direction: column; gap: 5px; }
+        .desktop-field[hidden] { display: none !important; }
         .desktop-field--full { grid-column: 1 / -1; }
         .desktop-field label {
             font-size: .79rem; font-weight: 600; color: var(--text);
@@ -946,7 +947,8 @@
                 msgEl.textContent = opts.message || '';
                 msgEl.style.display = opts.message ? '' : 'none';
                 fieldEl.hidden = (m !== 'prompt');
-                if (m === 'prompt') { inputEl.value = opts.value || ''; inputEl.setAttribute('placeholder', opts.placeholder || ''); }
+                inputEl.value = m === 'prompt' ? (opts.value || '') : '';
+                inputEl.setAttribute('placeholder', m === 'prompt' ? (opts.placeholder || '') : '');
                 okBtn.textContent = opts.okText || (m === 'confirm' ? 'Confirmar' : 'Aceptar');
                 okBtn.classList.toggle('desktop-btn--danger', !!opts.danger);
                 okBtn.classList.toggle('desktop-btn--primary', !opts.danger);

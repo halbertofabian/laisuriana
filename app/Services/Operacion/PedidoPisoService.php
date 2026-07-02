@@ -8,14 +8,17 @@ use App\Models\PedidoPiso;
 use App\Models\PedidoPisoDetalle;
 use App\Models\ProductoSku;
 use App\Services\AuditoriaService;
+use InvalidArgumentException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class PedidoPisoService
 {
-    public function __construct(private readonly AuditoriaService $auditoriaService)
-    {
+    public function __construct(
+        private readonly AuditoriaService $auditoriaService,
+        private readonly LineaDescuentoService $lineaDescuentoService,
+    ) {
     }
 
     public function listar(array $filtros = [])
@@ -25,6 +28,7 @@ class PedidoPisoService
                 'sucursal:scl_id,scl_nombre',
                 'almacen:alm_id,alm_nombre',
                 'usuario:usr_id,usr_nombre,usr_usuario',
+                'cliente:cli_id,cli_nombre,cli_apellido_paterno,cli_apellido_materno,cli_razon_social,cli_telefono,cli_email,cli_rfc,cli_descuento_default',
             ])
             ->when(!empty($filtros['buscar']), function ($q) use ($filtros): void {
                 $buscar = trim((string) $filtros['buscar']);
@@ -115,6 +119,7 @@ class PedidoPisoService
                 'sucursal:scl_id,scl_nombre',
                 'almacen:alm_id,alm_nombre',
                 'usuario:usr_id,usr_nombre,usr_usuario',
+                'cliente:cli_id,cli_nombre,cli_apellido_paterno,cli_apellido_materno,cli_razon_social,cli_telefono,cli_email,cli_rfc,cli_descuento_default',
                 'detalle.sku:psk_id,psk_prd_id,psk_codigo,psk_codigo_barras,psk_nombre,psk_precio',
                 'detalle.capturista:usr_id,usr_nombre,usr_usuario',
                 'detalle.sku.producto:prd_id,prd_umd_id,prd_nombre',
@@ -135,6 +140,7 @@ class PedidoPisoService
                 'sucursal:scl_id,scl_nombre',
                 'almacen:alm_id,alm_nombre',
                 'usuario:usr_id,usr_nombre,usr_usuario',
+                'cliente:cli_id,cli_nombre,cli_apellido_paterno,cli_apellido_materno,cli_razon_social,cli_telefono,cli_email,cli_rfc,cli_descuento_default',
                 'detalle.sku:psk_id,psk_codigo,psk_codigo_barras,psk_nombre,psk_precio',
                 'detalle.capturista:usr_id,usr_nombre,usr_usuario',
             ])
@@ -295,6 +301,10 @@ class PedidoPisoService
             foreach ($partidasInput as $item) {
                 $skuId = (int) $item['ppd_psk_id'];
                 $cantidad = (float) $item['ppd_cantidad'];
+                $descuentoTipo = (string) ($item['ppd_descuento_tipo'] ?? 'ninguno');
+                $descuentoCantidad = $descuentoTipo === 'ninguno'
+                    ? 0.0
+                    : (float) ($item['ppd_descuento_cantidad'] ?? $cantidad);
                 $validacion = $this->validarSkuParaAlmacen($skuId, $sucursalId, $almacenId);
                 if (!$validacion['valido']) {
                     throw ValidationException::withMessages([
@@ -309,21 +319,71 @@ class PedidoPisoService
                         'partidas' => [$validacionCantidad],
                     ]);
                 }
+
+                if ($descuentoTipo !== 'ninguno') {
+                    $validacionCantidadDescuento = $this->validarCantidadParaSku($sku, $descuentoCantidad);
+                    if ($validacionCantidadDescuento !== null) {
+                        throw ValidationException::withMessages([
+                            'partidas' => [$validacionCantidadDescuento],
+                        ]);
+                    }
+
+                    if ($descuentoCantidad <= 0) {
+                        throw ValidationException::withMessages([
+                            'partidas' => ['La cantidad a la que aplica el descuento debe ser mayor a cero.'],
+                        ]);
+                    }
+
+                    if ($descuentoCantidad > $cantidad) {
+                        throw ValidationException::withMessages([
+                            'partidas' => ['La cantidad a la que aplica el descuento no puede ser mayor a la cantidad de la partida.'],
+                        ]);
+                    }
+                }
+
+                try {
+                    $this->lineaDescuentoService->resolver(
+                        $cantidad,
+                        (float) ($sku?->psk_precio ?? 0),
+                        $descuentoTipo,
+                        (float) ($item['ppd_descuento_valor'] ?? 0)
+                    );
+                } catch (InvalidArgumentException $e) {
+                    throw ValidationException::withMessages([
+                        'partidas' => [$e->getMessage()],
+                    ]);
+                }
             }
 
             $subtotal = 0.0;
-            $partidas = collect($datos['partidas'])->map(function ($item) use (&$subtotal, $skus) {
+            $total = 0.0;
+            $partidas = collect($datos['partidas'])->map(function ($item) use (&$subtotal, &$total, $skus) {
                 $cantidad = (float) $item['ppd_cantidad'];
                 $sku = $skus->get((int) $item['ppd_psk_id']);
                 $precio = (float) ($sku?->psk_precio ?? 0);
-                $importe = round($cantidad * $precio, 2);
-                $subtotal += $importe;
+                $descuentoTipo = (string) ($item['ppd_descuento_tipo'] ?? 'ninguno');
+                $descuentoCantidad = $descuentoTipo === 'ninguno'
+                    ? 0.0
+                    : (float) ($item['ppd_descuento_cantidad'] ?? $cantidad);
+                $descuento = $this->lineaDescuentoService->resolver(
+                    $cantidad,
+                    $precio,
+                    $descuentoTipo,
+                    (float) ($item['ppd_descuento_valor'] ?? 0)
+                );
+                $subtotal += $descuento['subtotal'];
+                $total += $descuento['total'];
 
                 return [
                     'ppd_psk_id' => (int) $item['ppd_psk_id'],
                     'ppd_cantidad' => $cantidad,
                     'ppd_precio_unitario' => $precio,
-                    'ppd_importe' => $importe,
+                    'ppd_descuento_tipo' => $descuento['descuento_tipo'],
+                    'ppd_descuento_valor' => $descuento['descuento_valor'],
+                    'ppd_descuento_importe' => $descuento['descuento_importe'],
+                    'ppd_descuento_cantidad' => $descuento['descuento_tipo'] === 'ninguno' ? 0 : $descuentoCantidad,
+                    'ppd_importe' => $descuento['subtotal'],
+                    'ppd_total_linea' => $descuento['total'],
                     'ppd_usr_id' => (int) ($item['ppd_usr_id'] ?? optional($request->user())->usr_id ?? 0),
                 ];
             });
@@ -331,7 +391,8 @@ class PedidoPisoService
             if ($pedido) {
                 $pedido->update([
                     'pdp_subtotal' => round($subtotal, 2),
-                    'pdp_total' => round($subtotal, 2),
+                    'pdp_total' => round($total, 2),
+                    'pdp_cli_id' => !empty($datos['pdp_cli_id']) ? (int) $datos['pdp_cli_id'] : null,
                     'pdp_observaciones' => $datos['pdp_observaciones'] ?? null,
                     'pdp_updated_by_usr_id' => optional($request->user())->usr_id,
                 ]);
@@ -351,9 +412,10 @@ class PedidoPisoService
                     'pdp_scl_id' => (int) $datos['pdp_scl_id'],
                     'pdp_alm_id' => (int) $datos['pdp_alm_id'],
                     'pdp_usr_id' => (int) optional($request->user())->usr_id,
+                    'pdp_cli_id' => !empty($datos['pdp_cli_id']) ? (int) $datos['pdp_cli_id'] : null,
                     'pdp_estatus' => 'pendiente_cobro',
                     'pdp_subtotal' => round($subtotal, 2),
-                    'pdp_total' => round($subtotal, 2),
+                    'pdp_total' => round($total, 2),
                     'pdp_observaciones' => $datos['pdp_observaciones'] ?? null,
                     'pdp_fecha' => now(),
                     'pdp_created_by_usr_id' => optional($request->user())->usr_id,
@@ -367,7 +429,12 @@ class PedidoPisoService
                     'ppd_psk_id' => $partida['ppd_psk_id'],
                     'ppd_cantidad' => $partida['ppd_cantidad'],
                     'ppd_precio_unitario' => $partida['ppd_precio_unitario'],
+                    'ppd_descuento_tipo' => $partida['ppd_descuento_tipo'],
+                    'ppd_descuento_valor' => $partida['ppd_descuento_valor'],
+                    'ppd_descuento_importe' => $partida['ppd_descuento_importe'],
+                    'ppd_descuento_cantidad' => $partida['ppd_descuento_cantidad'],
                     'ppd_importe' => $partida['ppd_importe'],
+                    'ppd_total_linea' => $partida['ppd_total_linea'],
                     'ppd_usr_id' => $partida['ppd_usr_id'] > 0 ? $partida['ppd_usr_id'] : optional($request->user())->usr_id,
                     'ppd_created_by_usr_id' => optional($request->user())->usr_id,
                     'ppd_updated_by_usr_id' => optional($request->user())->usr_id,
@@ -383,6 +450,7 @@ class PedidoPisoService
                     'pdp_folio' => $pedido->pdp_folio,
                     'pdp_alm_id' => $pedido->pdp_alm_id,
                     'partidas' => $partidas->count(),
+                    'cliente' => $pedido->pdp_cli_id,
                     'total' => $pedido->pdp_total,
                 ]
             );

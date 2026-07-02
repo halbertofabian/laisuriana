@@ -62,6 +62,7 @@ class PedidoPisoController extends Controller
             'sucursal' => $r->sucursal?->scl_nombre,
             'almacen' => $r->almacen?->alm_nombre,
             'vendedor' => $r->usuario?->usr_nombre,
+            'cliente' => $this->mapCliente($r->cliente),
         ])->values();
 
         return response()->json(['data' => $data]);
@@ -77,12 +78,15 @@ class PedidoPisoController extends Controller
                 'pdp_folio' => $r->pdp_folio,
                 'pdp_scl_id' => (int) $r->pdp_scl_id,
                 'pdp_alm_id' => (int) $r->pdp_alm_id,
+                'pdp_cli_id' => (int) ($r->pdp_cli_id ?? 0),
                 'pdp_estatus' => $r->pdp_estatus,
+                'pdp_subtotal' => (float) $r->pdp_subtotal,
                 'pdp_total' => (float) $r->pdp_total,
                 'pdp_observaciones' => $r->pdp_observaciones,
                 'sucursal' => $r->sucursal?->scl_nombre,
                 'almacen' => $r->almacen?->alm_nombre,
                 'vendedor' => $r->usuario?->usr_nombre,
+                'cliente' => $this->mapCliente($r->cliente),
                 'detalle' => $r->detalle->map(fn ($d) => [
                     'ppd_id' => (int) $d->ppd_id,
                     'ppd_psk_id' => $d->ppd_psk_id,
@@ -91,6 +95,11 @@ class PedidoPisoController extends Controller
                     'cantidad' => (float) $d->ppd_cantidad,
                     'precio' => (float) $d->ppd_precio_unitario,
                     'importe' => (float) $d->ppd_importe,
+                    'descuento_tipo' => (string) ($d->ppd_descuento_tipo ?? 'ninguno'),
+                    'descuento_valor' => (float) ($d->ppd_descuento_valor ?? 0),
+                    'descuento_importe' => (float) ($d->ppd_descuento_importe ?? 0),
+                    'descuento_cantidad' => (float) ($d->ppd_descuento_cantidad ?? 0),
+                    'total_linea' => (float) ($d->ppd_total_linea ?? $d->ppd_importe ?? 0),
                     'ppd_usr_id' => (int) ($d->ppd_usr_id ?? 0),
                     'capturista' => $d->capturista?->usr_nombre,
                     'permite_decimal' => (bool) ($d->sku?->producto && strtoupper(trim((string) ($d->sku->producto->unidad?->umd_codigo ?? ''))) === 'M'),
@@ -225,12 +234,15 @@ class PedidoPisoController extends Controller
                 'pdp_id' => $pedido->pdp_id,
                 'pdp_folio' => $pedido->pdp_folio,
                 'pdp_estatus' => $pedido->pdp_estatus,
+                'pdp_subtotal' => (float) $pedido->pdp_subtotal,
                 'pdp_total' => (float) $pedido->pdp_total,
                 'pdp_observaciones' => $pedido->pdp_observaciones,
                 'pdp_alm_id' => $pedido->pdp_alm_id,
+                'pdp_cli_id' => (int) ($pedido->pdp_cli_id ?? 0),
                 'almacen' => $pedido->almacen?->alm_nombre,
                 'sucursal' => $pedido->sucursal?->scl_nombre,
                 'vendedor' => $pedido->usuario?->usr_nombre,
+                'cliente' => $this->mapCliente($pedido->cliente),
                 'detalle' => $pedido->detalle->map(fn ($d) => [
                     'ppd_id' => (int) $d->ppd_id,
                     'ppd_psk_id' => $d->ppd_psk_id,
@@ -239,6 +251,11 @@ class PedidoPisoController extends Controller
                     'cantidad' => (float) $d->ppd_cantidad,
                     'precio' => (float) $d->ppd_precio_unitario,
                     'importe' => (float) $d->ppd_importe,
+                    'descuento_tipo' => (string) ($d->ppd_descuento_tipo ?? 'ninguno'),
+                    'descuento_valor' => (float) ($d->ppd_descuento_valor ?? 0),
+                    'descuento_importe' => (float) ($d->ppd_descuento_importe ?? 0),
+                    'descuento_cantidad' => (float) ($d->ppd_descuento_cantidad ?? 0),
+                    'total_linea' => (float) ($d->ppd_total_linea ?? $d->ppd_importe ?? 0),
                     'ppd_usr_id' => (int) ($d->ppd_usr_id ?? 0),
                     'capturista' => $d->capturista?->usr_nombre,
                 ])->values(),
@@ -246,12 +263,47 @@ class PedidoPisoController extends Controller
         ]);
     }
 
+    private function mapCliente($cliente): ?array
+    {
+        if (!$cliente) {
+            return null;
+        }
+
+        $nombre = trim((string) ($cliente->cli_razon_social
+            ?: implode(' ', array_filter([
+                $cliente->cli_nombre,
+                $cliente->cli_apellido_paterno,
+                $cliente->cli_apellido_materno,
+            ]))));
+
+        return [
+            'cli_id' => (int) $cliente->cli_id,
+            'nombre' => $nombre,
+            'telefono' => (string) ($cliente->cli_telefono ?? ''),
+            'email' => (string) ($cliente->cli_email ?? ''),
+            'rfc' => (string) ($cliente->cli_rfc ?? ''),
+            'descuento_default' => $cliente->cli_descuento_default !== null ? (int) $cliente->cli_descuento_default : null,
+        ];
+    }
+
     public function ticket(PedidoPiso $pedido)
     {
         $pedido->load([
             'sucursal:scl_id,scl_nombre',
             'almacen:alm_id,alm_nombre',
+            'usuario:usr_id,usr_nombre',
+            'detalle.capturista:usr_id,usr_nombre',
         ]);
+
+        $vendedores = $pedido->detalle
+            ->pluck('capturista.usr_nombre')
+            ->filter(fn ($nombre) => filled($nombre))
+            ->unique()
+            ->values();
+
+        if ($vendedores->isEmpty() && filled($pedido->usuario?->usr_nombre)) {
+            $vendedores = collect([(string) $pedido->usuario->usr_nombre]);
+        }
 
         $pdf = new \TCPDF('P', 'mm', [80, 95], true, 'UTF-8', false, false);
         $pdf->SetCreator(config('app.name', 'La Suriana'));
@@ -259,8 +311,8 @@ class PedidoPisoController extends Controller
         $pdf->SetTitle('Pedido ' . $pedido->pdp_folio);
         $pdf->setPrintHeader(false);
         $pdf->setPrintFooter(false);
-        $pdf->SetMargins(5, 5, 5);
-        $pdf->SetAutoPageBreak(true, 4);
+        $pdf->SetMargins(3, 3, 3);
+        $pdf->SetAutoPageBreak(true, 2);
         $pdf->AddPage();
 
         $barcodeStyle = [
@@ -278,33 +330,61 @@ class PedidoPisoController extends Controller
             'fontsize' => 7,
         ];
 
-        $html = '<div style="text-align:center;font-size:12px;font-weight:bold;">' . e((string) ($pedido->sucursal?->scl_nombre ?? 'Sucursal')) . '</div>';
-        $html .= '<div style="text-align:center;font-size:7px;color:#666;margin-top:2px;">Pedido de piso</div>';
-        $html .= '<hr/>';
-        $html .= '<table cellspacing="0" cellpadding="2" style="font-size:8px;width:100%;">';
-        $html .= '<tr><td width="28%"><b>Sucursal</b></td><td width="72%" align="right">' . e((string) ($pedido->sucursal?->scl_nombre ?? 'Sin sucursal')) . '</td></tr>';
+        $html = '<div style="text-align:center;font-size:12px;font-weight:bold;line-height:1.05;">' . e((string) ($pedido->sucursal?->scl_nombre ?? 'Sucursal')) . '</div>';
+        $html .= '<div style="text-align:center;font-size:6.6px;color:#666;line-height:1.05;margin-top:1px;">Pedido de piso</div>';
+        $html .= '<div style="text-align:center;font-size:8.6px;font-weight:bold;line-height:1.08;margin-top:3px;">' . e((string) ($pedido->almacen?->alm_nombre ?? 'Sin almacÃ©n')) . '</div>';
+        if ($vendedores->isNotEmpty()) {
+            $html .= '<div style="text-align:center;font-size:6.5px;color:#444;line-height:1.12;margin-top:1px;">' . e($vendedores->join(', ')) . '</div>';
+        }
+        $html .= '<div style="border-top:1px solid #666;margin-top:4px;padding-top:3px;">';
+        $html .= '<table cellspacing="0" cellpadding="0.8" style="font-size:8px;width:100%;">';
         $html .= '<tr><td width="28%"><b>Almacén</b></td><td width="72%" align="right">' . e((string) ($pedido->almacen?->alm_nombre ?? 'Sin almacén')) . '</td></tr>';
-        $html .= '<tr><td width="28%"><b>Folio</b></td><td width="72%" align="right">' . e((string) $pedido->pdp_folio) . '</td></tr>';
+        $html .= '<tr><td width="26%"><b>Folio</b></td><td width="74%" align="right" style="font-weight:bold;">' . e((string) $pedido->pdp_folio) . '</td></tr>';
         $html .= '</table>';
-        $html .= '<div style="text-align:center;font-size:7px;color:#666;margin-top:6px;">Presenta este ticket en caja</div>';
+        $html .= '</div>';
+        $html .= '<div style="text-align:center;font-size:6.4px;color:#666;line-height:1.05;margin-top:2px;">Presenta este ticket en caja</div>';
+
+        $html = '<div style="text-align:center;font-size:12px;font-weight:bold;line-height:1.05;">' . e((string) ($pedido->sucursal?->scl_nombre ?? 'Sucursal')) . '</div>';
+        $html .= '<div style="text-align:center;font-size:6.6px;color:#666;line-height:1.05;margin-top:1px;">Pedido de piso</div>';
+        $html .= '<div style="text-align:center;font-size:8.6px;font-weight:bold;line-height:1.08;margin-top:3px;">' . e((string) ($pedido->almacen?->alm_nombre ?? 'Sin almacen')) . '</div>';
+        if ($vendedores->isNotEmpty()) {
+            $html .= '<div style="text-align:center;font-size:6.5px;color:#444;line-height:1.12;margin-top:1px;">' . e($vendedores->join(', ')) . '</div>';
+        }
+        $html .= '<div style="border-top:1px solid #666;margin-top:4px;padding-top:3px;">';
+        $html .= '<table cellspacing="0" cellpadding="0.8" style="font-size:8px;width:100%;">';
+        $html .= '<tr><td width="26%"><b>Folio</b></td><td width="74%" align="right" style="font-weight:bold;">' . e((string) $pedido->pdp_folio) . '</td></tr>';
+        $html .= '</table>';
+        $html .= '</div>';
+        $html .= '<div style="text-align:center;font-size:6.4px;color:#666;line-height:1.05;margin-top:2px;">Presenta este ticket en caja</div>';
+
+        $html = '<div style="text-align:center;font-size:11px;font-weight:bold;line-height:1.0;">' . e((string) ($pedido->sucursal?->scl_nombre ?? 'Sucursal')) . '</div>';
+        $html .= '<div style="text-align:center;font-size:6px;color:#666;line-height:1.0;margin-top:0.5px;">Pedido de piso</div>';
+        $html .= '<div style="text-align:center;font-size:8.2px;font-weight:bold;line-height:1.02;margin-top:1.5px;">' . e((string) ($pedido->almacen?->alm_nombre ?? 'Sin almacen')) . '</div>';
+        if ($vendedores->isNotEmpty()) {
+            $html .= '<div style="text-align:center;font-size:6px;color:#444;line-height:1.0;margin-top:0.5px;">' . e($vendedores->join(', ')) . '</div>';
+        }
+        $html .= '<table cellspacing="0" cellpadding="0.35" style="font-size:7.8px;width:100%;margin-top:1.5px;border-top:1px solid #666;">';
+        $html .= '<tr><td width="24%"><b>Folio</b></td><td width="76%" align="right" style="font-weight:bold;">' . e((string) $pedido->pdp_folio) . '</td></tr>';
+        $html .= '</table>';
+        $html .= '<div style="text-align:center;font-size:5.8px;color:#666;line-height:1.0;margin-top:0.5px;">Presenta este ticket en caja</div>';
 
         $pdf->writeHTML($html, true, false, true, false, '');
 
-        $barcodeY = max(42, $pdf->GetY() + 4);
+        $barcodeY = max(22, $pdf->GetY() + 0.5);
         $pdf->write1DBarcode(
             (string) $pedido->pdp_folio,
             'C128',
             8,
             $barcodeY,
             64,
-            14,
+            12,
             0.33,
             $barcodeStyle,
             'N'
         );
-        $pdf->SetFont('helvetica', 'B', 8);
-        $pdf->SetXY(5, $barcodeY + 15);
-        $pdf->Cell(70, 4, (string) $pedido->pdp_folio, 0, 1, 'C');
+        $pdf->SetFont('helvetica', 'B', 7.5);
+        $pdf->SetXY(5, $barcodeY + 12.5);
+        $pdf->Cell(70, 3.5, (string) $pedido->pdp_folio, 0, 1, 'C');
 
         return response($pdf->Output('', 'S'), 200, [
             'Content-Type' => 'application/pdf',

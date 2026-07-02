@@ -24,7 +24,12 @@ class PedidoPisoDetalle extends Model
         'ppd_psk_id',
         'ppd_cantidad',
         'ppd_precio_unitario',
+        'ppd_descuento_tipo',
+        'ppd_descuento_valor',
+        'ppd_descuento_importe',
+        'ppd_descuento_cantidad',
         'ppd_importe',
+        'ppd_total_linea',
         'ppd_usr_id',
         'ppd_created_by_usr_id',
         'ppd_updated_by_usr_id',
@@ -35,7 +40,11 @@ class PedidoPisoDetalle extends Model
         return [
             'ppd_cantidad' => 'decimal:2',
             'ppd_precio_unitario' => 'decimal:2',
+            'ppd_descuento_valor' => 'decimal:2',
+            'ppd_descuento_importe' => 'decimal:2',
+            'ppd_descuento_cantidad' => 'decimal:2',
             'ppd_importe' => 'decimal:2',
+            'ppd_total_linea' => 'decimal:2',
         ];
     }
 

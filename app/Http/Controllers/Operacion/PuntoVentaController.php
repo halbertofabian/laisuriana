@@ -252,6 +252,9 @@ class PuntoVentaController extends Controller
     {
         $venta->load([
             'almacen:alm_id,alm_nombre',
+            'caja:caj_id,caj_nombre',
+            'cajaSesion:cse_id,cse_caj_id',
+            'cajaSesion.caja:caj_id,caj_nombre',
             'cliente:cli_id,cli_nombre,cli_apellido_paterno,cli_apellido_materno,cli_razon_social',
             'vendedor:usr_id,usr_nombre,usr_usuario',
             'detalle.sku:psk_id,psk_prd_id,psk_nombre',
@@ -288,6 +291,8 @@ class PuntoVentaController extends Controller
         $metodo = strtoupper((string) ($venta->psv_metodo_pago ?? ''));
         $ticketBrand = 'Matriz Comitán';
         $almacenNombre = trim((string) ($venta->almacen?->alm_nombre ?? ''));
+        $cajaNombre = trim((string) ($venta->caja?->caj_nombre ?? $venta->cajaSesion?->caja?->caj_nombre ?? ''));
+        $cajeroNombre = trim((string) ($venta->vendedor?->usr_nombre ?: $venta->vendedor?->usr_usuario ?: ''));
         $fecha = optional($venta->psv_fecha_cobro)->format('d/m/Y H:i') ?? now()->format('d/m/Y H:i');
         $clienteNombre = trim((string) ($venta->cliente?->cli_razon_social
             ?: implode(' ', array_filter([
@@ -296,17 +301,6 @@ class PuntoVentaController extends Controller
                 $venta->cliente?->cli_apellido_materno,
             ]))));
         $articulosVendidos = (int) round($venta->detalle->sum(fn ($d) => (float) $d->pvd_cantidad));
-        $vendedores = $venta->detalle
-            ->map(fn ($d) => trim((string) ($d->vendedor?->usr_nombre ?: $d->vendedor?->usr_usuario ?: '')))
-            ->filter()
-            ->unique()
-            ->values();
-        if ($vendedores->isEmpty()) {
-            $fallback = trim((string) ($venta->vendedor?->usr_nombre ?: $venta->vendedor?->usr_usuario ?: ''));
-            if ($fallback !== '') {
-                $vendedores = collect([$fallback]);
-            }
-        }
 
         $barcodeStyle = [
             'position' => '',
@@ -341,9 +335,10 @@ class PuntoVentaController extends Controller
         $html .= '<div style="font-size:7px;margin-top:3px;">Fecha: ' . e($fecha) . '<br/>Método: ' . e($metodo) . '</div>';
         $html .= '<hr/>';
         $html .= '<table cellspacing="0" cellpadding="1" style="font-size:7px;width:100%;margin-bottom:2px;">';
-        $html .= '<tr><td width="34%"><b>Cliente</b></td><td width="66%" align="right">' . e($clienteNombre !== '' ? $clienteNombre : 'Mostrador') . '</td></tr>';
+        $html .= '<tr><td width="34%"><b>Caja</b></td><td width="66%" align="right">' . e($cajaNombre !== '' ? $cajaNombre : 'Sin caja') . '</td></tr>';
+        $html .= '<tr><td width="34%"><b>Cajero</b></td><td width="66%" align="right">' . e($cajeroNombre !== '' ? $cajeroNombre : 'Sin cajero') . '</td></tr>';
+        $html .= '<tr><td width="34%"><b>Cliente</b></td><td width="66%" align="right">' . e($clienteNombre !== '' ? $clienteNombre : 'Público en general') . '</td></tr>';
         $html .= '<tr><td width="34%"><b>Artículos</b></td><td width="66%" align="right">' . e((string) $articulosVendidos) . '</td></tr>';
-        $html .= '<tr><td width="34%"><b>Vendedor' . ($vendedores->count() > 1 ? 'es' : '') . '</b></td><td width="66%" align="right">' . e($vendedores->isNotEmpty() ? $vendedores->implode(', ') : 'Sin vendedor') . '</td></tr>';
         $html .= '</table>';
         $html .= '<hr/>';
         $html .= '<table cellspacing="0" cellpadding="2" style="font-size:7px;width:100%;">';

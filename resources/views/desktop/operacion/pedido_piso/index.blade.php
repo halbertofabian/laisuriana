@@ -50,6 +50,22 @@
         .pp-cart__totrow span { font-size: .8rem; font-weight: 700; text-transform: uppercase; color: var(--text-3); }
         .pp-cart__totrow b { font-size: 1.4rem; font-weight: 800; color: var(--brand); font-variant-numeric: tabular-nums; }
         .pp-cart__foot .desktop-btn { width: 100%; justify-content: center; height: 44px; font-size: .92rem; }
+        .pp-client { margin-bottom: 12px; position: relative; }
+        .pp-client__input { width: 100%; height: 40px; border: 1px solid var(--stroke-strong); border-radius: var(--r-md); padding: 0 42px 0 12px; background: var(--surface); font: inherit; font-size: .85rem; }
+        .pp-client__input:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 2px var(--brand-soft); }
+        .pp-client__clear { position: absolute; right: 8px; top: 31px; width: 26px; height: 26px; border: 0; border-radius: 999px; background: transparent; color: var(--text-3); cursor: pointer; }
+        .pp-client__clear:hover { background: var(--surface-alt); color: var(--text); }
+        .pp-client__current { margin-top: 7px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border: 1px solid var(--stroke); border-radius: var(--r-md); background: var(--surface-alt); }
+        .pp-client__current[hidden] { display: none; }
+        .pp-client__name { font-size: .83rem; font-weight: 700; color: var(--text); }
+        .pp-client__meta { font-size: .72rem; color: var(--text-2); }
+        .pp-client__suggest { margin-top: 6px; border: 1px solid var(--stroke); border-radius: var(--r-md); background: var(--surface); overflow: hidden; box-shadow: var(--shadow-2); }
+        .pp-client__suggest[hidden] { display: none; }
+        .pp-client__option { width: 100%; border: 0; background: transparent; text-align: left; padding: 9px 10px; cursor: pointer; }
+        .pp-client__option + .pp-client__option { border-top: 1px solid var(--divider); }
+        .pp-client__option:hover { background: var(--surface-alt); }
+        .pp-client__option-name { display: block; font-size: .82rem; font-weight: 700; color: var(--text); }
+        .pp-client__option-meta { display: block; font-size: .72rem; color: var(--text-2); margin-top: 1px; }
 
         .pp-note { font-size: .78rem; color: var(--text-2); background: var(--surface-alt); border: 1px solid var(--stroke); border-radius: var(--r-md); padding: 8px 10px; margin-bottom: 12px; }
         .pp-note b { color: var(--text); }
@@ -60,11 +76,13 @@
         .pp-group__name { font-weight: 700; font-size: .85rem; display: flex; align-items: center; gap: 6px; }
         .pp-group__name svg { width: 15px; height: 15px; color: var(--text-3); }
         .pp-group__meta { font-size: .72rem; color: var(--text-2); }
-        .pp-line { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--divider); }
+        .pp-line { display: flex; align-items: flex-start; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--divider); }
         .pp-line:last-child { border-bottom: 0; }
         .pp-line__info { flex: 1 1 auto; min-width: 0; }
         .pp-line__name { font-weight: 600; font-size: .84rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .pp-line__sku { font-size: .73rem; color: var(--text-2); }
+        .pp-line__money { font-size: .71rem; color: var(--text-2); margin-top: 3px; }
+        .pp-line__aside { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
         .pp-qty { display: inline-flex; align-items: center; gap: 0; }
         .pp-qty__btn { width: 30px; height: 30px; border: 1px solid var(--stroke-strong); background: var(--surface); color: var(--text); font-size: 1.1rem; line-height: 1; cursor: pointer; }
         .pp-qty__btn:first-child { border-radius: var(--r-sm) 0 0 var(--r-sm); }
@@ -72,6 +90,11 @@
         .pp-qty__inp { width: 52px; height: 30px; border: 1px solid var(--stroke-strong); border-left: 0; border-right: 0; text-align: center; font: inherit; font-size: .84rem; font-variant-numeric: tabular-nums; background: var(--surface); }
         .pp-line__del { width: 28px; height: 28px; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text-3); cursor: pointer; font-size: 1rem; }
         .pp-line__del:hover { background: var(--danger-soft); color: var(--danger); }
+        .pp-disc { display: flex; align-items: center; gap: 6px; margin-top: 7px; }
+        .pp-disc__type, .pp-disc__val { height: 30px; border: 1px solid var(--stroke-strong); border-radius: var(--r-sm); background: var(--surface); font: inherit; font-size: .75rem; color: var(--text); }
+        .pp-disc__type { width: 90px; padding: 0 8px; }
+        .pp-disc__val { width: 96px; padding: 0 8px; }
+        .pp-disc__val:disabled, .pp-disc__type:disabled { opacity: .6; cursor: not-allowed; background: var(--surface-alt); }
 
         /* Barra inferior fija (móvil) */
         .pp-bar { display: none; position: sticky; bottom: 0; width: 100%; height: 54px; border: 0; background: var(--brand); color: #fff; font: inherit; font-size: .95rem; font-weight: 700; align-items: center; justify-content: center; gap: 8px; cursor: pointer; box-shadow: 0 -4px 16px rgba(0,0,0,.12); }
@@ -91,6 +114,7 @@
         .pp-sheet__body { flex: 1 1 auto; overflow: auto; padding: 6px 16px 12px; }
         .pp-sheet__foot { flex: 0 0 auto; padding: 12px 16px; border-top: 1px solid var(--stroke); display: flex; gap: 8px; }
         .pp-sheet__foot .desktop-btn { flex: 1 1 auto; justify-content: center; height: 46px; font-size: .92rem; }
+        .pp-sheet__foot .desktop-btn:disabled { opacity: .55; cursor: not-allowed; box-shadow: none; }
         .pp-sheet__row { padding: 10px 0; border-top: 1px solid var(--divider); }
         .pp-sheet__row:first-child { border-top: 0; }
         .pp-sheet__lbl { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: var(--text-3); margin-bottom: 6px; }
@@ -184,6 +208,19 @@
                     <button type="button" class="pp-cart__close" id="pp-cart-close" aria-label="Cerrar">&times;</button>
                 </div>
                 <div class="pp-cart__scroll">
+                    <div class="pp-client">
+                        <div class="pp-sheet__lbl">Cliente</div>
+                        <input id="pp-cli-q" type="text" class="pp-client__input" placeholder="Buscar cliente o dejar público general" autocomplete="off">
+                        <button type="button" class="pp-client__clear" id="pp-cli-clear" title="Limpiar cliente" aria-label="Limpiar cliente">&times;</button>
+                        <div class="pp-client__current" id="pp-cli-current" hidden>
+                            <div>
+                                <div class="pp-client__name" id="pp-cli-name">Público general</div>
+                                <div class="pp-client__meta" id="pp-cli-meta">Cliente seleccionado</div>
+                            </div>
+                            <button type="button" class="desktop-btn desktop-btn--ghost" id="pp-cli-change" style="height:30px;padding:0 10px;">Cambiar</button>
+                        </div>
+                        <div class="pp-client__suggest" id="pp-cli-suggest" hidden></div>
+                    </div>
                     <div id="pp-groups"></div>
                     <div style="margin-top:6px;">
                         <div class="pp-sheet__lbl">Observaciones</div>
@@ -259,6 +296,7 @@
         (function () {
             const rutas = {
                 buscar: @json(route('operacion.pedidos_piso.productos.buscar')),
+                buscarClientes: @json(route('pos.clientes.buscar')),
                 resolver: @json(route('operacion.pedidos_piso.productos.resolver')),
                 store: @json(route('operacion.pedidos_piso.store')),
                 data: @json(route('operacion.pedidos_piso.data')),
@@ -267,13 +305,139 @@
             const csrf = @json(csrf_token());
             const usrId = @json($usuarioActual['usr_id']);
 
-            let partidas = [];          // {itemKey, ppd_psk_id, pdp_alm_id, almacen, ppd_usr_id, sku, nombre, cantidad, precio, permite_decimal}
-            let sheetCtx = null;        // contexto del producto en el bottom sheet
+            let partidas = [];
+            let sheetCtx = null;
             let buscarTimer = null;
+            let clienteTimer = null;
+            let clienteSeleccionado = null;
+            let lineSeq = 0;
 
             function esc(t) { return $('<div>').text(t ?? '').html(); }
             function money(v) { return '$ ' + Number(v || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
             function notify(t, m, type) { if (window.DesktopUI) DesktopUI.message(t, m, type); }
+            function roundMoney(v) { return Math.round((Number(v || 0) + Number.EPSILON) * 100) / 100; }
+            function discountType(v) { return v === 'porcentaje' || v === 'importe' ? v : 'ninguno'; }
+            function nextItemKey() { lineSeq += 1; return 'pp-line-' + lineSeq; }
+            function lineStep(item) { return item?.permite_decimal ? 0.01 : 1; }
+            function lineQtyValue(item, raw) {
+                const parsed = Number(String(raw ?? '').replace(',', '.'));
+                if (!Number.isFinite(parsed)) return null;
+                if (item?.permite_decimal) {
+                    return Number(parsed.toFixed(2));
+                }
+                return Math.round(parsed);
+            }
+            function formatQty(item, qty) {
+                const num = Number(qty || 0);
+                return item?.permite_decimal ? num.toFixed(2) : String(Math.round(num));
+            }
+            function qtyEquals(item, a, b) {
+                return Math.abs(Number(a || 0) - Number(b || 0)) < (item?.permite_decimal ? 0.001 : 0.5);
+            }
+            function clearLineDiscount(item) {
+                item.ppd_descuento_tipo = 'ninguno';
+                item.ppd_descuento_valor = 0;
+                item.ppd_descuento_cantidad = 0;
+                return item;
+            }
+            function lineSubtotal(item) { return roundMoney(Number(item.cantidad || 0) * Number(item.precio || 0)); }
+            function lineDiscount(item) {
+                const subtotal = lineSubtotal(item);
+                const tipo = discountType(item.ppd_descuento_tipo);
+                const valor = roundMoney(item.ppd_descuento_valor || 0);
+                if (subtotal <= 0 || tipo === 'ninguno' || valor <= 0) return 0;
+                if (tipo === 'porcentaje') return roundMoney(subtotal * (Math.min(100, Math.max(0, valor)) / 100));
+                return roundMoney(Math.min(subtotal, Math.max(0, valor)));
+            }
+            function lineTotal(item) { return roundMoney(Math.max(0, lineSubtotal(item) - lineDiscount(item))); }
+            function normalizeItemDiscount(item) {
+                item.ppd_descuento_tipo = discountType(item.ppd_descuento_tipo);
+                if (item.ppd_descuento_tipo === 'ninguno') {
+                    item.ppd_descuento_valor = 0;
+                    item.ppd_descuento_cantidad = 0;
+                    return item;
+                }
+                const subtotal = lineSubtotal(item);
+                let valor = roundMoney(item.ppd_descuento_valor || 0);
+                valor = Math.max(0, valor);
+                if (item.ppd_descuento_tipo === 'porcentaje') valor = Math.min(100, valor);
+                if (item.ppd_descuento_tipo === 'importe') valor = Math.min(subtotal, valor);
+                item.ppd_descuento_valor = valor;
+                item.ppd_descuento_cantidad = Number(item.ppd_descuento_cantidad || item.cantidad || 0);
+                if (item.ppd_descuento_cantidad <= 0 || item.ppd_descuento_cantidad > item.cantidad) item.ppd_descuento_cantidad = Number(item.cantidad || 0);
+                return item;
+            }
+            function renderClienteSeleccionado() {
+                $('#pp-cli-name').text(clienteSeleccionado?.nombre || 'Público general');
+                $('#pp-cli-meta').text(
+                    clienteSeleccionado
+                        ? [clienteSeleccionado.telefono || 'Sin teléfono', clienteSeleccionado.rfc || 'Sin RFC'].join(' · ')
+                        : 'Venta sin cliente específico'
+                );
+                $('#pp-cli-current').prop('hidden', false);
+                $('#pp-cli-clear').prop('hidden', !clienteSeleccionado && !String($('#pp-cli-q').val() || '').trim());
+            }
+            function cerrarSugerenciasCliente() { $('#pp-cli-suggest').prop('hidden', true).empty().removeData('rows'); }
+            function limpiarCliente() {
+                clienteSeleccionado = null;
+                $('#pp-cli-q').val('');
+                cerrarSugerenciasCliente();
+                renderClienteSeleccionado();
+            }
+            function setCliente(cliente) {
+                clienteSeleccionado = cliente || null;
+                $('#pp-cli-q').val(clienteSeleccionado?.nombre || '');
+                cerrarSugerenciasCliente();
+                renderClienteSeleccionado();
+            }
+            function renderSugerenciasCliente(rows) {
+                if (!rows.length) {
+                    cerrarSugerenciasCliente();
+                    return;
+                }
+                $('#pp-cli-suggest').data('rows', rows).html(rows.map((c, idx) =>
+                    '<button type="button" class="pp-client__option" data-cli="' + idx + '">' +
+                        '<span class="pp-client__option-name">' + esc(c.nombre || 'Cliente') + '</span>' +
+                        '<span class="pp-client__option-meta">' + esc((c.telefono || 'Sin teléfono') + ' · ' + (c.rfc || 'Sin RFC')) + '</span>' +
+                    '</button>'
+                ).join('')).prop('hidden', false);
+            }
+            function resetPedidoCaptura() {
+                partidas = [];
+                $('#pp-obs').val('');
+                limpiarCliente();
+                renderCarrito();
+            }
+            async function pedirCantidadDescuento(item) {
+                if (Number(item.cantidad || 0) <= lineStep(item)) {
+                    return Number(item.cantidad || 0);
+                }
+                const respuesta = await DesktopUI.prompt({
+                    title: 'Cantidad con descuento',
+                    message: '¿Para cuánta cantidad aplica el descuento en este renglón?',
+                    value: formatQty(item, item.ppd_descuento_cantidad || item.cantidad),
+                    placeholder: formatQty(item, item.cantidad),
+                    okText: 'Aplicar',
+                });
+                if (respuesta === null) {
+                    return null;
+                }
+                const cantidad = lineQtyValue(item, respuesta);
+                if (cantidad === null || cantidad <= 0) {
+                    notify('Cantidad inválida', 'Captura una cantidad válida para aplicar el descuento.', 'error');
+                    return false;
+                }
+                if (cantidad > Number(item.cantidad || 0)) {
+                    notify('Cantidad inválida', 'La cantidad con descuento no puede ser mayor a la cantidad de la partida.', 'error');
+                    return false;
+                }
+                return cantidad;
+            }
+            function insertarPartidaDespues(itemKey, nuevaPartida) {
+                const idx = partidas.findIndex(x => x.itemKey === itemKey);
+                if (idx < 0) partidas.push(nuevaPartida);
+                else partidas.splice(idx + 1, 0, nuevaPartida);
+            }
 
             // ===== Búsqueda =====
             $('#pp-q').on('input', function () {
@@ -305,6 +469,40 @@
                 }).join(''));
             }
 
+            $('#pp-cli-q').on('input', function () {
+                const q = String(this.value || '').trim();
+                renderClienteSeleccionado();
+                clearTimeout(clienteTimer);
+                if (clienteSeleccionado && q === String(clienteSeleccionado.nombre || '').trim()) {
+                    cerrarSugerenciasCliente();
+                    return;
+                }
+                if (q.length < 2) {
+                    cerrarSugerenciasCliente();
+                    return;
+                }
+                clienteTimer = setTimeout(() => {
+                    $.getJSON(rutas.buscarClientes, { q })
+                        .done(resp => renderSugerenciasCliente(resp.data || []))
+                        .fail(() => cerrarSugerenciasCliente());
+                }, 250);
+            });
+            $('#pp-cli-clear').on('click', limpiarCliente);
+            $('#pp-cli-change').on('click', function () {
+                $('#pp-cli-q').val('');
+                clienteSeleccionado = null;
+                renderClienteSeleccionado();
+                $('#pp-cli-q').trigger('focus');
+            });
+            $('#pp-cli-suggest').on('click', '.pp-client__option', function () {
+                const rows = $('#pp-cli-suggest').data('rows') || [];
+                const cliente = rows[Number($(this).data('cli'))] || null;
+                if (cliente) setCliente(cliente);
+            });
+            $(document).on('click', function (e) {
+                if (!$(e.target).closest('.pp-client').length) cerrarSugerenciasCliente();
+            });
+
             // ===== Bottom sheet de producto =====
             function abrirSheet(prod) {
                 const scl = $('#pp-scl').val();
@@ -331,6 +529,13 @@
                             $('#pp-sheet-alm').html((d.almacenes || []).map(a =>
                                 '<button type="button" class="pp-alm-opt" data-alm="' + a.alm_id + '" data-nombre="' + esc(a.alm_nombre) + '">' + esc(a.alm_nombre) + '</button>'
                             ).join(''));
+                            const primerAlmacen = sheetCtx.almacenes[0] || null;
+                            if (primerAlmacen) {
+                                sheetCtx.pdp_alm_id = Number(primerAlmacen.alm_id);
+                                sheetCtx.almacen = primerAlmacen.alm_nombre;
+                                $('#pp-sheet-alm .pp-alm-opt').first().addClass('is-active');
+                                $('#pp-sheet-add').prop('disabled', false);
+                            }
                             // no almacén elegido aún
                         } else {
                             sheetCtx.pdp_alm_id = Number(d.pdp_alm_id);
@@ -372,14 +577,20 @@
             });
 
             function agregarPartida(ctx, cant) {
-                const key = ctx.pdp_alm_id + ':' + ctx.psk_id;
-                const existente = partidas.find(p => p.itemKey === key);
+                const existente = partidas.find(p =>
+                    p.pdp_alm_id === ctx.pdp_alm_id
+                    && p.ppd_psk_id === Number(ctx.psk_id)
+                    && Number(p.ppd_usr_id || 0) === Number(usrId || 0)
+                    && Number(p.precio || 0) === Number(ctx.precio || 0)
+                    && discountType(p.ppd_descuento_tipo) === 'ninguno'
+                );
                 if (existente) { existente.cantidad = Number((existente.cantidad + cant).toFixed(2)); }
                 else {
                     partidas.push({
-                        itemKey: key, ppd_psk_id: Number(ctx.psk_id), pdp_alm_id: ctx.pdp_alm_id, almacen: ctx.almacen,
+                        itemKey: nextItemKey(), ppd_psk_id: Number(ctx.psk_id), pdp_alm_id: ctx.pdp_alm_id, almacen: ctx.almacen,
                         ppd_usr_id: usrId || null, sku: ctx.sku, nombre: ctx.nombre,
                         cantidad: Number(cant.toFixed(2)), precio: Number(ctx.precio || 0), permite_decimal: ctx.permite_decimal,
+                        ppd_descuento_tipo: 'ninguno', ppd_descuento_valor: 0, ppd_descuento_cantidad: 0,
                     });
                 }
                 renderCarrito();
@@ -390,16 +601,24 @@
             function grupos() {
                 const map = new Map();
                 partidas.forEach(p => {
-                    if (!map.has(p.itemKey.split(':')[0])) map.set(String(p.pdp_alm_id), { pdp_alm_id: p.pdp_alm_id, almacen: p.almacen, items: [] });
+                    if (!map.has(String(p.pdp_alm_id))) map.set(String(p.pdp_alm_id), { pdp_alm_id: p.pdp_alm_id, almacen: p.almacen, items: [] });
+                    normalizeItemDiscount(p);
                     map.get(String(p.pdp_alm_id)).items.push(p);
                 });
-                return Array.from(map.values()).map(g => ({ ...g, subtotal: g.items.reduce((s, i) => s + i.cantidad * i.precio, 0), piezas: g.items.reduce((s, i) => s + i.cantidad, 0) }));
+                return Array.from(map.values()).map(g => ({
+                    ...g,
+                    subtotal: roundMoney(g.items.reduce((s, i) => s + lineSubtotal(i), 0)),
+                    descuento: roundMoney(g.items.reduce((s, i) => s + lineDiscount(i), 0)),
+                    total: roundMoney(g.items.reduce((s, i) => s + lineTotal(i), 0)),
+                    piezas: g.items.reduce((s, i) => s + i.cantidad, 0),
+                }));
             }
 
             function renderCarrito() {
                 const gs = grupos();
                 const totalArt = partidas.reduce((s, i) => s + i.cantidad, 0);
-                const totalGen = gs.reduce((s, g) => s + g.subtotal, 0);
+                const totalDesc = roundMoney(gs.reduce((s, g) => s + g.descuento, 0));
+                const totalGen = roundMoney(gs.reduce((s, g) => s + g.total, 0));
 
                 $('#pp-total').text(money(totalGen));
                 $('#pp-bar-count').text(totalArt.toLocaleString('es-MX'));
@@ -407,6 +626,7 @@
                 $('#pp-ctx-tot').text(totalArt.toLocaleString('es-MX') + ' artículos · ' + money(totalGen));
                 $('#pp-bar').prop('hidden', partidas.length === 0);
                 $('#pp-confirm').prop('disabled', partidas.length === 0);
+                renderClienteSeleccionado();
 
                 if (!partidas.length) {
                     $('#pp-groups').html('<div class="pp-empty">Agrega productos para armar el pedido.</div>');
@@ -434,6 +654,30 @@
                         ).join('') +
                     '</div>'
                 ).join(''));
+                $('#pp-groups .pp-group').each(function (groupIndex) {
+                    const grupo = gs[groupIndex];
+                    if (!grupo) return;
+                    $(this).find('.pp-group__meta').text(
+                        grupo.items.length + ' producto(s) · ' + money(grupo.total) + (grupo.descuento > 0 ? ' · desc. ' + money(grupo.descuento) : '')
+                    );
+                });
+                $('#pp-groups .pp-line').each(function () {
+                    const key = String($(this).find('.pp-qty__inp').data('key') || '');
+                    const item = partidas.find(x => x.itemKey === key);
+                    if (!item) return;
+                    $(this).find('.pp-line__info').append(
+                        '<div class="pp-disc">' +
+                            '<select class="pp-disc__type" data-disc-type="' + esc(item.itemKey) + '">' +
+                                '<option value="ninguno"' + (discountType(item.ppd_descuento_tipo) === 'ninguno' ? ' selected' : '') + '>Sin desc.</option>' +
+                                '<option value="porcentaje"' + (discountType(item.ppd_descuento_tipo) === 'porcentaje' ? ' selected' : '') + '>%</option>' +
+                                '<option value="importe"' + (discountType(item.ppd_descuento_tipo) === 'importe' ? ' selected' : '') + '>$ fijo</option>' +
+                            '</select>' +
+                            '<input type="text" inputmode="decimal" class="pp-disc__val" data-disc-val="' + esc(item.itemKey) + '" value="' + Number(item.ppd_descuento_valor || 0) + '" ' + (discountType(item.ppd_descuento_tipo) === 'ninguno' ? 'disabled' : '') + '>' +
+                        '</div>' +
+                        '<div class="pp-line__money">Subtotal ' + money(lineSubtotal(item)) + (lineDiscount(item) > 0 ? ' · Desc. ' + money(lineDiscount(item)) + ' · Total ' + money(lineTotal(item)) : '') + '</div>'
+                    );
+                    $(this).append('<div class="pp-line__aside"><strong style="font-size:.84rem;color:var(--brand);">' + money(lineTotal(item)) + '</strong></div>');
+                });
             }
 
             function setCant(key, cant) {
@@ -442,12 +686,109 @@
                 let v = Number(cant || 0);
                 if (!p.permite_decimal) v = Math.round(v);
                 if (v <= 0) { partidas = partidas.filter(x => x.itemKey !== key); }
-                else { p.cantidad = Number(v.toFixed(2)); }
+                else {
+                    const previa = Number(p.cantidad || 0);
+                    p.cantidad = Number(v.toFixed(2));
+                    if (discountType(p.ppd_descuento_tipo) !== 'ninguno') {
+                        if (qtyEquals(p, Number(p.ppd_descuento_cantidad || 0), previa) || Number(p.ppd_descuento_cantidad || 0) <= 0) {
+                            p.ppd_descuento_cantidad = p.cantidad;
+                        } else if (Number(p.ppd_descuento_cantidad || 0) > p.cantidad) {
+                            p.ppd_descuento_cantidad = p.cantidad;
+                        }
+                    } else {
+                        p.ppd_descuento_cantidad = 0;
+                    }
+                    normalizeItemDiscount(p);
+                }
                 renderCarrito();
+            }
+            async function setDiscount(key, tipo, valor, forcePrompt = false) {
+                const p = partidas.find(x => x.itemKey === key);
+                if (!p) return;
+                const nuevoTipo = discountType(tipo);
+                if (nuevoTipo === 'ninguno') {
+                    clearLineDiscount(p);
+                    renderCarrito();
+                    return;
+                }
+                const valorNormalizado = Number(String(valor ?? 0).replace(',', '.'));
+                if (!Number.isFinite(valorNormalizado) || valorNormalizado < 0) {
+                    notify('Descuento inválido', 'Captura un valor de descuento válido.', 'error');
+                    return;
+                }
+
+                let cantidadAplicada = Number(p.ppd_descuento_cantidad || 0);
+                if (forcePrompt || cantidadAplicada <= 0) {
+                    const respuestaCantidad = await pedirCantidadDescuento(p);
+                    if (respuestaCantidad === null) {
+                        renderCarrito();
+                        return;
+                    }
+                    if (respuestaCantidad === false) {
+                        return;
+                    }
+                    cantidadAplicada = respuestaCantidad;
+                }
+
+                if (cantidadAplicada <= 0 || cantidadAplicada > Number(p.cantidad || 0)) {
+                    notify('Cantidad inválida', 'La cantidad con descuento no es válida para esta partida.', 'error');
+                    return;
+                }
+
+                if (qtyEquals(p, cantidadAplicada, p.cantidad)) {
+                    p.ppd_descuento_tipo = nuevoTipo;
+                    p.ppd_descuento_valor = valorNormalizado;
+                    p.ppd_descuento_cantidad = p.cantidad;
+                    normalizeItemDiscount(p);
+                    renderCarrito();
+                    return;
+                }
+
+                const restante = lineQtyValue(p, Number(p.cantidad || 0) - cantidadAplicada);
+                if (restante === null || restante <= 0) {
+                    notify('Cantidad inválida', 'No es posible generar una partida restante con cantidad cero.', 'error');
+                    return;
+                }
+
+                const nuevaPartida = {
+                    ...p,
+                    itemKey: nextItemKey(),
+                    cantidad: cantidadAplicada,
+                    ppd_descuento_tipo: nuevoTipo,
+                    ppd_descuento_valor: valorNormalizado,
+                    ppd_descuento_cantidad: cantidadAplicada,
+                };
+
+                p.cantidad = restante;
+                clearLineDiscount(p);
+                normalizeItemDiscount(nuevaPartida);
+                insertarPartidaDespues(p.itemKey, nuevaPartida);
+                normalizeItemDiscount(p);
+                renderCarrito();
+            }
+            function setDiscountDraft(key, tipo, valor) {
+                const p = partidas.find(x => x.itemKey === key);
+                if (!p) return;
+                p.ppd_descuento_tipo = discountType(tipo);
+                p.ppd_descuento_valor = valor;
             }
             $('#pp-groups').on('click', '[data-dec]', function () { const p = partidas.find(x => x.itemKey === $(this).data('dec')); if (p) setCant(p.itemKey, p.cantidad - (p.permite_decimal ? 0.01 : 1)); });
             $('#pp-groups').on('click', '[data-inc]', function () { const p = partidas.find(x => x.itemKey === $(this).data('inc')); if (p) setCant(p.itemKey, p.cantidad + (p.permite_decimal ? 0.01 : 1)); });
             $('#pp-groups').on('input', '.pp-qty__inp', function () { setCant(String($(this).data('key')), this.value); });
+            $('#pp-groups').on('change', '[data-disc-type]', async function () {
+                const key = String($(this).data('disc-type'));
+                const item = partidas.find(x => x.itemKey === key);
+                const pedirCantidad = $(this).val() !== 'ninguno' && discountType(item?.ppd_descuento_tipo) === 'ninguno';
+                await setDiscount(key, $(this).val(), $(this).val() === 'ninguno' ? 0 : $('[data-disc-val="' + key + '"]').val(), pedirCantidad);
+            });
+            $('#pp-groups').on('input', '.pp-disc__val', function () {
+                const key = String($(this).data('disc-val'));
+                setDiscountDraft(key, $('[data-disc-type="' + key + '"]').val(), this.value);
+            });
+            $('#pp-groups').on('blur', '.pp-disc__val', async function () {
+                const key = String($(this).data('disc-val'));
+                await setDiscount(key, $('[data-disc-type="' + key + '"]').val(), this.value);
+            });
             $('#pp-groups').on('click', '[data-del]', function () { partidas = partidas.filter(x => x.itemKey !== $(this).data('del')); renderCarrito(); });
 
             // ===== Carrito móvil (bottom sheet) =====
@@ -459,7 +800,7 @@
                 if (!partidas.length) return;
                 const ok = await DesktopUI.confirm({ title: 'Cancelar pedido', message: 'Se descartarán los productos capturados. ¿Continuar?', okText: 'Descartar', danger: true });
                 if (!ok) return;
-                partidas = []; $('#pp-obs').val(''); renderCarrito(); $('#pp-cart').removeClass('is-open');
+                resetPedidoCaptura(); $('#pp-cart').removeClass('is-open');
             });
 
             // ===== Confirmar (un pedido por almacén) =====
@@ -469,8 +810,16 @@
                     data: {
                         pdp_scl_id: $('#pp-scl').val(),
                         pdp_alm_id: grupo.pdp_alm_id,
+                        pdp_cli_id: clienteSeleccionado?.cli_id || null,
                         pdp_observaciones: obs || null,
-                        partidas: grupo.items.map(i => ({ ppd_psk_id: i.ppd_psk_id, ppd_cantidad: i.cantidad, ppd_usr_id: i.ppd_usr_id })),
+                        partidas: grupo.items.map(i => ({
+                            ppd_psk_id: i.ppd_psk_id,
+                            ppd_cantidad: i.cantidad,
+                            ppd_usr_id: i.ppd_usr_id,
+                            ppd_descuento_tipo: discountType(i.ppd_descuento_tipo),
+                            ppd_descuento_valor: Number(i.ppd_descuento_valor || 0),
+                            ppd_descuento_cantidad: discountType(i.ppd_descuento_tipo) === 'ninguno' ? 0 : Number(i.ppd_descuento_cantidad || i.cantidad || 0),
+                        })),
                     },
                 });
             }
@@ -496,7 +845,7 @@
                         folios.push((g.almacen || 'Almacén') + ': ' + (resp.data?.pdp_folio || ''));
                     }
                     notify('Pedidos generados', folios.join(' · '), 'success');
-                    partidas = []; $('#pp-obs').val(''); $('#pp-q').val(''); renderResultados([]); renderCarrito(); $('#pp-cart').removeClass('is-open');
+                    resetPedidoCaptura(); $('#pp-q').val(''); renderResultados([]); $('#pp-cart').removeClass('is-open');
                 } catch (xhr) {
                     notify('Error', xhr.responseJSON?.message || 'No fue posible generar el pedido. Revisa lo capturado.', 'error');
                 } finally {
@@ -515,7 +864,7 @@
                         okText: 'Cambiar y vaciar', danger: true,
                     });
                     if (!ok) { $('#pp-scl').val(sclPrevio); return; }
-                    partidas = []; $('#pp-obs').val(''); renderCarrito();
+                    resetPedidoCaptura();
                 }
                 sclPrevio = $('#pp-scl').val();
                 actualizarCtx();

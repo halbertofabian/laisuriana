@@ -16,10 +16,11 @@ class EscaneoProductoService
         }
 
         $with = [
-            'producto:prd_id,prd_codigo,prd_codigo_barras,prd_nombre,prd_descripcion,prd_precio_base,prd_costo,prd_mrc_id,prd_lna_id,prd_ctg_id',
+            'producto:prd_id,prd_codigo,prd_codigo_barras,prd_nombre,prd_descripcion,prd_precio_base,prd_costo,prd_mrc_id,prd_lna_id,prd_ctg_id,prd_umd_id',
             'producto.marca:mrc_id,mrc_nombre',
             'producto.linea:lna_id,lna_nombre',
             'producto.categoria:ctg_id,ctg_nombre',
+            'producto.unidad:umd_id,umd_codigo,umd_nombre',
         ];
 
         $query = ProductoSku::query()
@@ -81,10 +82,11 @@ class EscaneoProductoService
     private function buscarSku(string $consulta): ?ProductoSku
     {
         $with = [
-            'producto:prd_id,prd_codigo,prd_codigo_barras,prd_nombre,prd_descripcion,prd_precio_base,prd_costo,prd_mrc_id,prd_lna_id,prd_ctg_id',
+            'producto:prd_id,prd_codigo,prd_codigo_barras,prd_nombre,prd_descripcion,prd_precio_base,prd_costo,prd_mrc_id,prd_lna_id,prd_ctg_id,prd_umd_id',
             'producto.marca:mrc_id,mrc_nombre',
             'producto.linea:lna_id,lna_nombre',
             'producto.categoria:ctg_id,ctg_nombre',
+            'producto.unidad:umd_id,umd_codigo,umd_nombre',
         ];
 
         $exacta = ProductoSku::query()
@@ -142,7 +144,12 @@ class EscaneoProductoService
                 'marca' => $sku->producto?->marca?->mrc_nombre,
                 'linea' => $sku->producto?->linea?->lna_nombre,
                 'categoria' => $sku->producto?->categoria?->ctg_nombre,
+                'unidad' => [
+                    'umd_codigo' => (string) ($sku->producto?->unidad?->umd_codigo ?? ''),
+                    'umd_nombre' => (string) ($sku->producto?->unidad?->umd_nombre ?? ''),
+                ],
             ],
+            'permite_decimal' => strtoupper(trim((string) ($sku->producto?->unidad?->umd_codigo ?? ''))) === 'M',
         ];
     }
 }

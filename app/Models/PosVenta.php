@@ -67,6 +67,16 @@ class PosVenta extends Model
         return $this->belongsTo(Almacen::class, 'psv_alm_id', 'alm_id');
     }
 
+    public function caja()
+    {
+        return $this->belongsTo(Caja::class, 'psv_caj_id', 'caj_id');
+    }
+
+    public function cajaSesion()
+    {
+        return $this->belongsTo(CajaSesion::class, 'psv_cse_id', 'cse_id');
+    }
+
     public function cliente()
     {
         return $this->belongsTo(Cliente::class, 'psv_cli_id', 'cli_id');

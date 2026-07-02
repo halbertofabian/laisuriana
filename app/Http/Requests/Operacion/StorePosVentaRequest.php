@@ -35,6 +35,9 @@ class StorePosVentaRequest extends FormRequest
             'items.*.cantidad' => ['required', 'numeric', 'gt:0'],
             'items.*.precio' => ['nullable', 'numeric', 'min:0'],
             'items.*.descuento' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'items.*.descuento_tipo' => ['nullable', Rule::in(['ninguno', 'porcentaje', 'importe'])],
+            'items.*.descuento_valor' => ['nullable', 'numeric', 'min:0'],
+            'items.*.descuento_importe' => ['nullable', 'numeric', 'min:0'],
             'items.*.usr_id' => [
                 'nullable',
                 'integer',
