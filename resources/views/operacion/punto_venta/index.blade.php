@@ -1234,7 +1234,7 @@
                         >
                             <option value=""></option>
                             <template x-for="v in vendedores" :key="v.usr_id">
-                                <option :value="String(v.usr_id)" x-text="`${v.usr_nombre || v.usr_usuario} (${v.usr_usuario})`"></option>
+                                <option :value="String(v.usr_id)" x-text="v.usr_usuario || v.usr_nombre || 'Sin usuario'"></option>
                             </template>
                         </select>
                     </div>
@@ -1761,11 +1761,9 @@
                             <strong x-text="fmt(cambioPago)"></strong>
                         </div>
                         <div class="pay-cash__quick">
-                            <button type="button" @click="sumarPagoRapido(20)">+$20</button>
-                            <button type="button" @click="sumarPagoRapido(50)">+$50</button>
-                            <button type="button" @click="sumarPagoRapido(100)">+$100</button>
-                            <button type="button" @click="sumarPagoRapido(200)">+$200</button>
-                            <button type="button" @click="sumarPagoRapido(500)">+$500</button>
+                            <template x-for="sugerencia in sugerenciasPagoEfectivo" :key="`cash-suggestion-${sugerencia}`">
+                                <button type="button" @click="seleccionarSugerenciaPago(sugerencia)" x-text="fmt(sugerencia)"></button>
+                            </template>
                         </div>
                     </div>
 
@@ -2233,6 +2231,9 @@ function posApp() {
         },
         get restantePagoModal() {
             return Math.max(0, this.total - this.totalPagoCapturado);
+        },
+        get sugerenciasPagoEfectivo() {
+            return this.generarSugerenciasPagoEfectivo(this.total);
         },
 
         // ── Init ─────────────────────────────────────────────────
@@ -2903,8 +2904,8 @@ function posApp() {
                 pskId: d.ppd_psk_id,
                 origen: 'pedido',
                 pedidoDetalleId: Number(d.ppd_id || 0),
-                usrId: Number(d.ppd_usr_id || 0),
-                vendedor: d.capturista || 'Sin vendedor',
+                usrId: d.ppd_usr_id ? Number(d.ppd_usr_id) : null,
+                vendedor: d.capturista || pedido?.almacen || this.nombreFallbackVendedor(),
                 nombre: d.nombre || d.sku,
                 sku: d.sku,
                 codigoBarras: '',
@@ -3027,14 +3028,20 @@ function posApp() {
             if (vendedor) {
                 return {
                     usrId: Number(vendedor.usr_id),
-                    nombre: vendedor.usr_nombre || vendedor.usr_usuario || 'Sin vendedor',
+                    nombre: vendedor.usr_usuario || vendedor.usr_nombre || 'Sin vendedor',
                 };
             }
 
             return {
-                usrId: usuarioActualId,
-                nombre: usuarioActualNombre,
+                usrId: null,
+                nombre: this.nombreFallbackVendedor(),
             };
+        },
+        nombreFallbackVendedor() {
+            return this.ventaAlmacenNombre
+                || this.obtenerNombreAlmacen(this.ventaAlmacenId)
+                || this.sesionActiva?.caja_almacen
+                || 'Sin vendedor';
         },
 
         cerrarSelectorVariantes() {
@@ -3309,8 +3316,9 @@ function posApp() {
         inicializarPagoModal() {
             this.tipoPagoSeleccionado = 'efectivo';
             this.pagoReferencia = '';
-            this.pagoEfectivoRecibido = Number(this.total || 0);
-            this.pagoLineas = [{ metodo: 'efectivo', monto: Number(this.total || 0), recibido: Number(this.total || 0) }];
+            const total = this.normalizarMonto(this.total || 0);
+            this.pagoEfectivoRecibido = total;
+            this.pagoLineas = [{ metodo: 'efectivo', monto: total, recibido: total }];
         },
         cerrarModalPago() {
             this.mostrarModalPago = false;
@@ -3326,19 +3334,73 @@ function posApp() {
                 return;
             }
             if (tipo === 'efectivo') {
-                this.pagoEfectivoRecibido = Number(this.total || 0);
+                this.pagoEfectivoRecibido = this.normalizarMonto(this.total || 0);
                 this.enfocarPagoCon();
             }
-            this.pagoLineas = [{ metodo: tipo, monto: Number(this.total || 0), recibido: Number(this.total || 0) }];
+            const total = this.normalizarMonto(this.total || 0);
+            this.pagoLineas = [{ metodo: tipo, monto: total, recibido: total }];
         },
         aplicarPagoEfectivo() {
-            const recibido = Number(this.pagoEfectivoRecibido || 0);
-            const monto = Number(this.total || 0);
+            const recibido = this.normalizarMonto(this.pagoEfectivoRecibido || 0);
+            const monto = this.normalizarMonto(this.total || 0);
             this.pagoLineas = [{ metodo: 'efectivo', monto, recibido }];
         },
-        sumarPagoRapido(monto) {
-            this.pagoEfectivoRecibido = Number(this.pagoEfectivoRecibido || 0) + Number(monto || 0);
+        seleccionarSugerenciaPago(monto) {
+            this.pagoEfectivoRecibido = this.normalizarMonto(monto || 0);
             this.aplicarPagoEfectivo();
+            this.enfocarPagoCon();
+        },
+        normalizarMonto(valor) {
+            return this.centavosAMonto(this.montoACentavos(valor));
+        },
+        montoACentavos(valor) {
+            return Math.max(0, Math.round(Number(valor || 0) * 100));
+        },
+        centavosAMonto(centavos) {
+            return Number((Math.max(0, Number(centavos || 0)) / 100).toFixed(2));
+        },
+        siguienteMultiploPago(totalCentavos, multiploPesos) {
+            if (multiploPesos <= 0) return 0;
+
+            const totalPesosEnteros = Math.ceil(totalCentavos / 100);
+            let sugeridoPesos = Math.ceil(totalPesosEnteros / multiploPesos) * multiploPesos;
+
+            if ((totalCentavos % 100) === 0 && (sugeridoPesos * 100) <= totalCentavos) {
+                sugeridoPesos += multiploPesos;
+            }
+
+            return sugeridoPesos * 100;
+        },
+        generarSugerenciasPagoEfectivo(total) {
+            const totalCentavos = this.montoACentavos(total);
+            if (totalCentavos <= 0) return [];
+
+            const limite = 4;
+            const denominaciones = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];
+            const sugerencias = new Set([totalCentavos]);
+            const totalPesosEnteros = Math.ceil(totalCentavos / 100);
+
+            [
+                this.siguienteMultiploPago(totalCentavos, 10),
+                this.siguienteMultiploPago(totalCentavos, 50),
+            ].forEach((centavos) => {
+                if (centavos >= totalCentavos) {
+                    sugerencias.add(centavos);
+                }
+            });
+
+            for (const denominacion of denominaciones) {
+                if (sugerencias.size >= limite) break;
+                if (denominacion < totalPesosEnteros) continue;
+                sugerencias.add(denominacion * 100);
+            }
+
+            const lista = Array.from(sugerencias)
+                .filter((centavos) => centavos >= totalCentavos)
+                .sort((a, b) => a - b)
+                .slice(0, limite);
+
+            return lista.map((centavos) => this.centavosAMonto(centavos));
         },
         agregarLineaPago() {
             this.pagoLineas.push({ metodo: 'efectivo', monto: 0, recibido: 0 });
@@ -3397,7 +3459,7 @@ function posApp() {
                     psk_id: Number(i.pskId),
                     origen: i.origen || 'manual',
                     pedido_detalle_id: i.pedidoDetalleId ? Number(i.pedidoDetalleId) : null,
-                    usr_id: Number(i.usrId || usuarioActualId || 0),
+                    usr_id: i.usrId ? Number(i.usrId) : null,
                     cantidad: Number(i.cantidad || 0),
                     precio: Number(i.precio || 0),
                     descuento_tipo: i.descuentoTipo || 'ninguno',

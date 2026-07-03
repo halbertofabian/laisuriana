@@ -292,7 +292,7 @@ class PuntoVentaController extends Controller
         $ticketBrand = 'Matriz Comitán';
         $almacenNombre = trim((string) ($venta->almacen?->alm_nombre ?? ''));
         $cajaNombre = trim((string) ($venta->caja?->caj_nombre ?? $venta->cajaSesion?->caja?->caj_nombre ?? ''));
-        $cajeroNombre = trim((string) ($venta->vendedor?->usr_nombre ?: $venta->vendedor?->usr_usuario ?: ''));
+        $cajeroNombre = trim((string) ($venta->vendedor?->usr_usuario ?: $venta->vendedor?->usr_nombre ?: ''));
         $fecha = optional($venta->psv_fecha_cobro)->format('d/m/Y H:i') ?? now()->format('d/m/Y H:i');
         $clienteNombre = trim((string) ($venta->cliente?->cli_razon_social
             ?: implode(' ', array_filter([
@@ -345,10 +345,11 @@ class PuntoVentaController extends Controller
         $html .= '<tr><th align="left" width="46%">Producto</th><th align="left" width="24%">Vendedor</th><th align="right" width="10%">Cant</th><th align="right" width="20%">Imp</th></tr>';
         foreach ($venta->detalle as $d) {
             $nombre = $this->nombreProductoTicket($d->sku);
-            $vendedorLinea = trim((string) ($d->vendedor?->usr_nombre ?: $d->vendedor?->usr_usuario ?: ''));
+            $vendedorLinea = trim((string) ($d->vendedor?->usr_usuario ?: $d->vendedor?->usr_nombre ?: ''));
+            $vendedorMostrado = $vendedorLinea !== '' ? $vendedorLinea : ($almacenNombre !== '' ? $almacenNombre : '—');
             $html .= '<tr>';
             $html .= '<td width="46%">' . e($nombre) . '</td>';
-            $html .= '<td width="24%">' . e($vendedorLinea !== '' ? $vendedorLinea : '—') . '</td>';
+            $html .= '<td width="24%">' . e($vendedorMostrado) . '</td>';
             $html .= '<td align="right" width="10%">' . e($fmt($d->pvd_cantidad)) . '</td>';
             $html .= '<td align="right" width="20%">$' . e($fmt($d->pvd_importe)) . '</td>';
             $html .= '</tr>';

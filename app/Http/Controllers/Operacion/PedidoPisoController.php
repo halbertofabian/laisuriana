@@ -61,7 +61,7 @@ class PedidoPisoController extends Controller
             'pdp_fecha' => optional($r->pdp_fecha)->format('Y-m-d H:i:s'),
             'sucursal' => $r->sucursal?->scl_nombre,
             'almacen' => $r->almacen?->alm_nombre,
-            'vendedor' => $r->usuario?->usr_nombre,
+            'vendedor' => $r->usuario?->usr_usuario ?: $r->usuario?->usr_nombre,
             'cliente' => $this->mapCliente($r->cliente),
         ])->values();
 
@@ -85,7 +85,7 @@ class PedidoPisoController extends Controller
                 'pdp_observaciones' => $r->pdp_observaciones,
                 'sucursal' => $r->sucursal?->scl_nombre,
                 'almacen' => $r->almacen?->alm_nombre,
-                'vendedor' => $r->usuario?->usr_nombre,
+                'vendedor' => $r->usuario?->usr_usuario ?: $r->usuario?->usr_nombre,
                 'cliente' => $this->mapCliente($r->cliente),
                 'detalle' => $r->detalle->map(fn ($d) => [
                     'ppd_id' => (int) $d->ppd_id,
@@ -101,7 +101,7 @@ class PedidoPisoController extends Controller
                     'descuento_cantidad' => (float) ($d->ppd_descuento_cantidad ?? 0),
                     'total_linea' => (float) ($d->ppd_total_linea ?? $d->ppd_importe ?? 0),
                     'ppd_usr_id' => (int) ($d->ppd_usr_id ?? 0),
-                    'capturista' => $d->capturista?->usr_nombre,
+                    'capturista' => $d->capturista?->usr_usuario ?: $d->capturista?->usr_nombre,
                     'permite_decimal' => (bool) ($d->sku?->producto && strtoupper(trim((string) ($d->sku->producto->unidad?->umd_codigo ?? ''))) === 'M'),
                 ])->values(),
             ],

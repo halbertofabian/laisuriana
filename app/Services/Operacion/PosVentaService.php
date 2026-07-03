@@ -61,7 +61,7 @@ class PosVentaService
 
                 return [
                     'psk_id' => $skuId,
-                    'usr_id' => $this->resolverVendedorLinea($item, $pedidoDetalles, $usuario),
+                    'usr_id' => $this->resolverVendedorLinea($item, $pedidoDetalles),
                     'cantidad' => $cantidad,
                     'precio' => $precio,
                     'descuento_porcentaje' => $configDescuento['descuento_porcentaje_equivalente'],
@@ -119,7 +119,7 @@ class PosVentaService
                     'pvd_descuento_porcentaje' => $linea['descuento_porcentaje'],
                     'pvd_descuento_importe' => $linea['descuento_importe'],
                     'pvd_importe' => $linea['importe'],
-                    'pvd_usr_id' => $linea['usr_id'] > 0 ? $linea['usr_id'] : (int) $usuario->usr_id,
+                    'pvd_usr_id' => $linea['usr_id'] > 0 ? $linea['usr_id'] : null,
                     'pvd_created_by_usr_id' => (int) $usuario->usr_id,
                     'pvd_updated_by_usr_id' => (int) $usuario->usr_id,
                 ]);
@@ -213,7 +213,7 @@ class PosVentaService
         ];
     }
 
-    private function resolverVendedorLinea(array $item, array $pedidoDetalles, Usuario $usuario): int
+    private function resolverVendedorLinea(array $item, array $pedidoDetalles): ?int
     {
         $origen = (string) ($item['origen'] ?? '');
         $pedidoDetalleId = (int) ($item['pedido_detalle_id'] ?? 0);
@@ -241,11 +241,11 @@ class PosVentaService
             }
 
             $vendedorPedidoId = (int) ($detallePedido->ppd_usr_id ?? 0);
-            return $vendedorPedidoId > 0 ? $vendedorPedidoId : (int) $usuario->usr_id;
+            return $vendedorPedidoId > 0 ? $vendedorPedidoId : null;
         }
 
         $vendedorLineaId = (int) ($item['usr_id'] ?? 0);
-        return $vendedorLineaId > 0 ? $vendedorLineaId : (int) $usuario->usr_id;
+        return $vendedorLineaId > 0 ? $vendedorLineaId : null;
     }
 
     private function resolverDescuentoLineaVenta(array $item, array $pedidoDetalles, float $cantidad, float $precio): array
