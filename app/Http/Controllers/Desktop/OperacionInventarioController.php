@@ -80,7 +80,7 @@ class OperacionInventarioController extends Controller
             ->whereNull('prv_deleted_at')
             ->where('prv_estatus', 'activo')
             ->orderBy('prv_nombre_empresa')
-            ->get(['prv_id', 'prv_nombre_empresa']);
+            ->get(['prv_id', 'prv_nombre_empresa', 'prv_razon_social']);
 
         $borrador = null;
         $rmeId = (int) request()->integer('rme_id', 0);

@@ -456,6 +456,30 @@
         .desktop-select2 + .select2-container {
             width: 100% !important;
         }
+        .desktop-select2 + .select2-container .select2-selection--single {
+            height: 34px;
+            min-height: 34px;
+            border: 1px solid var(--stroke-strong);
+            border-radius: var(--r-md);
+            background: var(--surface);
+            position: relative;
+        }
+        .desktop-select2 + .select2-container .select2-selection--single .select2-selection__rendered {
+            line-height: 32px;
+            padding-left: 10px;
+            padding-right: 30px;
+            color: var(--text);
+            font-size: .84rem;
+        }
+        .desktop-select2 + .select2-container .select2-selection--single .select2-selection__placeholder {
+            color: var(--text-2);
+        }
+        .desktop-select2 + .select2-container .select2-selection--single .select2-selection__arrow {
+            height: 34px;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
         .desktop-select2 + .select2-container .select2-selection--multiple {
             min-height: 34px;
             border: 1px solid var(--stroke-strong);
@@ -830,10 +854,12 @@
                                     </div>
                                     <div class="desktop-field span-4">
                                         <label>Proveedor principal</label>
-                                        <select name="prd_prv_id" id="prd_prv_id">
+                                        <select name="prd_prv_id" id="prd_prv_id" class="desktop-select2" data-placeholder="Buscar proveedor">
                                             <option value="">Sin proveedor asignado</option>
                                             @foreach($opciones['proveedores'] as $item)
-                                                <option value="{{ $item->prv_id }}">{{ $item->prv_nombre_empresa }}</option>
+                                                <option value="{{ $item->prv_id }}">
+                                                    {{ $item->prv_nombre_empresa }}{{ $item->prv_razon_social ? ' - ' . $item->prv_razon_social : '' }}
+                                                </option>
                                             @endforeach
                                         </select>
                                     </div>
@@ -1387,6 +1413,19 @@
                 $('#producto-atributos-select').val(getSelectedAttributeIds().map(String)).trigger('change.select2');
             }
 
+            function initProveedorSelect() {
+                const $select = $('#prd_prv_id');
+                if (!$select.length) return;
+                if ($select.hasClass('select2-hidden-accessible')) {
+                    $select.select2('destroy');
+                }
+                $select.select2({
+                    width: '100%',
+                    allowClear: true,
+                    placeholder: $select.data('placeholder') || 'Buscar proveedor'
+                });
+            }
+
             function sanitizeCorridas() {
                 const allowedAttrs = new Set(getSelectedAttributeIds().map(Number));
                 const cleaned = [];
@@ -1693,7 +1732,7 @@
                 $('#prd_codigo').val('');
                 $('#prd_codigo_barras').val('');
                 $('#prd_clave_sat').val('');
-                $('#prd_prv_id').val('');
+                $('#prd_prv_id').val('').trigger('change.select2');
                 $('#prd_precio_base').val('0.00');
                 $('#prd_costo').val('0.00');
                 $('#prd_stock_minimo').val('0');
@@ -1765,7 +1804,7 @@
                 $('#prd_stock_minimo').val(data.prd_stock_minimo ?? '0');
                 $('#prd_stock_maximo').val(data.prd_stock_maximo ?? '0');
                 $('#prd_mrc_id').val(String(data.prd_mrc_id || ''));
-                $('#prd_prv_id').val(String(data.prd_prv_id || ''));
+                $('#prd_prv_id').val(String(data.prd_prv_id || '')).trigger('change.select2');
                 $('#prd_lna_id').val(String(data.prd_lna_id || ''));
                 updateCategories(data.prd_lna_id, data.prd_ctg_id);
                 $('#prd_dsc_id').val(String(data.prd_dsc_id || ''));
@@ -1832,6 +1871,7 @@
                 window.location.href = url.toString();
             }
 
+            initProveedorSelect();
             resetForm();
             if (initialData) {
                 fillForm(initialData);

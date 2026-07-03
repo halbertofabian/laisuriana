@@ -307,7 +307,7 @@ class ProductoService
             'descripciones' => \App\Models\Descripcion::query()->where('dsc_estatus', 'activo')->orderBy('dsc_nombre')->get(['dsc_id', 'dsc_nombre']),
             'unidades' => \App\Models\UnidadMedida::query()->where('umd_estatus', 'activo')->orderByDesc('umd_es_predeterminada')->orderBy('umd_nombre')->get(['umd_id', 'umd_nombre', 'umd_codigo', 'umd_es_predeterminada']),
             'almacenes' => Almacen::query()->with('sucursal:scl_id,scl_nombre')->where('alm_estatus', 'activo')->orderBy('alm_scl_id')->orderBy('alm_nombre')->get(['alm_id', 'alm_scl_id', 'alm_nombre']),
-            'proveedores' => \App\Models\Proveedor::query()->where('prv_estatus', 'activo')->orderBy('prv_nombre_empresa')->get(['prv_id', 'prv_nombre_empresa']),
+            'proveedores' => \App\Models\Proveedor::query()->where('prv_estatus', 'activo')->orderBy('prv_nombre_empresa')->get(['prv_id', 'prv_nombre_empresa', 'prv_razon_social']),
             'atributos' => \App\Models\Atributo::query()->where('atr_estatus', 'activo')->orderBy('atr_nombre')->get(['atr_id', 'atr_nombre']),
             'productos' => Producto::query()->where('prd_estatus', 'activo')->orderBy('prd_nombre')->get(['prd_id', 'prd_nombre', 'prd_codigo']),
         ];

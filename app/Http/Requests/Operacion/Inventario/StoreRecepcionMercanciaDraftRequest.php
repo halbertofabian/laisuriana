@@ -72,8 +72,67 @@ class StoreRecepcionMercanciaDraftRequest extends FormRequest
                     ->whereNull('psk_deleted_at')
                     ->where('psk_estatus', 'activo')),
             ],
-            'lineas.*.min_cantidad' => ['nullable', 'integer', 'min:0'],
+            'lineas.*.min_cantidad' => ['nullable', 'numeric', 'min:0'],
             'lineas.*.min_precio_unitario' => ['nullable', 'numeric', 'min:0'],
         ];
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator): void {
+            $lineas = collect((array) $this->input('lineas', []));
+            if ($lineas->isEmpty()) {
+                return;
+            }
+
+            $skuIds = $lineas->pluck('min_psk_id')->filter()->map(fn ($id) => (int) $id)->unique()->values();
+            if ($skuIds->isEmpty()) {
+                return;
+            }
+
+            $tipos = \DB::table('tbl_producto_skus_psk as psk')
+                ->join('tbl_productos_prd as prd', 'prd.prd_id', '=', 'psk.psk_prd_id')
+                ->leftJoin('tbl_unidades_medida_umd as umd', 'umd.umd_id', '=', 'prd.prd_umd_id')
+                ->whereIn('psk.psk_id', $skuIds->all())
+                ->get([
+                    'psk.psk_id',
+                    'umd.umd_tipo_cantidad',
+                    'umd.umd_codigo',
+                    'umd.umd_nombre',
+                ])
+                ->keyBy('psk_id');
+
+            foreach ($lineas as $idx => $linea) {
+                $skuId = (int) ($linea['min_psk_id'] ?? 0);
+                $cantidad = $linea['min_cantidad'] ?? null;
+                if ($skuId <= 0 || $cantidad === null || $cantidad === '') {
+                    continue;
+                }
+                $unidad = $tipos->get($skuId);
+                if (!$this->unidadPermiteDecimal($unidad) && floor((float) $cantidad) != (float) $cantidad) {
+                    $validator->errors()->add("lineas.{$idx}.min_cantidad", 'La cantidad debe ser entera para productos capturados por pieza.');
+                }
+            }
+        });
+    }
+
+    private function unidadPermiteDecimal($unidad): bool
+    {
+        $tipo = $this->normalizarUnidadTexto($unidad->umd_tipo_cantidad ?? '');
+        if ($tipo === 'decimal') return true;
+        if ($tipo === 'entero') return false;
+
+        $texto = trim($this->normalizarUnidadTexto(($unidad->umd_codigo ?? '') . ' ' . ($unidad->umd_nombre ?? '')));
+        if (preg_match('/(^|\s)(m|mt|mts|metro|metros)(\s|$)/', $texto)) return true;
+        if (preg_match('/(^|\s)(pza|pieza|piezas)(\s|$)/', $texto)) return false;
+
+        return false;
+    }
+
+    private function normalizarUnidadTexto(string $valor): string
+    {
+        $valor = trim(mb_strtolower($valor));
+        $replaced = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $valor);
+        return $replaced === false ? $valor : $replaced;
     }
 }

@@ -147,6 +147,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/existencias-negativas/data', [OperacionInventarioController::class, 'dataExistenciasNegativas'])->name('existencias_negativas.data')->middleware('permiso:inventario_base.ver');
         Route::get('/existencias-negativas/exportar/excel', [OperacionInventarioController::class, 'exportarExcelExistenciasNegativas'])->name('existencias_negativas.exportar.excel')->middleware('permiso:inventario_base.ver');
         Route::get('/existencias-negativas/exportar/pdf', [OperacionInventarioController::class, 'exportarPdfExistenciasNegativas'])->name('existencias_negativas.exportar.pdf')->middleware('permiso:inventario_base.ver');
+        Route::post('/existencias-negativas/ajustar-cero', [OperacionInventarioController::class, 'ajustarExistenciasNegativasCero'])->name('existencias_negativas.ajustar_cero');
         Route::get('/productos/buscar', [OperacionInventarioController::class, 'buscarProductosBase'])->name('productos.buscar')->middleware('permiso:inventario_base.ver');
         Route::get('/kardex/data', [OperacionInventarioController::class, 'dataKardex'])->name('kardex.data')->middleware('permiso:inventario_base.ver');
         Route::get('/kardex/{sku}/detalle', [OperacionInventarioController::class, 'kardexDetalle'])->name('kardex.detalle')->middleware('permiso:inventario_base.ver');

@@ -311,7 +311,9 @@
                                     <select name="prd_prv_id" id="prd_prv_id">
                                         <option value="">Sin proveedor asignado</option>
                                         @foreach($opciones['proveedores'] as $item)
-                                            <option value="{{ $item->prv_id }}">{{ $item->prv_nombre_empresa }}</option>
+                                            <option value="{{ $item->prv_id }}">
+                                                {{ $item->prv_nombre_empresa }}{{ $item->prv_razon_social ? ' - ' . $item->prv_razon_social : '' }}
+                                            </option>
                                         @endforeach
                                     </select>
                                 </div>

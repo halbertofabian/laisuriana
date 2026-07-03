@@ -82,7 +82,7 @@ class ConfirmRecepcionMercanciaRequest extends FormRequest
                     ->whereNull('psk_deleted_at')
                     ->where('psk_estatus', 'activo')),
             ],
-            'lineas.*.min_cantidad' => ['required', 'integer', 'min:1'],
+            'lineas.*.min_cantidad' => ['required', 'numeric', 'min:0.01'],
             'lineas.*.min_precio_unitario' => ['nullable', 'numeric', 'min:0'],
         ];
     }
@@ -130,6 +130,17 @@ class ConfirmRecepcionMercanciaRequest extends FormRequest
             $skuProducto = DB::table('tbl_producto_skus_psk')
                 ->whereIn('psk_id', $skuIds->all())
                 ->pluck('psk_prd_id', 'psk_id');
+            $skuUnidad = DB::table('tbl_producto_skus_psk as psk')
+                ->join('tbl_productos_prd as prd', 'prd.prd_id', '=', 'psk.psk_prd_id')
+                ->leftJoin('tbl_unidades_medida_umd as umd', 'umd.umd_id', '=', 'prd.prd_umd_id')
+                ->whereIn('psk.psk_id', $skuIds->all())
+                ->get([
+                    'psk.psk_id',
+                    'umd.umd_tipo_cantidad',
+                    'umd.umd_codigo',
+                    'umd.umd_nombre',
+                ])
+                ->keyBy('psk_id');
 
             foreach ($lineas as $idx => $linea) {
                 $skuId = (int) ($linea['min_psk_id'] ?? 0);
@@ -137,7 +148,31 @@ class ConfirmRecepcionMercanciaRequest extends FormRequest
                 if ($skuId > 0 && $productoId > 0 && (int) ($skuProducto[$skuId] ?? 0) !== $productoId) {
                     $validator->errors()->add("lineas.{$idx}.min_psk_id", 'El SKU no pertenece al producto indicado.');
                 }
+                $cantidad = (float) ($linea['min_cantidad'] ?? 0);
+                if ($skuId > 0 && $cantidad > 0 && !$this->unidadPermiteDecimal($skuUnidad->get($skuId)) && floor($cantidad) != $cantidad) {
+                    $validator->errors()->add("lineas.{$idx}.min_cantidad", 'La cantidad debe ser entera para productos capturados por pieza.');
+                }
             }
         });
+    }
+
+    private function unidadPermiteDecimal($unidad): bool
+    {
+        $tipo = $this->normalizarUnidadTexto($unidad->umd_tipo_cantidad ?? '');
+        if ($tipo === 'decimal') return true;
+        if ($tipo === 'entero') return false;
+
+        $texto = trim($this->normalizarUnidadTexto(($unidad->umd_codigo ?? '') . ' ' . ($unidad->umd_nombre ?? '')));
+        if (preg_match('/(^|\s)(m|mt|mts|metro|metros)(\s|$)/', $texto)) return true;
+        if (preg_match('/(^|\s)(pza|pieza|piezas)(\s|$)/', $texto)) return false;
+
+        return false;
+    }
+
+    private function normalizarUnidadTexto(string $valor): string
+    {
+        $valor = trim(mb_strtolower($valor));
+        $replaced = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $valor);
+        return $replaced === false ? $valor : $replaced;
     }
 }

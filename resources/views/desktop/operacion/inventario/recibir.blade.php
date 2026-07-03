@@ -24,6 +24,7 @@
         .desktop-rcb-step__title { font-size: .88rem; font-weight: 700; }
         .desktop-rcb-step__hint { margin-left: auto; font-size: .73rem; color: var(--text-3); }
         .desktop-rcb-step__body { padding: 12px; }
+        #rcb-filter-card { display: none !important; }
 
         .desktop-rcb-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px 12px; }
         .desktop-field--full { grid-column: 1 / -1; }
@@ -51,6 +52,25 @@
         .desktop-rcb-tog.is-active { background: var(--brand); border-color: var(--brand); color: var(--on-brand); font-weight: 600; }
         .desktop-rcb-tog.is-active::before { content: "✓"; font-size: .72rem; }
 
+        .desktop-rcb-attrproducts { display: grid; gap: 12px; }
+        .desktop-rcb-attrproduct { border: 1px solid var(--stroke); border-radius: var(--r-md); background: var(--surface); overflow: hidden; }
+        .desktop-rcb-attrproduct__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 10px 12px; background: var(--surface-alt); border-bottom: 1px solid var(--divider); }
+        .desktop-rcb-attrproduct__main { min-width: 0; display: grid; gap: 2px; }
+        .desktop-rcb-attrproduct__name { font-size: .86rem; font-weight: 700; color: var(--text); }
+        .desktop-rcb-attrproduct__meta { font-size: .74rem; color: var(--text-2); }
+        .desktop-rcb-attrproduct__summary { font-size: .72rem; color: var(--text-3); text-align: right; white-space: nowrap; }
+        .desktop-rcb-attrproduct__body { padding: 0 12px 12px; }
+        .desktop-rcb-attrproduct__empty { padding-top: 10px; font-size: .8rem; color: var(--text-2); }
+        .desktop-rcb-lines { display: grid; gap: 8px; }
+        .desktop-rcb-line { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid var(--stroke); border-radius: var(--r-md); background: var(--surface); }
+        .desktop-rcb-line__main { min-width: 0; display: grid; gap: 3px; }
+        .desktop-rcb-line__top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+        .desktop-rcb-line__code { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 999px; background: var(--surface-alt); border: 1px solid var(--stroke); font-size: .72rem; font-weight: 700; color: var(--text-2); white-space: nowrap; }
+        .desktop-rcb-line__name { min-width: 0; font-size: .84rem; font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .desktop-rcb-line__attrs { font-size: .76rem; color: var(--text-2); line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .desktop-rcb-line__actions { display: inline-flex; align-items: center; gap: 6px; }
+        .desktop-rcb-note { font-size: .8rem; color: var(--text-2); line-height: 1.45; }
+
         .desktop-rcb-empty { color: var(--text-2); font-size: .82rem; }
 
         /* Modal de búsqueda de productos */
@@ -73,6 +93,13 @@
         .desktop-rcb-prodmore:hover { border-color: var(--brand); color: var(--brand); }
 
         /* ===== Matriz (captura) — más aire, menos "Excel" ===== */
+        .desktop-rcb-prodstate[hidden] { display: none; }
+        .desktop-rcb-prodsel { display: grid; gap: 10px; }
+        .desktop-rcb-prodsel__head { padding: 10px 12px; border: 1px solid var(--stroke); border-radius: var(--r-md); background: var(--surface-alt); }
+        .desktop-rcb-prodsel__title { font-size: .86rem; font-weight: 700; color: var(--text); }
+        .desktop-rcb-prodsel__meta { margin-top: 2px; font-size: .75rem; color: var(--text-2); }
+        .desktop-rcb-prodsel__help { font-size: .76rem; color: var(--text-2); }
+
         .desktop-rcb-matrix { display: flex; flex-direction: column; gap: 16px; }
         .desktop-rcb-mp { border: 1px solid var(--stroke); border-radius: var(--r-md); overflow: hidden; }
         .desktop-rcb-mp__head { display: flex; align-items: flex-start; gap: 8px; padding: 6px 10px; background: var(--surface-alt); border-bottom: 1px solid var(--divider); }
@@ -90,7 +117,7 @@
         .desktop-rcb-rowdel:hover { color: var(--danger); }
         .desktop-rcb-mtable .costrow td { background: rgba(47,111,237,.05); }
         .desktop-rcb-mtable .costrow .rowhead { font-size: .7rem; font-weight: 700; text-transform: uppercase; color: var(--text-3); }
-        .desktop-rcb-mtable input { width: 72px; height: 30px; padding: 0 8px; text-align: right; border: 1px solid var(--stroke-strong); border-radius: var(--r-sm); font: inherit; font-size: .82rem; font-variant-numeric: tabular-nums; background: var(--surface); }
+        .desktop-rcb-mtable input { width: 96px; height: 30px; padding: 0 10px; text-align: right; border: 1px solid var(--stroke-strong); border-radius: var(--r-sm); font: inherit; font-size: .82rem; font-variant-numeric: tabular-nums; background: var(--surface); }
         .desktop-rcb-mtable input:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand); }
         .desktop-rcb-mtable input.is-fallback { border-style: dashed; color: var(--text-2); }
         .desktop-rcb-mtable input.js-rcb-cant:focus { background: rgba(47,111,237,.06); }
@@ -184,7 +211,7 @@
         .desktop-rcbfs__matrix .desktop-rcb-mtable { width: 100%; }
         .desktop-rcbfs__matrix .desktop-rcb-mtable th,
         .desktop-rcbfs__matrix .desktop-rcb-mtable td { padding: 2px 5px; }
-        .desktop-rcbfs__matrix .desktop-rcb-mtable input { width: 54px; height: 26px; padding: 0 6px; }
+        .desktop-rcbfs__matrix .desktop-rcb-mtable input { width: 78px; height: 26px; padding: 0 8px; }
         .desktop-rcbfs__matrix .costrow td { padding-top: 1px; padding-bottom: 1px; }
         /* Celda capturada (7) */
         .desktop-rcb-mtable input.js-rcb-cant.has-val { background: rgba(17,121,80,.1); border-color: rgba(17,121,80,.45); color: var(--success); font-weight: 700; }
@@ -224,9 +251,45 @@
         .desktop-rcbfs__navitem.is-done b { color: var(--success); }
 
         .select2-container { width: 100% !important; }
-        .select2-container--default .select2-selection--single { min-height: 34px; border: 1px solid var(--stroke-strong); border-radius: var(--r-md); }
-        .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 32px; font-size: .84rem; padding-left: 10px; }
-        .select2-container--default .select2-selection--single .select2-selection__arrow { height: 32px; }
+        .select2-container--default .select2-selection--single { height: 34px; min-height: 34px; border: 1px solid var(--stroke-strong); border-radius: var(--r-md); position: relative; }
+        .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 32px; font-size: .84rem; padding-left: 10px; padding-right: 30px; }
+        .select2-container--default .select2-selection--single .select2-selection__arrow { height: 34px; top: 50%; transform: translateY(-50%); }
+        .select2-container--open .select2-dropdown,
+        .select2-dropdown {
+            background: var(--surface, #fff);
+            border: 1px solid var(--stroke-strong);
+            border-radius: var(--r-md);
+            overflow: hidden;
+            box-shadow: var(--shadow-2);
+            z-index: 9000;
+        }
+        .select2-results {
+            background: var(--surface, #fff);
+        }
+        .select2-results__options {
+            background: var(--surface, #fff);
+        }
+        .select2-results__option {
+            background: var(--surface, #fff);
+            color: var(--text);
+            padding: 7px 12px;
+            font-size: .84rem;
+        }
+        .select2-search--dropdown {
+            padding: 8px;
+            background: var(--surface, #fff);
+        }
+        .select2-search--dropdown .select2-search__field {
+            border: 1px solid var(--stroke-strong);
+            border-radius: var(--r-sm);
+            background: var(--surface, #fff);
+            color: var(--text);
+            padding: 6px 8px;
+        }
+        .select2-results__option--highlighted.select2-results__option--selectable {
+            background: var(--brand) !important;
+            color: var(--on-brand) !important;
+        }
     </style>
 @endpush
 
@@ -284,10 +347,12 @@
                             </div>
                             <div class="desktop-field">
                                 <label for="rcb-prv">Proveedor</label>
-                                <select id="rcb-prv">
+                                <select id="rcb-prv" data-placeholder="Buscar proveedor">
                                     <option value="">Sin proveedor</option>
                                     @foreach($proveedores as $p)
-                                        <option value="{{ $p->prv_id }}">{{ $p->prv_nombre_empresa }}</option>
+                                        <option value="{{ $p->prv_id }}">
+                                            {{ $p->prv_nombre_empresa }}{{ $p->prv_razon_social ? ' - ' . $p->prv_razon_social : '' }}
+                                        </option>
                                     @endforeach
                                 </select>
                             </div>
@@ -322,7 +387,7 @@
                         <span class="desktop-rcb-step__hint">Busca en el catálogo y agrégalos</span>
                     </div>
                     <div class="desktop-rcb-step__body">
-                        <div class="desktop-rcb-chips" id="rcb-prods-chips">
+                        <div class="desktop-rcb-lines" id="rcb-prods-chips">
                             <span class="desktop-rcb-empty">Sin productos. Usa "Buscar productos" para agregarlos.</span>
                         </div>
                         <div class="desktop-rcb-picker">
@@ -349,7 +414,7 @@
                 {{-- Paso 4 · Captura (lanzador a pantalla completa) --}}
                 <div class="desktop-rcb-step">
                     <div class="desktop-rcb-step__head">
-                        <span class="desktop-rcb-step__num">4</span>
+                        <span class="desktop-rcb-step__num">3</span>
                         <span class="desktop-rcb-step__title">Captura de recepción</span>
                         <span class="desktop-rcb-step__hint">Espacio completo para captura masiva</span>
                     </div>
@@ -471,21 +536,34 @@
     <div class="desktop-modal" id="rcb-prod-modal" aria-hidden="true">
         <div class="desktop-modal__dialog" style="max-width:640px;">
             <div class="desktop-modal__head">
-                <div class="desktop-modal__title">Buscar productos</div>
+                <div class="desktop-modal__title" id="rcb-prod-modal-title">Buscar productos</div>
                 <button type="button" class="desktop-modal__close" data-close-prod aria-label="Cerrar">&times;</button>
             </div>
             <div class="desktop-modal__body">
-                <div class="desktop-rcb-prodsearch">
+                <div class="desktop-rcb-prodstate" id="rcb-prod-search-state">
+                    <div class="desktop-rcb-prodsearch">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
                     <input type="search" id="rcb-prod-q" placeholder="Busca por código o nombre…" autocomplete="off">
                 </div>
                 <div class="desktop-rcb-prodlist" id="rcb-prod-list"></div>
                 <button type="button" class="desktop-rcb-prodmore" id="rcb-prod-more" hidden>Cargar más</button>
+                </div>
+                <div class="desktop-rcb-prodstate" id="rcb-prod-attr-state" hidden>
+                    <div class="desktop-rcb-prodsel">
+                        <div class="desktop-rcb-prodsel__head">
+                            <div class="desktop-rcb-prodsel__title" id="rcb-prod-picked-name">Producto</div>
+                            <div class="desktop-rcb-prodsel__meta" id="rcb-prod-picked-meta"></div>
+                        </div>
+                        <div class="desktop-rcb-prodsel__help">Sin selecciÃ³n = se incluyen todas las variantes disponibles para ese atributo.</div>
+                        <div id="rcb-prod-attrs"></div>
+                    </div>
+                </div>
             </div>
             <div class="desktop-modal__foot">
-                <span class="desktop-rcb-prodfoot-count" id="rcb-prod-count">0 seleccionados</span>
+                <span class="desktop-rcb-prodfoot-count" id="rcb-prod-count">Selecciona un producto</span>
+                <button type="button" class="desktop-btn desktop-btn--default" id="rcb-prod-back" hidden>Volver</button>
                 <button type="button" class="desktop-btn desktop-btn--default" data-close-prod>Cancelar</button>
-                <button type="button" class="desktop-btn desktop-btn--primary" id="rcb-prod-add">Agregar seleccionados</button>
+                <button type="button" class="desktop-btn desktop-btn--primary" id="rcb-prod-add">Agregar producto</button>
             </div>
         </div>
     </div>
@@ -531,17 +609,46 @@
                 costosColumna: {},
                 costosEditados: {},
                 filtrosAtributos: {},
+                filtrosPorProducto: {},
+                lineasProductos: [],
+                lineaSeq: 1,
+                modalProducto: { modo: 'crear', paso: 'buscar', prdId: null, lineId: null, filtros: {} },
                 quitados: {},
                 filasExcluidas: {},
                 pendiente: null,
             };
             function productosActivos() {
-                return Object.values(state.meta).filter(m => m.producto && !state.quitados[m.producto.prd_id]);
+                const ids = [];
+                state.lineasProductos.forEach(linea => {
+                    const prdId = Number(linea.prd_id || 0);
+                    if (!prdId || ids.includes(prdId) || !state.meta[prdId]?.producto) return;
+                    ids.push(prdId);
+                });
+                return ids.map(id => state.meta[id]).filter(Boolean);
             }
 
             function esc(t) { return $('<div>').text(t ?? '').html(); }
             function money(v) { return '$ ' + Number(v || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
             function intNN(v) { v = Math.floor(Number(v || 0)); return v > 0 ? v : 0; }
+            function numNN(v) { v = Number(v || 0); return v > 0 ? Number(v.toFixed(2)) : 0; }
+            function normalizarUnidadTexto(v) { return String(v || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+            function productoPermiteDecimal(producto) {
+                const tipoCantidad = normalizarUnidadTexto(producto?.unidad_tipo_cantidad);
+                if (tipoCantidad === 'decimal') return true;
+                if (tipoCantidad === 'entero') return false;
+                const codigo = normalizarUnidadTexto(producto?.unidad_codigo);
+                const nombre = normalizarUnidadTexto(producto?.unidad_nombre);
+                const texto = [codigo, nombre].filter(Boolean).join(' ');
+                if (/(^|\\s)(m|mt|mts|metro|metros)(\\s|$)/.test(texto)) return true;
+                if (/(^|\\s)(pza|pieza|piezas)(\\s|$)/.test(texto)) return false;
+                return false;
+            }
+            function parseCantidadValor(raw, allowDecimals) {
+                const normalizado = String(raw ?? '').replace(',', '.').replace(/[^0-9.\-]/g, '');
+                const numero = Number(normalizado);
+                if (!Number.isFinite(numero) || numero <= 0) return 0;
+                return allowDecimals ? Number(numero.toFixed(2)) : Math.floor(numero);
+            }
 
             // Orden natural de tallas/variantes (negocio > alfabético)
             const PESO_TALLA = {
@@ -579,6 +686,96 @@
                     if (found) return found.atr_nombre;
                 }
                 return null;
+            }
+
+            function crearLineId() { return 'ln-' + (state.lineaSeq++); }
+
+            function mapaAtributosProducto(metaProducto) {
+                const mapa = {};
+                (metaProducto?.lineas || []).forEach(l => {
+                    Object.entries(l.atributos || {}).forEach(([k, v]) => {
+                        k = String(k).trim();
+                        if (!k) return;
+                        (mapa[k] = mapa[k] || new Set()).add(String(v || 'Sin valor').trim());
+                    });
+                });
+                return mapa;
+            }
+
+            function normalizarFiltrosRuntime(filtros) {
+                return Object.fromEntries(Object.entries(filtros || {}).map(([atr, vals]) => {
+                    if (vals instanceof Set) return [atr, new Set(Array.from(vals))];
+                    return [atr, new Set(vals || [])];
+                }));
+            }
+
+            function serializarFiltrosRuntime(filtros) {
+                return Object.fromEntries(Object.entries(filtros || {}).map(([atr, set]) => [atr, Array.from(set || [])]));
+            }
+
+            function lineasDeProducto(prdId) {
+                prdId = Number(prdId);
+                return state.lineasProductos.filter(linea => Number(linea.prd_id || 0) === prdId);
+            }
+
+            function filtrosUnionProducto(prdId) {
+                const union = {};
+                lineasDeProducto(prdId).forEach(linea => {
+                    Object.entries(linea.filtros || {}).forEach(([atr, set]) => {
+                        if (!set || !set.size) return;
+                        union[atr] = union[atr] || new Set();
+                        set.forEach(v => union[atr].add(v));
+                    });
+                });
+                return union;
+            }
+
+            function asegurarFiltrosProducto(prdId) {
+                return filtrosUnionProducto(prdId);
+            }
+
+            function serializarFiltrosPorProducto() {
+                const serial = {};
+                productosActivos().forEach(m => {
+                    const prdId = Number(m.producto?.prd_id || 0);
+                    serial[prdId] = serializarFiltrosRuntime(filtrosUnionProducto(prdId));
+                });
+                return serial;
+            }
+
+            function serializarFiltrosGlobalDesdeProductos() {
+                const globales = {};
+                productosActivos().forEach(m => {
+                    const filtros = filtrosUnionProducto(Number(m.producto?.prd_id || 0));
+                    Object.entries(filtros || {}).forEach(([atr, set]) => {
+                        if (!set || !set.size) return;
+                        globales[atr] = globales[atr] || new Set();
+                        set.forEach(v => globales[atr].add(v));
+                    });
+                });
+                return Object.fromEntries(Object.entries(globales).map(([atr, set]) => [atr, Array.from(set)]));
+            }
+
+            function serializarLineasProductos() {
+                return state.lineasProductos.map(linea => ({
+                    line_id: linea.line_id,
+                    prd_id: linea.prd_id,
+                    filtros: serializarFiltrosRuntime(linea.filtros),
+                }));
+            }
+
+            function initProveedorSelect() {
+                const $select = $('#rcb-prv');
+                if (!$select.length) return;
+                if ($select.hasClass('select2-hidden-accessible')) {
+                    $select.select2('destroy');
+                }
+                $select.select2({
+                    width: '100%',
+                    allowClear: true,
+                    placeholder: $select.data('placeholder') || 'Buscar proveedor',
+                    dropdownParent: $select.parent()
+                });
             }
 
             function syncAlmacenes() {
@@ -651,15 +848,15 @@
             }
 
             function actualizarMarcas() {
-                const marcas = [...new Set(Object.values(state.meta).map(m => m.producto?.marca_nombre).filter(Boolean))];
+                const marcas = [...new Set(productosActivos().map(m => m.producto?.marca_nombre).filter(Boolean))];
                 $('#rcb-marcas').val(marcas.join(', '));
             }
 
             function poblarDominantes() {
                 const map = {};
-                Object.values(state.meta).forEach(m => (m.atributos || []).forEach(a => { map[a.atr_id] = a.atr_nombre; }));
+                productosActivos().forEach(m => (m.atributos || []).forEach(a => { map[a.atr_id] = a.atr_nombre; }));
                 const actual = $('#rcb-dominante').val();
-                const sug = Object.values(state.meta)[0]?.dominante_sugerido_atr_id;
+                const sug = productosActivos()[0]?.dominante_sugerido_atr_id;
                 const opts = ['<option value="">Atributo dominante</option>']
                     .concat(Object.entries(map).map(([id, nom]) => '<option value="' + id + '">' + esc(nom) + '</option>'));
                 $('#rcb-dominante').html(opts.join(''));
@@ -690,46 +887,84 @@
 
             // ===== Selección de atributos (chips, sin dropdowns flotantes) =====
             function lineaCumpleFiltros(linea, metaProducto = null) {
-                const f = state.filtrosAtributos || {};
+                const prdId = Number(metaProducto?.producto?.prd_id || 0);
+                const filtrosLineas = lineasDeProducto(prdId);
                 const attrs = linea.atributos || {};
-                const attrsProducto = new Set((metaProducto?.atributos || []).map(a => String(a.atr_nombre || '').trim()).filter(Boolean));
-                for (const atr of Object.keys(f)) {
-                    const set = f[atr];
-                    if (!set || set.size === 0) continue;
-                    if (!attrsProducto.has(String(atr).trim())) continue;
-                    if (!set.has(String(attrs[atr] || 'Sin valor').trim())) return false;
-                }
-                return true;
+                if (!filtrosLineas.length) return true;
+                return filtrosLineas.some(lineaProducto => {
+                    const filtros = lineaProducto.filtros || {};
+                    const claves = Object.keys(filtros);
+                    if (!claves.length) return true;
+                    return claves.every(atr => {
+                        const set = filtros[atr];
+                        if (!set || set.size === 0) return true;
+                        return set.has(String(attrs[atr] || 'Sin valor').trim());
+                    });
+                });
+            }
+            function resumirFiltrosLinea(linea, maxLen = 140) {
+                const meta = state.meta[Number(linea.prd_id || 0)];
+                const mapa = mapaAtributosProducto(meta);
+                const partes = Object.entries(mapa).map(([atr]) => {
+                    const set = linea.filtros?.[atr];
+                    const vals = set && set.size ? Array.from(set).sort(compararTalla) : ['todos'];
+                    return atr + ': ' + vals.join(', ');
+                });
+                const txt = partes.join(' · ') || 'Sin atributos';
+                return txt.length > maxLen ? (txt.slice(0, maxLen - 1) + '…') : txt;
             }
             function renderFiltros() {
-                const mapa = {};
-                productosActivos().forEach(m => (m.lineas || []).forEach(l => {
-                    Object.entries(l.atributos || {}).forEach(([k, v]) => {
-                        k = String(k).trim(); if (!k) return;
-                        (mapa[k] = mapa[k] || new Set()).add(String(v || 'Sin valor').trim());
-                    });
-                }));
-                const cat = Object.entries(mapa).sort((a, b) => a[0].localeCompare(b[0], 'es', { sensitivity: 'base' }));
-                $('#rcb-filter-card').prop('hidden', cat.length === 0);
-                if (!cat.length) { state.filtrosAtributos = {}; $('#rcb-attr-filter').empty(); return; }
+                const items = productosActivos();
+                const cards = items.map(m => {
+                    const prdId = Number(m.producto?.prd_id || 0);
+                    const mapa = mapaAtributosProducto(m);
+                    const cat = Object.entries(mapa).sort((a, b) => a[0].localeCompare(b[0], 'es', { sensitivity: 'base' }));
+                    if (!cat.length) return '';
 
-                const depurado = {};
-                const html = cat.map(([atr, valores]) => {
-                    const vals = Array.from(valores).sort(compararTalla);
-                    const prev = state.filtrosAtributos[atr] || new Set();
-                    const sel = new Set(vals.filter(v => prev.has(v)));
-                    depurado[atr] = sel;
-                    const toggles = vals.map(v =>
-                        '<button type="button" class="desktop-rcb-tog' + (sel.has(v) ? ' is-active' : '') + '" data-toggle-val data-atr="' + esc(atr) + '" data-val="' + esc(v) + '">' + esc(v) + '</button>'
-                    ).join('');
-                    return '<div class="desktop-rcb-attrgroup" data-group="' + esc(atr) + '">' +
-                        '<div class="desktop-rcb-attrgroup__title"><span>' + esc(atr) + '</span>' +
-                            '<span class="desktop-rcb-attrgroup__count" data-count-atr="' + esc(atr) + '">' + (sel.size ? sel.size + ' seleccionados' : 'todos') + '</span></div>' +
-                        '<div class="desktop-rcb-toggles">' + toggles + '</div>' +
-                    '</div>';
-                }).join('');
-                state.filtrosAtributos = depurado;
-                $('#rcb-attr-filter').html(html);
+                    const filtros = asegurarFiltrosProducto(prdId);
+                    let gruposConSeleccion = 0;
+                    const body = cat.map(([atr, valores]) => {
+                        const vals = Array.from(valores).sort(compararTalla);
+                        const prev = filtros[atr] || new Set();
+                        const sel = new Set(vals.filter(v => prev.has(v)));
+                        filtros[atr] = sel;
+                        if (sel.size) gruposConSeleccion += 1;
+                        const toggles = vals.map(v =>
+                            '<button type="button" class="desktop-rcb-tog' + (sel.has(v) ? ' is-active' : '') + '" data-toggle-val data-prd-id="' + prdId + '" data-atr="' + esc(atr) + '" data-val="' + esc(v) + '">' + esc(v) + '</button>'
+                        ).join('');
+                        return '<div class="desktop-rcb-attrgroup" data-group="' + esc(atr) + '" data-prd-group="' + prdId + '">' +
+                            '<div class="desktop-rcb-attrgroup__title"><span>' + esc(atr) + '</span>' +
+                                '<span class="desktop-rcb-attrgroup__count" data-count-atr="' + esc(atr) + '" data-count-prd="' + prdId + '">' + (sel.size ? sel.size + ' seleccionados' : 'todos') + '</span></div>' +
+                            '<div class="desktop-rcb-toggles">' + toggles + '</div>' +
+                        '</div>';
+                    }).join('');
+
+                    const p = m.producto || {};
+                    const resumen = gruposConSeleccion
+                        ? (gruposConSeleccion + ' atributo(s) filtrados')
+                        : 'Sin filtros, se muestran todas las variantes';
+                    const meta = [p.marca_nombre, p.prd_codigo].filter(Boolean).join(' · ');
+                    return '<section class="desktop-rcb-attrproduct" data-prd-card="' + prdId + '">' +
+                        '<div class="desktop-rcb-attrproduct__head">' +
+                            '<div class="desktop-rcb-attrproduct__main">' +
+                                '<div class="desktop-rcb-attrproduct__name">' + esc(p.prd_nombre || ('Producto ' + prdId)) + '</div>' +
+                                '<div class="desktop-rcb-attrproduct__meta">' + esc(meta || ('ID ' + prdId)) + '</div>' +
+                            '</div>' +
+                            '<div class="desktop-rcb-attrproduct__summary" data-prd-summary="' + prdId + '">' + esc(resumen) + '</div>' +
+                        '</div>' +
+                        '<div class="desktop-rcb-attrproduct__body">' + body + '</div>' +
+                    '</section>';
+                }).filter(Boolean);
+
+                $('#rcb-filter-card').prop('hidden', cards.length === 0);
+                if (!cards.length) {
+                    state.filtrosAtributos = {};
+                    $('#rcb-attr-filter').empty();
+                    return;
+                }
+
+                state.filtrosAtributos = Object.fromEntries(Object.entries(serializarFiltrosGlobalDesdeProductos()).map(([k, v]) => [k, new Set(v || [])]));
+                $('#rcb-attr-filter').html('<div class="desktop-rcb-attrproducts">' + cards.join('') + '</div>');
             }
 
             function actualizarRestaurar() {
@@ -763,7 +998,10 @@
                 const url = urlId(rutas.matriz, prdId) + '?min_scl_id=' + (Number($('#rcb-scl').val() || 0) || '');
                 $.getJSON(url).done(function (resp) {
                     state.meta[prdId] = resp.data || {};
+                    asegurarFiltrosProducto(prdId);
                     refrescarTodo();
+                    const card = document.querySelector('[data-prd-card="' + prdId + '"]');
+                    if (card) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
                 }).fail(function (xhr) { notify('Error', xhr.responseJSON?.message || 'No se pudo cargar la matriz del producto.', 'error'); });
             }
 
@@ -774,6 +1012,206 @@
             function quitarProducto(prdId) { state.quitados[prdId] = true; refrescarTodo(); }
             function restaurarProducto(prdId) { delete state.quitados[prdId]; refrescarTodo(); }
 
+            function renderFiltros() {
+                $('#rcb-filter-card').prop('hidden', true);
+                $('#rcb-attr-filter').empty();
+            }
+
+            function actualizarRestaurar() {
+                $('#rcb-restaurar').prop('hidden', Object.keys(state.filasExcluidas).length === 0);
+            }
+
+            function renderProductos() {
+                const total = state.lineasProductos.length;
+                const totalProductos = productosActivos().length;
+                $('#rcb-launch-sub').text(total
+                    ? (totalProductos + ' producto(s) y ' + total + ' línea(s) listos para capturar — abre la pantalla completa')
+                    : 'Agrega productos y elige el atributo dominante dentro de la captura.');
+                const $b = $('#rcb-prods-chips');
+                if (!total) { $b.html('<span class="desktop-rcb-empty">Sin productos. Búscalos abajo para agregarlos.</span>'); return; }
+                $b.html(state.lineasProductos.map(linea => {
+                    const p = state.meta[Number(linea.prd_id || 0)]?.producto || {};
+                    const codigo = p.prd_codigo || ('ID ' + linea.prd_id);
+                    return '<div class="desktop-rcb-line" data-line-id="' + esc(linea.line_id) + '">' +
+                        '<div class="desktop-rcb-line__main">' +
+                            '<div class="desktop-rcb-line__top">' +
+                                '<span class="desktop-rcb-line__code">' + esc(codigo) + '</span>' +
+                                '<span class="desktop-rcb-line__name">' + esc(p.prd_nombre || ('Producto ' + linea.prd_id)) + '</span>' +
+                            '</div>' +
+                            '<div class="desktop-rcb-line__attrs">' + esc(resumirFiltrosLinea(linea)) + '</div>' +
+                        '</div>' +
+                        '<div class="desktop-rcb-line__actions">' +
+                            '<button type="button" class="desktop-btn desktop-btn--default" data-edit-line="' + esc(linea.line_id) + '">Editar</button>' +
+                            '<button type="button" class="desktop-btn desktop-btn--ghost" data-del-line="' + esc(linea.line_id) + '" title="Eliminar">&times;</button>' +
+                        '</div>' +
+                    '</div>';
+                }).join(''));
+            }
+
+            function cargarMetaProducto(prdId) {
+                prdId = Number(prdId);
+                if (!prdId) return $.Deferred().reject().promise();
+                if (state.meta[prdId]) return $.Deferred().resolve(state.meta[prdId]).promise();
+                const url = urlId(rutas.matriz, prdId) + '?min_scl_id=' + (Number($('#rcb-scl').val() || 0) || '');
+                return $.getJSON(url).done(function (resp) { state.meta[prdId] = resp.data || {}; });
+            }
+
+            function refrescarTodo() {
+                renderProductos(); actualizarMarcas(); poblarDominantes(); renderFiltros(); renderMatriz(); actualizarRestaurar();
+            }
+
+            function eliminarLinea(lineId) {
+                state.lineasProductos = state.lineasProductos.filter(linea => String(linea.line_id) !== String(lineId));
+                refrescarTodo();
+            }
+
+            function resetModalProducto() {
+                state.modalProducto = { modo: 'crear', paso: 'buscar', prdId: null, lineId: null, filtros: {} };
+            }
+
+            function actualizarProdCount() {
+                if (state.modalProducto.paso === 'buscar') {
+                    $('#rcb-prod-count').text('Selecciona un producto');
+                    return;
+                }
+                const seleccionados = Object.values(state.modalProducto.filtros || {}).filter(set => set && set.size).length;
+                $('#rcb-prod-count').text(seleccionados ? (seleccionados + ' atributo(s) con selección') : 'Sin selección = todas las variantes');
+            }
+
+            function rowProducto(p) {
+                const repetidos = lineasDeProducto(p.id).length;
+                const meta = [
+                    p.marca_nombre || 'S/M',
+                    p.modelo_nombre || 'S/Mo',
+                    p.concepto_nombre || 'S/C',
+                    p.descripcion_nombre || 'S/D',
+                    p.prd_codigo || 'S/CI'
+                ].join(' · ');
+                return '<label class="desktop-rcb-prowitem">' +
+                    '<input type="radio" name="rcb-prod-radio" data-prd="' + p.id + '">' +
+                    '<span class="desktop-rcb-prowitem__main">' +
+                        '<span class="desktop-rcb-prowitem__name">' + esc(p.prd_nombre || p.text) + '</span>' +
+                        '<span class="desktop-rcb-prowitem__meta">' + esc(meta) + '</span>' +
+                    '</span>' +
+                    (repetidos ? '<span class="desktop-rcb-prowitem__tag">' + repetidos + ' línea(s)</span>' : '') +
+                '</label>';
+            }
+
+            function cargarProdList(reset) {
+                if (reset) { prodPage = 1; $('#rcb-prod-list').html('<div class="desktop-rcb-empty" style="padding:16px; text-align:center;">Buscando…</div>'); }
+                $.getJSON(rutas.buscarProductos, { q: prodTerm, page: prodPage }).done(function (resp) {
+                    const items = resp.results || [];
+                    prodMore = !!(resp.pagination && resp.pagination.more);
+                    const html = items.map(rowProducto).join('');
+                    if (reset) $('#rcb-prod-list').html(html || '<div class="desktop-rcb-empty" style="padding:16px; text-align:center;">Sin resultados.</div>');
+                    else $('#rcb-prod-list').append(html);
+                    $('#rcb-prod-more').prop('hidden', !prodMore);
+                }).fail(function () {
+                    $('#rcb-prod-list').html('<div class="desktop-rcb-empty" style="padding:16px; text-align:center; color:var(--danger);">No fue posible cargar productos.</div>');
+                });
+            }
+
+            function renderProdModalAttrs() {
+                const prdId = Number(state.modalProducto.prdId || 0);
+                const meta = state.meta[prdId];
+                if (!meta) { $('#rcb-prod-attrs').html('<div class="desktop-rcb-empty">Cargando atributos…</div>'); return; }
+                const p = meta.producto || {};
+                $('#rcb-prod-picked-name').text(p.prd_nombre || ('Producto ' + prdId));
+                $('#rcb-prod-picked-meta').text([p.prd_codigo, p.marca_nombre, p.modelo_nombre].filter(Boolean).join(' · '));
+                state.modalProducto.filtros = normalizarFiltrosRuntime(state.modalProducto.filtros);
+                const html = Object.entries(mapaAtributosProducto(meta))
+                    .sort((a, b) => a[0].localeCompare(b[0], 'es', { sensitivity: 'base' }))
+                    .map(([atr, valores]) => {
+                        const vals = Array.from(valores).sort(compararTalla);
+                        const prev = state.modalProducto.filtros[atr] || new Set();
+                        const sel = new Set(vals.filter(v => prev.has(v)));
+                        state.modalProducto.filtros[atr] = sel;
+                        const toggles = vals.map(v =>
+                            '<button type="button" class="desktop-rcb-tog' + (sel.has(v) ? ' is-active' : '') + '" data-modal-attr data-atr="' + esc(atr) + '" data-val="' + esc(v) + '">' + esc(v) + '</button>'
+                        ).join('');
+                        return '<div class="desktop-rcb-attrgroup">' +
+                            '<div class="desktop-rcb-attrgroup__title"><span>' + esc(atr) + '</span>' +
+                                '<span class="desktop-rcb-attrgroup__count" data-modal-count="' + esc(atr) + '">' + (sel.size ? sel.size + ' seleccionados' : 'todos') + '</span></div>' +
+                            '<div class="desktop-rcb-toggles">' + toggles + '</div>' +
+                        '</div>';
+                    }).join('');
+                $('#rcb-prod-attrs').html(html || '<div class="desktop-rcb-empty">Este producto no tiene atributos configurados.</div>');
+                actualizarProdCount();
+            }
+
+            function renderProdModal() {
+                const enBusqueda = state.modalProducto.paso === 'buscar';
+                $('#rcb-prod-modal-title').text(enBusqueda ? 'Buscar productos' : (state.modalProducto.modo === 'editar' ? 'Editar atributos' : 'Seleccionar atributos'));
+                $('#rcb-prod-search-state').prop('hidden', !enBusqueda);
+                $('#rcb-prod-attr-state').prop('hidden', enBusqueda);
+                $('#rcb-prod-back').prop('hidden', enBusqueda);
+                $('#rcb-prod-add').prop('hidden', enBusqueda).text(state.modalProducto.modo === 'editar' ? 'Guardar cambios' : 'Agregar producto');
+                $('#rcb-prod-more').prop('hidden', enBusqueda ? $('#rcb-prod-more').prop('hidden') : true);
+                actualizarProdCount();
+                if (!enBusqueda) renderProdModalAttrs();
+            }
+
+            function abrirProdModal() {
+                resetModalProducto();
+                prodTerm = '';
+                $('#rcb-prod-q').val('');
+                $('#rcb-prod-list').empty();
+                $('#rcb-prod-modal').addClass('is-open').attr('aria-hidden', 'false');
+                renderProdModal();
+                setTimeout(() => $('#rcb-prod-q').trigger('focus'), 50);
+                cargarProdList(true);
+            }
+
+            function cerrarProdModal() {
+                $('#rcb-prod-modal').removeClass('is-open').attr('aria-hidden', 'true');
+                resetModalProducto();
+            }
+
+            function seleccionarProductoModal(prdId) {
+                cargarMetaProducto(prdId).done(function () {
+                    state.modalProducto.prdId = Number(prdId);
+                    state.modalProducto.paso = 'atributos';
+                    state.modalProducto.filtros = {};
+                    renderProdModal();
+                }).fail(function (xhr) {
+                    notify('Error', xhr?.responseJSON?.message || 'No se pudo cargar el producto.', 'error');
+                });
+            }
+
+            function abrirEdicionLinea(lineId) {
+                const linea = state.lineasProductos.find(item => String(item.line_id) === String(lineId));
+                if (!linea) return;
+                state.modalProducto = {
+                    modo: 'editar',
+                    paso: 'atributos',
+                    prdId: Number(linea.prd_id),
+                    lineId: linea.line_id,
+                    filtros: normalizarFiltrosRuntime(linea.filtros),
+                };
+                $('#rcb-prod-modal').addClass('is-open').attr('aria-hidden', 'false');
+                cargarMetaProducto(linea.prd_id).done(function () { renderProdModal(); });
+            }
+
+            function guardarLineaModal() {
+                const prdId = Number(state.modalProducto.prdId || 0);
+                if (!prdId) { notify('Validación', 'Selecciona un producto.', 'error'); return; }
+                const linea = {
+                    line_id: state.modalProducto.lineId || crearLineId(),
+                    prd_id: prdId,
+                    filtros: normalizarFiltrosRuntime(state.modalProducto.filtros),
+                };
+                if (state.modalProducto.modo === 'editar') {
+                    const idx = state.lineasProductos.findIndex(item => String(item.line_id) === String(linea.line_id));
+                    if (idx >= 0) state.lineasProductos.splice(idx, 1, linea);
+                } else {
+                    state.lineasProductos.push(linea);
+                }
+                cerrarProdModal();
+                refrescarTodo();
+                const row = document.querySelector('[data-line-id="' + linea.line_id + '"]');
+                if (row) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
+
             // ===== Matriz =====
             function costKey(prdId, col) { return prdId + '|' + col; }
 
@@ -781,6 +1219,7 @@
                 const $shell = $('#rcb-matrix');
                 const items = productosActivos();
                 const atrId = Number($('#rcb-dominante').val() || 0);
+                Object.assign(state.cantidadesCache || (state.cantidadesCache = {}), snapshotCantidades());
                 if (!items.length || !atrId) {
                     $shell.html('<div class="desktop-rcb-empty">Agrega productos y elige un atributo dominante para capturar cantidades.</div>');
                     calcTotales();
@@ -790,6 +1229,7 @@
 
                 const html = items.map(function (m) {
                     const p = m.producto;
+                    const permiteDecimal = productoPermiteDecimal(p);
                     const lineas = (m.lineas || []).filter(l => lineaCumpleFiltros(l, m));
                     const cols = [];
                     lineas.forEach(l => { const v = (l.atributos || {})[domNombre] || '—'; if (!cols.includes(v)) cols.push(v); });
@@ -833,8 +1273,9 @@
                                 const l = row.cells[c];
                                 if (!l) return '<td class="na">N/A</td>';
                                 const key = costKey(p.prd_id, c);
-                                const val = intNN((state.cantidadesCache || {})[l.min_psk_id]);
-                                return '<td><input type="number" min="0" step="1" class="js-rcb-cant' + (val > 0 ? ' has-val' : '') + '" ' +
+                                const val = parseCantidadValor((state.cantidadesCache || {})[l.min_psk_id], permiteDecimal);
+                                return '<td><input type="number" min="0" step="' + (permiteDecimal ? '0.01' : '1') + '" inputmode="' + (permiteDecimal ? 'decimal' : 'numeric') + '" class="js-rcb-cant' + (val > 0 ? ' has-val' : '') + '" ' +
+                                    'data-allow-decimals="' + (permiteDecimal ? '1' : '0') + '" ' +
                                     'data-prd-id="' + p.prd_id + '" data-min-psk-id="' + l.min_psk_id + '" data-cost-key="' + esc(key) + '" ' +
                                     'value="' + val + '"></td>';
                             }).join('') + '</tr>';
@@ -848,7 +1289,7 @@
                         p.prd_codigo || 'S/CI'
                     ].join(' · ');
 
-                    return '<div class="desktop-rcb-mp" data-prd="' + p.prd_id + '"><div class="desktop-rcb-mp__head"><div class="desktop-rcb-mp__meta"><span class="desktop-rcb-mp__name">' + esc(p.prd_nombre) + '</span><span class="desktop-rcb-mp__sub">' + esc(metaProducto) + '</span></div><span class="desktop-rcb-mp__skus">' + lineas.length + ' SKU</span></div><div class="desktop-rcb-mwrap"><table class="desktop-rcb-mtable"><thead>' + thead + '</thead><tbody>' + costrow + filas + '</tbody></table></div></div>';
+                    return '<div class="desktop-rcb-mp" data-prd="' + p.prd_id + '"><div class="desktop-rcb-mp__head"><div class="desktop-rcb-mp__meta"><span class="desktop-rcb-mp__name">' + esc(p.prd_nombre) + '</span><span class="desktop-rcb-mp__sub">' + esc(metaProducto) + '</span></div><span class="desktop-rcb-mp__skus">' + lineas.length + ' SKU</span></div><div class="desktop-rcb-mwrap"><table class="desktop-rcb-mtable"><thead>' + thead + '</thead><tbody>' + filas + costrow + '</tbody></table></div></div>';
                 }).join('');
 
                 $shell.html(html || '<div class="desktop-rcb-empty">No hay variantes que coincidan con los atributos seleccionados.</div>');
@@ -860,10 +1301,11 @@
                 return $('#rcb-matrix .js-rcb-cant').toArray().map(function (el) {
                     const $el = $(el);
                     const key = String($el.data('cost-key') || '');
+                    const allowDecimals = String($el.data('allow-decimals') || '0') === '1';
                     return {
                         prd_id: Number($el.data('prd-id') || 0),
                         min_psk_id: Number($el.data('min-psk-id') || 0),
-                        min_cantidad: intNN($el.val()),
+                        min_cantidad: parseCantidadValor($el.val(), allowDecimals),
                         min_precio_unitario: Number(state.costosColumna[key] || 0),
                     };
                 }).filter(l => l.prd_id > 0 && l.min_psk_id > 0 && (includeZero || l.min_cantidad > 0));
@@ -948,7 +1390,11 @@
             // ===== Payload =====
             function snapshotCantidades() {
                 const c = {};
-                $('#rcb-matrix .js-rcb-cant').each(function () { const id = Number($(this).data('min-psk-id')); if (id) c[id] = intNN($(this).val()); });
+                $('#rcb-matrix .js-rcb-cant').each(function () {
+                    const id = Number($(this).data('min-psk-id'));
+                    const allowDecimals = String($(this).data('allow-decimals') || '0') === '1';
+                    if (id) c[id] = parseCantidadValor($(this).val(), allowDecimals);
+                });
                 return c;
             }
             function construirPayload(includeZero) {
@@ -976,8 +1422,9 @@
                         costosEditados: state.costosEditados,
                         cantidades: snapshotCantidades(),
                         dominanteGlobal: Number($('#rcb-dominante').val() || 0) || null,
-                        filtrosAtributos: Object.fromEntries(Object.entries(state.filtrosAtributos).map(([k, v]) => [k, Array.from(v || [])])),
-                        quitados: state.quitados,
+                        lineasProductos: serializarLineasProductos(),
+                        filtrosAtributos: serializarFiltrosGlobalDesdeProductos(),
+                        filtrosPorProducto: serializarFiltrosPorProducto(),
                         filasExcluidas: state.filasExcluidas,
                     },
                 };
@@ -1078,6 +1525,112 @@
             $('#rcb-prods-chips').on('click', '[data-restore-prd]', function () { restaurarProducto($(this).data('restore-prd')); });
             $('#rcb-dominante').on('change', renderMatriz);
 
+            function actualizarProdCount() {
+                if (state.modalProducto.paso === 'buscar') {
+                    $('#rcb-prod-count').text('Selecciona un producto');
+                    return;
+                }
+                const seleccionados = Object.values(state.modalProducto.filtros || {}).filter(set => set && set.size).length;
+                $('#rcb-prod-count').text(seleccionados ? (seleccionados + ' atributo(s) con selección') : 'Sin selección = todas las variantes');
+            }
+
+            function rowProducto(p) {
+                const repetidos = lineasDeProducto(p.id).length;
+                const meta = [
+                    p.marca_nombre || 'S/M',
+                    p.modelo_nombre || 'S/Mo',
+                    p.concepto_nombre || 'S/C',
+                    p.descripcion_nombre || 'S/D',
+                    p.prd_codigo || 'S/CI'
+                ].join(' · ');
+                return '<label class="desktop-rcb-prowitem">' +
+                    '<input type="radio" name="rcb-prod-radio" data-prd="' + p.id + '">' +
+                    '<span class="desktop-rcb-prowitem__main">' +
+                        '<span class="desktop-rcb-prowitem__name">' + esc(p.prd_nombre || p.text) + '</span>' +
+                        '<span class="desktop-rcb-prowitem__meta">' + esc(meta) + '</span>' +
+                    '</span>' +
+                    (repetidos ? '<span class="desktop-rcb-prowitem__tag">' + repetidos + ' línea(s)</span>' : '') +
+                '</label>';
+            }
+
+            function cargarProdList(reset) {
+                if (reset) { prodPage = 1; $('#rcb-prod-list').html('<div class="desktop-rcb-empty" style="padding:16px; text-align:center;">Buscando…</div>'); }
+                $.getJSON(rutas.buscarProductos, { q: prodTerm, page: prodPage }).done(function (resp) {
+                    const items = resp.results || [];
+                    prodMore = !!(resp.pagination && resp.pagination.more);
+                    const html = items.map(rowProducto).join('');
+                    if (reset) $('#rcb-prod-list').html(html || '<div class="desktop-rcb-empty" style="padding:16px; text-align:center;">Sin resultados.</div>');
+                    else $('#rcb-prod-list').append(html);
+                    $('#rcb-prod-more').prop('hidden', !prodMore || state.modalProducto.paso !== 'buscar');
+                }).fail(function () {
+                    $('#rcb-prod-list').html('<div class="desktop-rcb-empty" style="padding:16px; text-align:center; color:var(--danger);">No fue posible cargar productos.</div>');
+                });
+            }
+
+            function abrirProdModal() {
+                resetModalProducto();
+                prodTerm = '';
+                $('#rcb-prod-q').val('');
+                $('#rcb-prod-list').empty();
+                $('#rcb-prod-modal').addClass('is-open').attr('aria-hidden', 'false');
+                renderProdModal();
+                setTimeout(() => $('#rcb-prod-q').trigger('focus'), 50);
+                cargarProdList(true);
+            }
+
+            function cerrarProdModal() {
+                $('#rcb-prod-modal').removeClass('is-open').attr('aria-hidden', 'true');
+                resetModalProducto();
+            }
+
+            $('#rcb-open-prod').off('click').on('click', abrirProdModal);
+            $('#rcb-prod-q').off('input').on('input', function () {
+                prodTerm = String(this.value || '').trim();
+                clearTimeout(prodTimer);
+                prodTimer = setTimeout(() => cargarProdList(true), 250);
+            });
+            $('#rcb-prod-more').off('click').on('click', function () { prodPage += 1; cargarProdList(false); });
+            $('#rcb-prod-list').off('change').on('change', 'input[type="radio"]', function () {
+                seleccionarProductoModal(Number($(this).data('prd')));
+            });
+            $('#rcb-prod-back').off('click').on('click', function () {
+                state.modalProducto.paso = 'buscar';
+                state.modalProducto.prdId = null;
+                state.modalProducto.lineId = null;
+                state.modalProducto.filtros = {};
+                renderProdModal();
+                setTimeout(() => $('#rcb-prod-q').trigger('focus'), 50);
+            });
+            $('#rcb-prod-add').off('click').on('click', guardarLineaModal);
+            $('#rcb-prods-chips').off('click', '[data-edit-line]').on('click', '[data-edit-line]', function () { abrirEdicionLinea($(this).attr('data-edit-line')); });
+            $('#rcb-prods-chips').off('click', '[data-del-line]').on('click', '[data-del-line]', function () { eliminarLinea($(this).attr('data-del-line')); });
+            $('#rcb-prod-attrs').off('click').on('click', '[data-modal-attr]', function () {
+                const atr = $(this).attr('data-atr');
+                const val = $(this).attr('data-val');
+                const filtros = state.modalProducto.filtros = normalizarFiltrosRuntime(state.modalProducto.filtros);
+                const set = filtros[atr] = filtros[atr] || new Set();
+                if (set.has(val)) { set.delete(val); $(this).removeClass('is-active'); }
+                else { set.add(val); $(this).addClass('is-active'); }
+                $(this).closest('.desktop-rcb-attrgroup').find('[data-modal-count]').text(set.size ? set.size + ' seleccionados' : 'todos');
+                actualizarProdCount();
+            });
+            $('#rcb-attr-filter').off('click');
+            $('#rcb-restaurar').off('click').on('click', function () {
+                state.filasExcluidas = {};
+                refrescarTodo();
+            });
+            $('#rcb-borrador').off('click').on('click', function () {
+                if (!state.lineasProductos.length) { notify('Validación', 'Agrega al menos un producto.', 'error'); return; }
+                $.ajax({ url: rutas.borrador, method: 'POST', dataType: 'json', contentType: 'application/json', headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' }, data: JSON.stringify(construirPayload(true)) })
+                    .done(function (resp) {
+                        state.rmeId = Number(resp.data?.rme_id || 0) || null;
+                        state.rmeFolio = resp.data?.rme_folio || null;
+                        state.rmeEstado = resp.data?.rme_estado || 'borrador';
+                        actualizarEstado();
+                        notify('Listo', (resp.message || 'Borrador guardado') + ' (' + (state.rmeFolio || '') + ')', 'success');
+                    }).fail(xhr => notify('Error', parseErr(xhr), 'error'));
+            });
+
             // Agrupar por (control segmentado)
             $('#rcb-dominante-seg').on('click', '[data-dom]', function () {
                 $('#rcb-dominante').val($(this).attr('data-dom'));
@@ -1111,11 +1664,16 @@
 
             // Atributos: botones toggle (multi-selección persistente, sin re-render completo)
             $('#rcb-attr-filter').on('click', '[data-toggle-val]', function () {
+                const prdId = Number($(this).attr('data-prd-id') || 0);
                 const atr = $(this).attr('data-atr'), val = $(this).attr('data-val');
-                const set = state.filtrosAtributos[atr] = state.filtrosAtributos[atr] || new Set();
+                const filtros = asegurarFiltrosProducto(prdId);
+                const set = filtros[atr] = filtros[atr] || new Set();
                 if (set.has(val)) { set.delete(val); $(this).removeClass('is-active'); }
                 else { set.add(val); $(this).addClass('is-active'); }
+                const seleccionados = Object.values(filtros).filter(s => s && s.size).length;
                 $(this).closest('.desktop-rcb-attrgroup').find('[data-count-atr]').text(set.size ? set.size + ' seleccionados' : 'todos');
+                $('[data-prd-summary="' + prdId + '"]').text(seleccionados ? (seleccionados + ' atributo(s) filtrados') : 'Sin filtros, se muestran todas las variantes');
+                state.filtrosAtributos = Object.fromEntries(Object.entries(serializarFiltrosGlobalDesdeProductos()).map(([k, v]) => [k, new Set(v || [])]));
                 renderMatriz();
             });
 
@@ -1158,6 +1716,11 @@
                 return null;
             }
             $('#rcb-matrix').on('keydown', '.js-rcb-cant', function (e) {
+                const allowDecimals = String($(this).data('allow-decimals') || '0') === '1';
+                if (!allowDecimals && (e.key === '.' || e.key === ',')) {
+                    e.preventDefault();
+                    return;
+                }
                 let dir = null;
                 if (e.key === 'ArrowUp') dir = 'up';
                 else if (e.key === 'ArrowDown' || e.key === 'Enter') dir = 'down';
@@ -1168,8 +1731,33 @@
                 const destino = celdaDestino(this, dir);
                 if (destino) { destino.focus(); destino.select(); }
             });
+            $('#rcb-matrix').on('paste', '.js-rcb-cant', function (e) {
+                const allowDecimals = String($(this).data('allow-decimals') || '0') === '1';
+                if (allowDecimals) return;
+                const text = e.originalEvent?.clipboardData?.getData('text') || '';
+                if (text.includes('.') || text.includes(',')) e.preventDefault();
+            });
             $('#rcb-matrix').on('input', '.js-rcb-cant', function () {
-                $(this).toggleClass('has-val', intNN($(this).val()) > 0);
+                const $input = $(this);
+                const allowDecimals = String($input.data('allow-decimals') || '0') === '1';
+                const raw = String($input.val() ?? '');
+                const val = parseCantidadValor(raw, allowDecimals);
+                if (!allowDecimals) {
+                    $input.val(val > 0 ? val : 0);
+                }
+                state.cantidadesCache = state.cantidadesCache || {};
+                state.cantidadesCache[Number($input.data('min-psk-id') || 0)] = val;
+                $input.toggleClass('has-val', val > 0);
+                calcTotales();
+            });
+            $('#rcb-matrix').on('blur', '.js-rcb-cant', function () {
+                const $input = $(this);
+                const allowDecimals = String($input.data('allow-decimals') || '0') === '1';
+                const val = parseCantidadValor($input.val(), allowDecimals);
+                $input.val(val > 0 ? val : 0);
+                state.cantidadesCache = state.cantidadesCache || {};
+                state.cantidadesCache[Number($input.data('min-psk-id') || 0)] = val;
+                $input.toggleClass('has-val', val > 0);
                 calcTotales();
             });
             $('#rcb-matrix').on('input', '.js-rcb-costo', function () {
@@ -1198,6 +1786,21 @@
                     }).fail(xhr => notify('Error', parseErr(xhr), 'error'));
             });
 
+            $('#rcb-restaurar').off('click').on('click', function () {
+                state.filasExcluidas = {};
+                refrescarTodo();
+            });
+            $('#rcb-borrador').off('click').on('click', function () {
+                if (!state.lineasProductos.length) { notify('Validación', 'Agrega al menos un producto.', 'error'); return; }
+                $.ajax({ url: rutas.borrador, method: 'POST', dataType: 'json', contentType: 'application/json', headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' }, data: JSON.stringify(construirPayload(true)) })
+                    .done(function (resp) {
+                        state.rmeId = Number(resp.data?.rme_id || 0) || null;
+                        state.rmeFolio = resp.data?.rme_folio || null;
+                        state.rmeEstado = resp.data?.rme_estado || 'borrador';
+                        actualizarEstado();
+                        notify('Listo', (resp.message || 'Borrador guardado') + ' (' + (state.rmeFolio || '') + ')', 'success');
+                    }).fail(xhr => notify('Error', parseErr(xhr), 'error'));
+            });
             function abrirModal() { $('#rcb-confirm-modal').addClass('is-open').attr('aria-hidden', 'false'); setTimeout(() => $('#rcb-pass').trigger('focus'), 50); }
             function cerrarModal() { $('#rcb-confirm-modal').removeClass('is-open').attr('aria-hidden', 'true'); $('#rcb-pass').val(''); }
 
@@ -1230,7 +1833,7 @@
                 syncAlmacenes();
                 if (b.min_alm_id) $('#rcb-alm').val(String(b.min_alm_id));
                 if (b.min_documento_tipo) $('#rcb-tipo').val(b.min_documento_tipo);
-                if (b.min_prv_id) $('#rcb-prv').val(String(b.min_prv_id));
+                $('#rcb-prv').val(b.min_prv_id ? String(b.min_prv_id) : '').trigger('change.select2');
                 $('#rcb-ref').val(b.min_documento_referencia || '');
                 $('#rcb-obs').val(b.min_observaciones || '');
                 $('#rcb-desc-tipo').val(b.min_descuento_tipo || 'ninguno');
@@ -1242,11 +1845,26 @@
                 if (pl.meta) state.meta = pl.meta;
                 if (pl.costosColumna) state.costosColumna = pl.costosColumna;
                 if (pl.costosEditados) state.costosEditados = pl.costosEditados;
-                if (pl.quitados) state.quitados = pl.quitados;
                 if (pl.filasExcluidas) state.filasExcluidas = pl.filasExcluidas;
-                if (pl.filtrosAtributos) {
-                    state.filtrosAtributos = Object.fromEntries(Object.entries(pl.filtrosAtributos).map(([k, v]) => [k, new Set(v || [])]));
+                if (pl.lineasProductos) {
+                    state.lineasProductos = pl.lineasProductos.map(linea => ({
+                        line_id: linea.line_id || crearLineId(),
+                        prd_id: Number(linea.prd_id || 0),
+                        filtros: normalizarFiltrosRuntime(linea.filtros),
+                    })).filter(linea => linea.prd_id > 0);
+                } else {
+                    const filtrosPorProducto = Object.fromEntries(Object.entries(pl.filtrosPorProducto || {}).map(([prdId, filtros]) => [prdId, normalizarFiltrosRuntime(filtros)]));
+                    state.lineasProductos = Object.values(pl.meta || {}).map(m => {
+                        const prdId = Number(m?.producto?.prd_id || 0);
+                        if (!prdId) return null;
+                        return { line_id: crearLineId(), prd_id: prdId, filtros: filtrosPorProducto[prdId] || {} };
+                    }).filter(Boolean);
                 }
+                const maxSeq = state.lineasProductos.reduce((acc, linea) => {
+                    const m = String(linea.line_id || '').match(/ln-(\d+)/);
+                    return m ? Math.max(acc, Number(m[1]) || 0) : acc;
+                }, 0);
+                state.lineaSeq = Math.max(state.lineaSeq, maxSeq + 1);
                 state.cantidadesCache = pl.cantidades || {};
                 renderProductos(); actualizarMarcas(); poblarDominantes(); renderFiltros();
                 if (pl.dominanteGlobal) $('#rcb-dominante').val(String(pl.dominanteGlobal));
@@ -1259,6 +1877,7 @@
             // Init
             const ahora = new Date();
             $('#rcb-emision').val(new Date(ahora.getTime() - ahora.getTimezoneOffset() * 60000).toISOString().slice(0, 16));
+            initProveedorSelect();
             syncAlmacenes();
             aplicarUITipo();
             if (!borradorInicial) sugerirSclAlm();

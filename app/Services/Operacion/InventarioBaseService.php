@@ -358,6 +358,7 @@ class InventarioBaseService
                 'modelo:mdl_id,mdl_nombre',
                 'categoria:ctg_id,ctg_nombre',
                 'descripcionCatalogo:dsc_id,dsc_nombre',
+                'unidad:umd_id,umd_nombre,umd_codigo,umd_tipo_cantidad',
                 'atributos:atr_id,atr_nombre',
                 'skus' => fn ($query) => $query
                     ->where('psk_deleted', false)
@@ -438,6 +439,9 @@ class InventarioBaseService
                 'descripcion_nombre' => (string) ($producto->descripcionCatalogo?->dsc_nombre ?? ''),
                 'prd_costo' => (float) ($producto->prd_costo ?? 0),
                 'prd_precio_base' => (float) ($producto->prd_precio_base ?? 0),
+                'unidad_nombre' => (string) ($producto->unidad?->umd_nombre ?? ''),
+                'unidad_codigo' => (string) ($producto->unidad?->umd_codigo ?? ''),
+                'unidad_tipo_cantidad' => (string) ($producto->unidad?->umd_tipo_cantidad ?? ''),
             ],
             'atributos' => $atributos,
             'lineas' => $lineas,
