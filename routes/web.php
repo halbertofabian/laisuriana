@@ -72,6 +72,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/desktop/roles', [DashboardController::class, 'desktopRoles'])->name('desktop.roles');
     Route::get('/desktop/permisos', [DashboardController::class, 'desktopPermisos'])->name('desktop.permisos');
     Route::get('/desktop/bitacora', [DashboardController::class, 'desktopBitacora'])->name('desktop.bitacora');
+    Route::get('/desktop/reportes', [DashboardController::class, 'desktopReportes'])->name('desktop.reportes');
+    Route::get('/desktop/reportes/ventas/vendedores/data', [DashboardController::class, 'desktopReportesVentasVendedoresData'])->name('desktop.reportes.ventas.vendedores.data');
+    Route::get('/desktop/reportes/ventas/vendedores/exportar/excel', [DashboardController::class, 'desktopReportesVentasVendedoresExportarExcel'])->name('desktop.reportes.ventas.vendedores.exportar.excel');
+    Route::get('/desktop/reportes/ventas/vendedores/exportar/pdf', [DashboardController::class, 'desktopReportesVentasVendedoresExportarPdf'])->name('desktop.reportes.ventas.vendedores.exportar.pdf');
     Route::prefix('desktop/operacion/catalogo-comercial')->name('desktop.operacion.catalogo_comercial.')->group(function () {
         Route::get('/', [OperacionCatalogoComercialController::class, 'index'])->name('index')->middleware('permiso:catalogo_comercial.ver');
         Route::get('/catalogos-base', [OperacionCatalogoComercialController::class, 'base'])->name('base.index')->middleware('permiso:catalogo_comercial.ver');
