@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "/Users/chimino/Desktop/lasuriana/ionic-app", "run", "start"],
       "port": 8100
+    },
+    {
+      "name": "lasuriana-laravel",
+      "runtimeExecutable": "php",
+      "runtimeArgs": ["artisan", "serve", "--port=8000"],
+      "port": 8000
     }
   ]
 }

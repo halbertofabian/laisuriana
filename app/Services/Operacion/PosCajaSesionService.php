@@ -6,6 +6,7 @@ use App\Models\Caja;
 use App\Models\CajaSesion;
 use App\Models\CajaSesionUsuario;
 use App\Models\Usuario;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -18,7 +19,7 @@ class PosCajaSesionService
         $cajasAsignadas = $this->cajasAsignadasUsuario($usuario->usr_id);
 
         $sesionesDisponibles = CajaSesion::query()
-            ->with(['caja:caj_id,caj_nombre,caj_scl_id', 'aperturaUsuario:usr_id,usr_nombre'])
+            ->with(['caja:caj_id,caj_nombre,caj_scl_id,caj_retiro_umbral', 'aperturaUsuario:usr_id,usr_nombre'])
             ->whereIn('cse_caj_id', $cajasAsignadas->pluck('caj_id'))
             ->where('cse_estatus', 'activa')
             ->orderBy('cse_abierta_at', 'desc')
@@ -149,6 +150,25 @@ class PosCajaSesionService
         });
     }
 
+    public function cerrarSesion(CajaSesion $sesion, ?CarbonInterface $cerradoAt = null): void
+    {
+        $cerradoAt ??= now();
+
+        CajaSesionUsuario::query()
+            ->where('csu_cse_id', $sesion->cse_id)
+            ->where('csu_estatus', 'activo')
+            ->whereNull('csu_salida_at')
+            ->update([
+                'csu_estatus' => 'inactivo',
+                'csu_salida_at' => $cerradoAt,
+            ]);
+
+        $sesion->update([
+            'cse_estatus' => 'cerrada',
+            'cse_cerrada_at' => $cerradoAt,
+        ]);
+    }
+
     private function activarParticipacionUsuario(int $sesionId, int $usuarioId): void
     {
         $registro = CajaSesionUsuario::query()
@@ -177,7 +197,7 @@ class PosCajaSesionService
     private function sesionActivaDeUsuario(int $usuarioId): ?CajaSesion
     {
         return CajaSesion::query()
-            ->with(['caja:caj_id,caj_nombre,caj_scl_id,caj_alm_id', 'caja.sucursal:scl_id,scl_nombre', 'caja.almacen:alm_id,alm_nombre', 'aperturaUsuario:usr_id,usr_nombre'])
+            ->with(['caja:caj_id,caj_nombre,caj_scl_id,caj_alm_id,caj_retiro_umbral', 'caja.sucursal:scl_id,scl_nombre', 'caja.almacen:alm_id,alm_nombre', 'aperturaUsuario:usr_id,usr_nombre'])
             ->join('tbl_caja_sesion_usuarios_csu as csu', 'csu.csu_cse_id', '=', 'tbl_caja_sesiones_cse.cse_id')
             ->where('csu.csu_usr_id', $usuarioId)
             ->where('csu.csu_estatus', 'activo')
@@ -223,8 +243,10 @@ class PosCajaSesionService
             'caja_nombre' => $sesion->caja?->caj_nombre,
             'caja_alm_id' => $sesion->caja?->caj_alm_id ? (int) $sesion->caja->caj_alm_id : null,
             'caja_almacen' => $sesion->caja?->almacen?->alm_nombre,
+            'caja_retiro_umbral' => $sesion->caja?->caj_retiro_umbral ? (float) $sesion->caja->caj_retiro_umbral : 0.0,
             'sucursal' => $sesion->caja?->sucursal?->scl_nombre,
             'usuario_apertura' => $sesion->aperturaUsuario?->usr_nombre,
+            'abierta_at' => optional($sesion->cse_abierta_at)->format('Y-m-d H:i:s'),
         ];
     }
 }

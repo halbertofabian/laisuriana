@@ -97,12 +97,17 @@
             overflow: auto;
         }
         .pos-search-suggest__item {
+            width: 100%;
+            border: 0;
             padding: .5rem .65rem;
             border-bottom: 1px solid var(--ls-border);
             cursor: pointer;
             display: flex;
             flex-direction: column;
             gap: .1rem;
+            background: #fff;
+            text-align: left;
+            appearance: none;
         }
         .pos-search-suggest__item:last-child { border-bottom: none; }
         .pos-search-suggest__item:hover,
@@ -111,6 +116,19 @@
         }
         .pos-search-suggest__name { font-size: .8rem; font-weight: 700; color: var(--ls-text-primary); }
         .pos-search-suggest__meta { font-size: .72rem; color: var(--ls-text-muted); }
+        .pos-search-suggest--compact {
+            top: calc(100% + 2px);
+            border-radius: 12px;
+            box-shadow: 0 14px 30px rgba(10, 37, 64, .12);
+            max-height: 190px;
+        }
+        .pos-search-suggest--compact .pos-search-suggest__item {
+            padding: .6rem .8rem;
+        }
+        .pos-search-suggest--compact .pos-search-suggest__name {
+            font-size: .92rem;
+            font-weight: 600;
+        }
 
         .variant-modal {
             position: fixed;
@@ -134,6 +152,15 @@
             border-bottom: 1px solid var(--ls-border);
             font-weight: 700;
             color: var(--ls-text-primary);
+        }
+        .variant-modal--front {
+            z-index: 1305;
+        }
+        .pos-field-error {
+            margin-top: .35rem;
+            font-size: .78rem;
+            color: #b42318;
+            font-weight: 600;
         }
         .variant-modal__list { max-height: 360px; overflow: auto; }
         .variant-modal__row {
@@ -337,8 +364,78 @@
         }
         .cash-summary__table td:last-child,
         .cash-summary__table th:last-child { text-align: right; }
+        .cash-summary__layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1.3fr) minmax(300px, .9fr);
+            gap: .9rem;
+            align-items: start;
+        }
+        .cash-summary__stack {
+            display: grid;
+            gap: .9rem;
+        }
+        .cash-summary__section {
+            border: 1px solid var(--ls-border);
+            border-radius: 10px;
+            background: #fff;
+            overflow: hidden;
+        }
+        .cash-summary__section-head {
+            padding: .7rem .85rem;
+            border-bottom: 1px solid var(--ls-border);
+            background: #f8fafc;
+            font-size: .78rem;
+            font-weight: 800;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            color: var(--ls-text-muted);
+        }
+        .cash-summary__section-body {
+            padding: .8rem .85rem;
+        }
+        .cash-summary__metric-list {
+            display: grid;
+            gap: .7rem;
+        }
+        .cash-summary__metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: .8rem;
+            font-size: .84rem;
+            color: var(--ls-text-secondary);
+        }
+        .cash-summary__metric strong {
+            color: var(--ls-text-primary);
+            font-size: .92rem;
+            font-weight: 800;
+            text-align: right;
+        }
+        .cash-summary__metric small {
+            display: block;
+            margin-top: .15rem;
+            color: var(--ls-text-muted);
+            font-size: .72rem;
+        }
+        .cash-summary__muted-note {
+            margin-top: .65rem;
+            font-size: .74rem;
+            line-height: 1.45;
+            color: var(--ls-text-muted);
+        }
+        .cash-summary-modal__card {
+            width: min(1120px, 100%);
+            max-height: min(88vh, 980px);
+            display: flex;
+            flex-direction: column;
+        }
+        .cash-summary-modal__body {
+            padding: .9rem;
+            overflow: auto;
+        }
         @media (max-width: 900px) {
             .cash-summary__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .cash-summary__layout { grid-template-columns: 1fr; }
         }
         .pos-cambio-banner {
             margin: .8rem 0 1rem;
@@ -1208,6 +1305,304 @@
             .caja-gate__sep { flex-direction: row; padding: .6rem 0; }
             .caja-gate__sep-line { flex: 1; width: auto; height: 1px; }
         }
+
+        /* ── CORTE DE CAJA ─────────────────────────────────────────
+           Pantalla completa: resumen de sesión, conteo de efectivo
+           por denominación y resultado final. ────────────────────── */
+        .corte-caja {
+            position: fixed;
+            inset: 0;
+            z-index: 1150;
+            background: var(--ls-surface-2);
+            display: flex;
+            flex-direction: column;
+            animation: corteFadeIn .18s ease-out;
+        }
+
+        @keyframes corteFadeIn {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+
+        .corte-caja__head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .75rem;
+            padding: .55rem 1.2rem;
+            background: var(--ls-surface);
+            border-bottom: 1px solid var(--ls-border);
+            box-shadow: var(--ls-shadow-sm);
+            flex-shrink: 0;
+        }
+
+        .corte-caja__head-left { display: flex; align-items: center; gap: .65rem; min-width: 0; }
+
+        .corte-caja__head-icon {
+            width: 32px; height: 32px;
+            border-radius: var(--ls-radius);
+            background: linear-gradient(135deg, var(--ls-success) 0%, #0d8a5e 100%);
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: .92rem;
+            box-shadow: 0 2px 6px rgba(26,158,109,.3);
+            flex-shrink: 0;
+        }
+
+        .corte-caja__title { font-size: .9rem; font-weight: 800; color: var(--ls-text-primary); line-height: 1.2; }
+        .corte-caja__sub { font-size: .69rem; color: var(--ls-text-muted); margin-top: 1px; }
+
+        .corte-caja__head-right { display: flex; align-items: center; gap: .5rem; }
+
+        .corte-caja__body {
+            flex: 1;
+            overflow-y: auto;
+            padding: .8rem 1.3rem .9rem;
+            display: grid;
+            grid-auto-rows: min-content;
+            align-content: center;
+            gap: .7rem;
+            max-width: 1180px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        /* Zona 1 — resumen de sesión */
+        .corte-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: .45rem;
+        }
+
+        .corte-summary__item {
+            background: var(--ls-surface);
+            border: 1px solid var(--ls-border);
+            border-radius: var(--ls-radius);
+            padding: .55rem .8rem;
+            box-shadow: var(--ls-shadow-sm);
+        }
+
+        .corte-summary__label {
+            font-size: .63rem;
+            font-weight: 700;
+            letter-spacing: .05em;
+            text-transform: uppercase;
+            color: var(--ls-text-muted);
+            margin-bottom: .2rem;
+        }
+
+        .corte-summary__value { font-size: 1.02rem; font-weight: 800; color: var(--ls-text-primary); }
+        .corte-summary__value--sm { font-size: .88rem; font-weight: 700; color: var(--ls-text-secondary); }
+        .corte-summary__value--danger { color: var(--ls-danger); }
+
+        /* Zona 2 — conteo de efectivo */
+        .corte-conteo {
+            background: var(--ls-surface);
+            border: 1px solid var(--ls-border);
+            border-radius: var(--ls-radius-xl);
+            box-shadow: var(--ls-shadow);
+            overflow: hidden;
+            /* Un grid item con overflow != visible recibe min-height:0 implícito,
+               lo que deja que la fila del grid se colapse por debajo del contenido
+               real. Forzamos min-height para que la tarjeta mida su contenido. */
+            min-height: min-content;
+        }
+
+        .corte-conteo__head {
+            padding: .5rem .9rem;
+            border-bottom: 1px solid var(--ls-border);
+            display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+        }
+
+        .corte-conteo__title {
+            font-size: .82rem; font-weight: 800; color: var(--ls-text-primary);
+            display: flex; align-items: center; gap: .4rem;
+        }
+
+        .corte-conteo__total {
+            font-size: .88rem; font-weight: 800; color: var(--ls-success);
+            font-variant-numeric: tabular-nums;
+            transition: color .15s;
+        }
+
+        .corte-conteo__columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .corte-conteo__col { min-width: 0; padding-bottom: .3rem; }
+        .corte-conteo__col--divider { border-left: 1px solid var(--ls-border); }
+
+        .corte-conteo__section-label {
+            padding: .5rem .9rem .25rem;
+            font-size: .65rem;
+            font-weight: 800;
+            letter-spacing: .07em;
+            text-transform: uppercase;
+            color: var(--ls-text-muted);
+        }
+
+        .corte-conteo__rows { padding: 0 .9rem; display: grid; gap: .4rem; }
+
+        .corte-row {
+            display: grid;
+            grid-template-columns: 80px 1fr 110px;
+            align-items: center;
+            gap: .6rem;
+            padding: .22rem .4rem;
+            border-radius: var(--ls-radius);
+            transition: background .12s;
+        }
+
+        .corte-row:focus-within { background: var(--ls-surface-2); }
+
+        .corte-row__denom {
+            display: flex; align-items: center; justify-content: center;
+            height: 40px;
+            border-radius: var(--ls-radius);
+            background: var(--ls-surface-3);
+            color: var(--ls-text-primary);
+            font-weight: 800;
+            font-size: .88rem;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .corte-row__input {
+            width: 100%;
+            height: 40px;
+            text-align: center;
+            border: 1.5px solid var(--ls-border);
+            border-radius: var(--ls-radius);
+            font-size: 1.02rem;
+            font-weight: 700;
+            font-family: inherit;
+            color: var(--ls-text-primary);
+            background: var(--ls-surface);
+            outline: none;
+            transition: border-color .15s, box-shadow .15s;
+        }
+
+        .corte-row__input:focus {
+            border-color: var(--ls-success);
+            box-shadow: 0 0 0 3px rgba(26,158,109,.13);
+        }
+
+        .corte-row__subtotal {
+            text-align: right;
+            font-size: .9rem;
+            font-weight: 800;
+            color: var(--ls-text-muted);
+            font-variant-numeric: tabular-nums;
+            transition: color .15s;
+        }
+
+        .corte-row__subtotal--active { color: var(--ls-success); }
+
+        .corte-cambio {
+            margin: .5rem .9rem .1rem;
+            padding: .55rem .75rem;
+            border: 1.5px dashed var(--ls-border-strong);
+            border-radius: var(--ls-radius-lg);
+            display: grid;
+            grid-template-columns: 1fr 110px;
+            align-items: center;
+            gap: .6rem;
+            background: var(--ls-surface-2);
+        }
+
+        .corte-cambio__label { font-size: .85rem; font-weight: 700; color: var(--ls-text-primary); }
+        .corte-cambio__hint { font-size: .69rem; color: var(--ls-text-muted); margin-top: .05rem; }
+
+        /* Zona 3 — resultado final */
+        .corte-resultado {
+            background: var(--ls-surface);
+            border: 1px solid var(--ls-border);
+            border-radius: var(--ls-radius-xl);
+            box-shadow: var(--ls-shadow);
+            padding: .85rem 1.2rem;
+            display: grid;
+            grid-template-columns: 1fr auto 1fr auto 1fr;
+            gap: .75rem;
+            align-items: center;
+        }
+
+        .corte-resultado__block { text-align: center; min-width: 0; }
+
+        .corte-resultado__label {
+            font-size: .66rem; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
+            color: var(--ls-text-muted); margin-bottom: .25rem;
+        }
+
+        .corte-resultado__value {
+            font-size: 1.35rem; font-weight: 800; color: var(--ls-text-primary);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .corte-resultado__value--big {
+            font-size: 2.35rem;
+            font-weight: 900;
+            letter-spacing: -.03em;
+            color: var(--ls-text-primary);
+            line-height: 1;
+            font-variant-numeric: tabular-nums;
+            transition: color .15s;
+        }
+
+        .corte-resultado__arrow { display: flex; align-items: center; justify-content: center; color: var(--ls-border-strong); font-size: 1.2rem; }
+
+        .corte-resultado__diff--ok    { color: var(--ls-success); }
+        .corte-resultado__diff--sobra { color: #1d6fd8; }
+        .corte-resultado__diff--falta { color: var(--ls-danger); }
+
+        .corte-resultado__tag {
+            display: inline-flex; align-items: center; gap: .3rem;
+            margin-top: .3rem;
+            font-size: .7rem; font-weight: 700;
+            padding: .18rem .6rem;
+            border-radius: 999px;
+        }
+
+        .corte-resultado__tag--ok    { background: var(--ls-success-bg); color: var(--ls-success); }
+        .corte-resultado__tag--sobra { background: rgba(29,111,216,.09); color: #1d6fd8; }
+        .corte-resultado__tag--falta { background: var(--ls-danger-bg); color: var(--ls-danger); }
+
+        .corte-caja__footer {
+            padding: .7rem 1.3rem .9rem;
+            max-width: 1180px;
+            width: 100%;
+            margin: 0 auto;
+            display: flex;
+            justify-content: flex-end;
+            flex-shrink: 0;
+        }
+
+        .corte-caja__submit { height: 46px; padding: 0 2rem; font-size: .9rem; }
+
+        @media (max-width: 1080px) {
+            .corte-resultado { grid-template-columns: 1fr; }
+            .corte-resultado__arrow { transform: rotate(90deg); }
+        }
+
+        @media (max-width: 900px) {
+            .corte-summary { grid-template-columns: repeat(2, minmax(0,1fr)); }
+        }
+
+        @media (max-width: 760px) {
+            .corte-conteo__columns { grid-template-columns: 1fr; }
+            .corte-conteo__col--divider { border-left: 0; border-top: 1px solid var(--ls-border); margin-top: .2rem; padding-top: .2rem; }
+        }
+
+        @media (max-width: 680px) {
+            .corte-row { grid-template-columns: 64px 1fr 90px; gap: .45rem; }
+            .corte-row__input { font-size: .92rem; }
+            .corte-cambio { grid-template-columns: 1fr; }
+            .corte-caja__body { padding: .6rem .8rem .8rem; }
+            .corte-caja__footer { padding: .6rem .8rem .9rem; }
+            .corte-caja__submit { width: 100%; }
+            .corte-summary { grid-template-columns: 1fr 1fr; }
+            .corte-caja__head { flex-wrap: wrap; }
+            .corte-caja__head-right { width: 100%; }
+            .corte-caja__head-right .pos-btn { flex: 1 1 auto; }
+        }
     </style>
     {{-- ═══════════════════════════════════════════════════
          HEADER
@@ -1306,6 +1701,29 @@
                     <i class="ti tabler-plus"></i>
                     Nueva venta
                 </button>
+            </div>
+
+            <div
+                x-cloak
+                x-show="sesionActiva && retiroCajaRecomendado"
+                class="pos-cambio-banner"
+                style="border-color:#f7c58b;background:#fff7ed;"
+            >
+                <div class="pos-cambio-banner__main">
+                    <div class="pos-cambio-banner__top">
+                        <span class="pos-cambio-banner__title" style="color:#9a3412;">Retiro de caja recomendado</span>
+                    </div>
+                    <div class="pos-cambio-banner__meta" style="color:#9a3412;">
+                        Efectivo estimado <strong x-text="fmt(resumenCaja?.efectivo_disponible ?? 0)"></strong>
+                        · Umbral <strong x-text="fmt(resumenCaja?.umbral_retiro ?? 0)"></strong>
+                    </div>
+                    <div class="pos-cambio-banner__hint" style="color:#9a3412;">
+                        La caja ya alcanzó el monto configurado para retiro. Registra el retiro para mantener el efectivo controlado.
+                    </div>
+                </div>
+                <div class="pos-cambio-banner__action" x-show="puedeRegistrarRetiroCaja">
+                    <button class="pos-btn pos-btn--ghost pos-btn--sm" @click="retiroCaja()">Registrar retiro</button>
+                </div>
             </div>
 
             {{-- Input zone --}}
@@ -1635,15 +2053,11 @@
 
         {{-- Cash movements --}}
         <div class="pos-bottom__group">
-            <button class="pos-btn pos-btn--success-outline" @click="ingresoCaja()">
-                <i class="ti tabler-arrow-bar-to-down" style="font-size:.85rem"></i>
-                Ingreso caja
-            </button>
-            <button class="pos-btn pos-btn--danger-outline" @click="retiroCaja()">
+            <button x-show="puedeRegistrarRetiroCaja" class="pos-btn pos-btn--danger-outline" @click="retiroCaja()">
                 <i class="ti tabler-arrow-bar-up" style="font-size:.85rem"></i>
                 Retiro caja
             </button>
-            <button class="pos-btn pos-btn--warning-outline" @click="gastoCaja()">
+            <button x-show="puedeRegistrarGastoCaja" class="pos-btn pos-btn--warning-outline" @click="gastoCaja()">
                 <i class="ti tabler-receipt" style="font-size:.85rem"></i>
                 Gasto caja
             </button>
@@ -1750,7 +2164,7 @@
         </div>
     </div>
 
-    <div x-cloak x-show="mostrarModalAviso" class="variant-modal" @keydown.escape.window="cerrarModalAviso()">
+    <div x-cloak x-show="mostrarModalAviso" class="variant-modal variant-modal--front" @keydown.escape.window="cerrarModalAviso()">
         <div class="variant-modal__card" style="max-width:520px;">
             <div class="variant-modal__head" style="display:flex;justify-content:space-between;align-items:center;gap:.75rem;">
                 <span x-text="modalAvisoTitulo || 'Aviso'"></span>
@@ -1916,12 +2330,12 @@
     </div>
 
     <div x-cloak x-show="mostrarModalResumenCaja" class="variant-modal" @keydown.escape.window="mostrarModalResumenCaja = false">
-        <div class="variant-modal__card" style="max-width:920px;">
+        <div class="variant-modal__card cash-summary-modal__card">
             <div class="variant-modal__head" style="display:flex;justify-content:space-between;align-items:center;gap:.75rem;">
                 <span>Resumen de caja</span>
                 <button class="pos-btn pos-btn--ghost pos-btn--sm" @click="mostrarModalResumenCaja = false">Cerrar</button>
             </div>
-            <div style="padding:.9rem;">
+            <div class="cash-summary-modal__body">
                 <div class="cash-summary__grid">
                     <div class="cash-summary__item">
                         <div class="cash-summary__label">Caja</div>
@@ -1932,39 +2346,521 @@
                         <div class="cash-summary__value" x-text="sucursal || 'Sin sucursal'"></div>
                     </div>
                     <div class="cash-summary__item">
-                        <div class="cash-summary__label">Ventas del día</div>
-                        <div class="cash-summary__value" x-text="String((ventasDelDia || []).length)"></div>
+                        <div class="cash-summary__label">Ventas en sesión</div>
+                        <div class="cash-summary__value" x-text="String(resumenCaja?.ventas_del_dia ?? (ventasDelDia || []).length)"></div>
                     </div>
                     <div class="cash-summary__item">
-                        <div class="cash-summary__label">Total vendido</div>
-                        <div class="cash-summary__value" x-text="fmt(totalVentasDia)"></div>
+                        <div class="cash-summary__label">Total de sesión</div>
+                        <div class="cash-summary__value" x-text="fmt(resumenCaja?.total_vendido ?? totalVentasDia)"></div>
                     </div>
                 </div>
 
-                <div style="max-height:300px;overflow:auto;border:1px solid var(--ls-border);border-radius:10px;background:#fff;">
-                    <table class="cash-summary__table">
-                        <thead>
-                            <tr>
-                                <th>Folio</th>
-                                <th>Método</th>
-                                <th>Hora</th>
-                                <th>Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <template x-if="(ventasDelDia || []).length === 0">
-                                <tr><td colspan="4" style="text-align:center;color:var(--ls-text-muted);padding:.9rem;">Sin ventas del día.</td></tr>
+                <div class="cash-summary__layout">
+                    <div class="cash-summary__section">
+                        <div class="cash-summary__section-head">Movimientos de la sesión</div>
+                        <div style="max-height:360px;overflow:auto;background:#fff;">
+                            <table class="cash-summary__table">
+                                <thead>
+                                    <tr>
+                                        <th>Folio</th>
+                                        <th>Tipo</th>
+                                        <th>Método</th>
+                                        <th>Hora</th>
+                                        <th>Crédito cambio</th>
+                                        <th>Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template x-if="(ventasDelDia || []).length === 0">
+                                        <tr><td colspan="6" style="text-align:center;color:var(--ls-text-muted);padding:.9rem;">Sin movimientos registrados en la sesión.</td></tr>
+                                    </template>
+                                    <template x-for="v in ventasDelDia" :key="v.psv_id">
+                                        <tr>
+                                            <td x-text="v.psv_folio"></td>
+                                            <td x-text="etiquetaOperacion(v.psv_tipo_operacion)"></td>
+                                            <td x-text="etiquetaMetodoPago(v.psv_metodo_pago)"></td>
+                                            <td x-text="horaCorta(v.psv_fecha_cobro)"></td>
+                                            <td x-text="Number(v.psv_credito_cambio || 0) > 0 ? fmt(v.psv_credito_cambio) : '—'"></td>
+                                            <td x-text="fmt(v.psv_total)"></td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="cash-summary__stack">
+                        <div class="cash-summary__section">
+                            <div class="cash-summary__section-head">Ventas por método de pago</div>
+                            <div class="cash-summary__section-body">
+                                <div class="cash-summary__metric-list">
+                                    <template x-for="metodo in (resumenCaja?.ventas_por_metodo || [])" :key="metodo.clave">
+                                        <div class="cash-summary__metric">
+                                            <span x-text="metodo.label"></span>
+                                            <strong x-text="fmt(metodo.monto)"></strong>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="cash-summary__section">
+                            <div class="cash-summary__section-head">Crédito</div>
+                            <div class="cash-summary__section-body">
+                                <div class="cash-summary__metric-list">
+                                    <div class="cash-summary__metric">
+                                        <span>
+                                            Crédito de ventas
+                                            <small>Sin flujo activo identificado en este POS</small>
+                                        </span>
+                                        <strong x-text="fmt(resumenCaja?.credito_ventas ?? 0)"></strong>
+                                    </div>
+                                    <div class="cash-summary__metric">
+                                        <span>
+                                            Abono de crédito
+                                            <small>Sin movimientos registrados en esta sesión</small>
+                                        </span>
+                                        <strong x-text="fmt(resumenCaja?.abono_credito ?? 0)"></strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="cash-summary__section">
+                            <div class="cash-summary__section-head">Cambios</div>
+                            <div class="cash-summary__section-body">
+                                <div class="cash-summary__metric-list">
+                                    <div class="cash-summary__metric">
+                                        <span>Crédito de cambios</span>
+                                        <strong x-text="fmt(resumenCaja?.credito_cambios ?? 0)"></strong>
+                                    </div>
+                                    <div class="cash-summary__metric">
+                                        <span>Cambios realizados</span>
+                                        <strong x-text="String(resumenCaja?.cantidad_cambios ?? 0)"></strong>
+                                    </div>
+                                    <div class="cash-summary__metric">
+                                        <span>Importe cobrado por cambios</span>
+                                        <strong x-text="fmt(resumenCaja?.importe_cobrado_cambios ?? 0)"></strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="cash-summary__section">
+                            <div class="cash-summary__section-head">Caja</div>
+                            <div class="cash-summary__section-body">
+                                <div class="cash-summary__metric-list">
+                                    <div class="cash-summary__metric">
+                                        <span>Inicio de caja</span>
+                                        <strong x-text="fmt(resumenCaja?.inicio_caja ?? 0)"></strong>
+                                    </div>
+                                    <div class="cash-summary__metric">
+                                        <span>Efectivo por ventas</span>
+                                        <strong x-text="fmt(resumenCaja?.efectivo_ventas_neto ?? 0)"></strong>
+                                    </div>
+                                    <div class="cash-summary__metric">
+                                        <span>Efectivo disponible</span>
+                                        <strong x-text="fmt(resumenCaja?.efectivo_disponible ?? 0)"></strong>
+                                    </div>
+                                    <div class="cash-summary__metric">
+                                        <span>Umbral de retiro</span>
+                                        <strong x-text="fmt(resumenCaja?.umbral_retiro ?? 0)"></strong>
+                                    </div>
+                                    <div class="cash-summary__metric">
+                                        <span>Gastos</span>
+                                        <strong x-text="fmt(resumenCaja?.gastos ?? 0)"></strong>
+                                    </div>
+                                    <div class="cash-summary__metric">
+                                        <span>Retiros de caja</span>
+                                        <strong x-text="fmt(resumenCaja?.retiros ?? 0)"></strong>
+                                    </div>
+                                </div>
+                                <div class="cash-summary__muted-note">
+                                    Todo el resumen corresponde a la sesión de caja activa, incluyendo ventas, cambios, retiros y gastos registrados.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div x-cloak x-show="mostrarModalMovimientoCaja" class="variant-modal" @keydown.escape.window="cerrarModalMovimientoCaja()">
+        <div class="variant-modal__card" style="max-width:560px;">
+            <div class="variant-modal__head" style="display:flex;justify-content:space-between;align-items:center;gap:.75rem;">
+                <span x-text="movimientoCajaTipo === 'retiro' ? 'Registrar retiro de caja' : 'Registrar gasto de caja'"></span>
+                <button class="pos-btn pos-btn--ghost pos-btn--sm" @click="cerrarModalMovimientoCaja()">Cerrar</button>
+            </div>
+            <div style="padding:1rem;display:grid;gap:.9rem;">
+                <template x-if="movimientoCajaErrores.general">
+                    <div class="cash-change-banner" style="margin:0;">
+                        <div class="cash-change-banner__title">No fue posible continuar</div>
+                        <div class="cash-change-banner__text" x-text="movimientoCajaErrores.general"></div>
+                    </div>
+                </template>
+                <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem;">
+                    <div class="cash-summary__item">
+                        <div class="cash-summary__label">Efectivo disponible</div>
+                        <div class="cash-summary__value" x-text="fmt(resumenCaja?.efectivo_disponible ?? 0)"></div>
+                    </div>
+                    <div class="cash-summary__item">
+                        <div class="cash-summary__label" x-text="movimientoCajaTipo === 'retiro' ? 'Umbral de retiro' : 'Caja activa'"></div>
+                        <div class="cash-summary__value" x-text="movimientoCajaTipo === 'retiro' ? fmt(resumenCaja?.umbral_retiro ?? 0) : (cajaNombre || 'Sin caja')"></div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="pos-field__label">Monto</label>
+                    <input type="number" min="0" step="0.01" class="pos-input" x-model="movimientoCajaForm.monto" placeholder="0.00" />
+                    <div class="pos-field-error" x-show="movimientoCajaErrores.monto" x-text="movimientoCajaErrores.monto"></div>
+                </div>
+
+                <div x-show="movimientoCajaTipo === 'retiro'">
+                    <label class="pos-field__label">Referencia opcional</label>
+                    <input type="text" maxlength="180" class="pos-input" x-model="movimientoCajaForm.referencia" placeholder="Ej. Resguardo nocturno, bóveda, traslado" />
+                    <div class="pos-field-error" x-show="movimientoCajaErrores.referencia" x-text="movimientoCajaErrores.referencia"></div>
+                </div>
+
+                <div x-show="movimientoCajaTipo === 'gasto'">
+                    <label class="pos-field__label">Categoría o concepto</label>
+                    <div style="position:relative;">
+                        <input
+                            type="text"
+                            maxlength="120"
+                            class="pos-input"
+                            x-model="movimientoCajaForm.categoria"
+                            placeholder="Ej. Papelería, limpieza, insumo operativo"
+                            @focus="mostrarSugerenciasCategoriaGasto = String(movimientoCajaForm.categoria || '').trim().length > 0 && categoriasGastoFiltradas.length > 0"
+                            @input="mostrarSugerenciasCategoriaGasto = String(movimientoCajaForm.categoria || '').trim().length > 0 && categoriasGastoFiltradas.length > 0"
+                            @keydown.escape.stop="mostrarSugerenciasCategoriaGasto = false"
+                            @click.outside="mostrarSugerenciasCategoriaGasto = false"
+                        />
+                        <div
+                            x-cloak
+                            x-show="mostrarSugerenciasCategoriaGasto && categoriasGastoFiltradas.length > 0"
+                            class="pos-search-suggest pos-search-suggest--compact"
+                        >
+                            <template x-for="categoria in categoriasGastoFiltradas" :key="`categoria-gasto-${categoria}`">
+                                <button
+                                    type="button"
+                                    class="pos-search-suggest__item"
+                                    @mousedown.prevent="seleccionarCategoriaGasto(categoria)"
+                                >
+                                    <span class="pos-search-suggest__name" x-text="categoria"></span>
+                                </button>
                             </template>
-                            <template x-for="v in ventasDelDia" :key="v.psv_id">
-                                <tr>
-                                    <td x-text="v.psv_folio"></td>
-                                    <td x-text="v.psv_metodo_pago || 'N/A'"></td>
-                                    <td x-text="horaCorta(v.psv_fecha_cobro)"></td>
-                                    <td x-text="fmt(v.psv_total)"></td>
-                                </tr>
+                        </div>
+                    </div>
+                    <div class="pos-field-error" x-show="movimientoCajaErrores.categoria" x-text="movimientoCajaErrores.categoria"></div>
+                </div>
+
+                <div>
+                    <label class="pos-field__label" x-text="movimientoCajaTipo === 'retiro' ? 'Motivo opcional' : 'Descripción opcional'"></label>
+                    <textarea class="pos-notes-textarea" style="min-height:110px;" x-model="movimientoCajaForm.motivo" :placeholder="movimientoCajaTipo === 'retiro' ? 'Si lo deseas, agrega una nota sobre el retiro' : 'Si lo deseas, agrega una descripción del gasto'"></textarea>
+                    <div class="pos-field-error" x-show="movimientoCajaErrores.motivo" x-text="movimientoCajaErrores.motivo"></div>
+                </div>
+
+                <div class="cash-summary__item" x-show="movimientoCajaTipo === 'retiro'" style="background:#f8fafc;">
+                    <div class="cash-summary__label">Autorización del retiro</div>
+                    <div style="display:grid;gap:.85rem;margin-top:.6rem;">
+                        <div>
+                            <label class="pos-field__label">Usuario autorizado</label>
+                            <select class="pos-input" x-model="movimientoCajaForm.autoriza_usr_id">
+                                <option value="">Selecciona un usuario...</option>
+                                <template x-for="usuario in usuariosAutorizadosRetiro" :key="usuario.usr_id">
+                                    <option :value="String(usuario.usr_id)" x-text="usuario.usr_nombre"></option>
+                                </template>
+                            </select>
+                            <div class="pos-field-error" x-show="movimientoCajaErrores.autoriza_usr_id" x-text="movimientoCajaErrores.autoriza_usr_id"></div>
+                        </div>
+                        <div>
+                            <label class="pos-field__label">Contraseña</label>
+                            <input type="password" class="pos-input" x-model="movimientoCajaForm.autoriza_password" placeholder="Captura la contraseña del usuario autorizado" autocomplete="off" />
+                            <div class="pos-field-error" x-show="movimientoCajaErrores.autoriza_password" x-text="movimientoCajaErrores.autoriza_password"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="cash-summary__item" x-show="movimientoCajaTipo === 'gasto'" style="background:#f8fafc;">
+                    <div class="cash-summary__label">Registra</div>
+                    <div class="cash-summary__value">{{ auth()->user()->usr_nombre ?? auth()->user()->usr_usuario ?? 'Usuario actual' }}</div>
+                    <div class="cash-summary__muted-note" style="margin-top:.35rem;">
+                        El gasto quedará ligado a tu usuario y a la sesión de caja activa.
+                    </div>
+                </div>
+
+                <div style="display:flex;justify-content:flex-end;gap:.6rem;">
+                    <button type="button" class="pos-btn pos-btn--ghost" @click="cerrarModalMovimientoCaja()">Cancelar</button>
+                    <button
+                        type="button"
+                        class="pos-btn pos-btn--cobrar"
+                        :disabled="guardandoMovimientoCaja"
+                        @click="guardarMovimientoCaja()"
+                        x-text="guardandoMovimientoCaja ? 'Guardando...' : (movimientoCajaTipo === 'retiro' ? 'Registrar retiro' : 'Registrar gasto')"
+                    ></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- ═══════════════════════════════════════════════════
+         CORTE DE CAJA
+    ═══════════════════════════════════════════════════ --}}
+    <div x-cloak x-show="mostrarCorteCaja" class="corte-caja" @keydown.escape.window="mostrarCorteCaja && cerrarCorteCaja()">
+        <div class="corte-caja__head">
+            <div class="corte-caja__head-left">
+                <div class="corte-caja__head-icon"><i class="ti tabler-clipboard-check"></i></div>
+                <div>
+                    <div class="corte-caja__title" x-text="`Corte de caja · ${cajaNombre || 'Sin caja'}`"></div>
+                    <div class="corte-caja__sub">Cuenta el efectivo físico y confirma el corte de la sesión.</div>
+                </div>
+            </div>
+            <div class="corte-caja__head-right">
+                <button class="pos-btn pos-btn--ghost pos-btn--sm" @click="mostrarModalResumenCaja = true">
+                    <i class="ti tabler-list-details" style="font-size:.85rem"></i>
+                    Ver movimientos
+                </button>
+                <button class="pos-btn pos-btn--ghost pos-btn--sm" @click="cerrarCorteCaja()">
+                    <i class="ti tabler-x" style="font-size:.85rem"></i>
+                    Cerrar
+                </button>
+            </div>
+        </div>
+
+        <div class="corte-caja__body">
+            {{-- Zona 1 — Resumen de la sesión --}}
+            <div class="corte-summary">
+                <div class="corte-summary__item">
+                    <div class="corte-summary__label">Caja</div>
+                    <div class="corte-summary__value" x-text="cajaNombre || '—'"></div>
+                </div>
+                <div class="corte-summary__item">
+                    <div class="corte-summary__label">Cajero</div>
+                    <div class="corte-summary__value--sm" x-text="usuarioActualNombre || sesionActiva?.usuario_apertura || '—'"></div>
+                </div>
+                <div class="corte-summary__item">
+                    <div class="corte-summary__label">Hora de apertura</div>
+                    <div class="corte-summary__value--sm" x-text="horaCorta(sesionActiva?.abierta_at)"></div>
+                </div>
+                <div class="corte-summary__item">
+                    <div class="corte-summary__label">Tiempo de sesión</div>
+                    <div class="corte-summary__value--sm" x-text="tiempoSesionTexto()"></div>
+                </div>
+                <div class="corte-summary__item">
+                    <div class="corte-summary__label">Ventas efectivo</div>
+                    <div class="corte-summary__value" x-text="fmt(metodoMonto('efectivo'))"></div>
+                </div>
+                <div class="corte-summary__item">
+                    <div class="corte-summary__label">Ventas tarjeta</div>
+                    <div class="corte-summary__value" x-text="fmt(metodoMonto('tarjeta'))"></div>
+                </div>
+                <div class="corte-summary__item">
+                    <div class="corte-summary__label">Retiros de caja</div>
+                    <div class="corte-summary__value" x-text="fmt(resumenCaja?.retiros ?? 0)"></div>
+                </div>
+                <div class="corte-summary__item">
+                    <div class="corte-summary__label">Gastos de caja</div>
+                    <div class="corte-summary__value" x-text="fmt(resumenCaja?.gastos ?? 0)"></div>
+                </div>
+                <div class="corte-summary__item">
+                    <div class="corte-summary__label">Efectivo esperado</div>
+                    <div class="corte-summary__value" x-text="fmt(corteEfectivoEsperado())"></div>
+                </div>
+            </div>
+
+            {{-- Zona 2 — Conteo de efectivo --}}
+            <div class="corte-conteo">
+                <div class="corte-conteo__head">
+                    <div class="corte-conteo__title">
+                        <i class="ti tabler-coin" style="color:var(--ls-success)"></i>
+                        Conteo de efectivo
+                    </div>
+                    <div class="corte-conteo__total" x-text="`Total contado: ${fmt(corteCajeroReporta())}`"></div>
+                </div>
+
+                <div class="corte-conteo__columns">
+                    <div class="corte-conteo__col">
+                        <div class="corte-conteo__section-label">Billetes</div>
+                        <div class="corte-conteo__rows">
+                            <template x-for="(denom, idx) in billetesCorte" :key="`billete-${denom}`">
+                                <div class="corte-row">
+                                    <div class="corte-row__denom" x-text="`$${denom}`"></div>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="1"
+                                        inputmode="numeric"
+                                        class="corte-row__input corte-caja__input"
+                                        x-model="corteCajaForm.denominaciones[denom]"
+                                        @keydown.enter.prevent="focusSiguienteCorteInput($event)"
+                                        @focus="$event.target.select()"
+                                        placeholder="0"
+                                        :aria-label="`Cantidad de billetes de $${denom}`"
+                                    />
+                                    <div
+                                        class="corte-row__subtotal"
+                                        :class="{ 'corte-row__subtotal--active': corteSubtotal(denom) > 0 }"
+                                        x-text="fmt(corteSubtotal(denom))"
+                                    ></div>
+                                </div>
                             </template>
-                        </tbody>
-                    </table>
+                        </div>
+                    </div>
+
+                    <div class="corte-conteo__col corte-conteo__col--divider">
+                        <div class="corte-conteo__section-label">Monedas</div>
+                        <div class="corte-conteo__rows">
+                            <div class="corte-cambio">
+                                <div>
+                                    <div class="corte-cambio__label">Monedas</div>
+                                </div>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    inputmode="decimal"
+                                    class="corte-row__input corte-caja__input"
+                                    x-model="corteCajaForm.cambio"
+                                    @keydown.enter.prevent="focusSiguienteCorteInput($event)"
+                                    @focus="$event.target.select()"
+                                    placeholder="0.00"
+                                    aria-label="Monto de monedas"
+                                />
+                            </div>
+                            <div>
+                                <label class="pos-field__label">Observaciones</label>
+                                <textarea
+                                    class="pos-notes-textarea corte-caja__input"
+                                    style="min-height:96px;"
+                                    x-model="corteCajaForm.observaciones"
+                                    placeholder="Opcional: agrega observaciones para el corte"
+                                ></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Zona 3 — Resultado final --}}
+            <div class="corte-resultado">
+                <div class="corte-resultado__block">
+                    <div class="corte-resultado__label">Efectivo esperado</div>
+                    <div class="corte-resultado__value" x-text="fmt(corteEfectivoEsperado())"></div>
+                </div>
+                <div class="corte-resultado__arrow"><i class="ti tabler-arrow-right"></i></div>
+                <div class="corte-resultado__block">
+                    <div class="corte-resultado__label">Cajero reporta</div>
+                    <div class="corte-resultado__value--big" x-text="fmt(corteCajeroReporta())"></div>
+                </div>
+                <div class="corte-resultado__arrow"><i class="ti tabler-arrow-right"></i></div>
+                <div class="corte-resultado__block">
+                    <div class="corte-resultado__label">Diferencia</div>
+                    <div
+                        class="corte-resultado__value--big"
+                        :class="{
+                            'corte-resultado__diff--ok': corteDiferenciaEstado() === 'ok',
+                            'corte-resultado__diff--sobra': corteDiferenciaEstado() === 'sobra',
+                            'corte-resultado__diff--falta': corteDiferenciaEstado() === 'falta',
+                        }"
+                        x-text="fmt(Math.abs(corteDiferencia()))"
+                    ></div>
+                    <span
+                        class="corte-resultado__tag"
+                        :class="{
+                            'corte-resultado__tag--ok': corteDiferenciaEstado() === 'ok',
+                            'corte-resultado__tag--sobra': corteDiferenciaEstado() === 'sobra',
+                            'corte-resultado__tag--falta': corteDiferenciaEstado() === 'falta',
+                        }"
+                    >
+                        <i class="ti" :class="{
+                            'tabler-circle-check': corteDiferenciaEstado() === 'ok',
+                            'tabler-trending-up': corteDiferenciaEstado() === 'sobra',
+                            'tabler-alert-triangle': corteDiferenciaEstado() === 'falta',
+                        }"></i>
+                        <span x-text="corteDiferenciaEstado() === 'ok' ? 'Sin diferencias' : (corteDiferenciaEstado() === 'sobra' ? 'Sobrante' : 'Faltante')"></span>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="corte-caja__footer">
+            <button
+                type="button"
+                class="pos-btn pos-btn--cobrar corte-caja__submit corte-caja__input"
+                @click="abrirModalAutorizacionCorte()"
+            >
+                <i class="ti tabler-lock"></i>
+                Realizar corte
+            </button>
+        </div>
+    </div>
+
+    {{-- Modal de autorización del corte --}}
+    <div x-cloak x-show="mostrarModalCorteAutorizacion" class="variant-modal" style="z-index:1260;" @keydown.escape.window="cerrarModalAutorizacionCorte()">
+        <div class="variant-modal__card" style="max-width:460px;">
+            <div class="variant-modal__head" style="display:flex;justify-content:space-between;align-items:center;gap:.75rem;">
+                <span>Autorizar corte de caja</span>
+                <button class="pos-btn pos-btn--ghost pos-btn--sm" @click="cerrarModalAutorizacionCorte()">Cerrar</button>
+            </div>
+            <div style="padding:1rem;display:grid;gap:.9rem;">
+                <template x-if="corteAutorizaErrores.general">
+                    <div style="padding:.7rem .85rem;border-radius:var(--ls-radius);background:var(--ls-danger-bg);border:1px solid var(--ls-danger-mid);">
+                        <div style="font-size:.8rem;font-weight:700;color:var(--ls-danger);">No fue posible continuar</div>
+                        <div style="font-size:.78rem;color:var(--ls-text-secondary);margin-top:.15rem;" x-text="corteAutorizaErrores.general"></div>
+                    </div>
+                </template>
+
+                <div class="cash-summary__item" style="background:#f8fafc;">
+                    <div class="cash-summary__label">Diferencia a confirmar</div>
+                    <div
+                        class="cash-summary__value"
+                        :class="{
+                            'corte-resultado__diff--ok': corteDiferenciaEstado() === 'ok',
+                            'corte-resultado__diff--sobra': corteDiferenciaEstado() === 'sobra',
+                            'corte-resultado__diff--falta': corteDiferenciaEstado() === 'falta',
+                        }"
+                        x-text="`${corteDiferenciaEstado() === 'falta' ? '-' : (corteDiferenciaEstado() === 'sobra' ? '+' : '')}${fmt(Math.abs(corteDiferencia()))}`"
+                    ></div>
+                </div>
+
+                <div>
+                    <label class="pos-field__label">Usuario autorizado</label>
+                    <select
+                        class="pos-input corte-caja__input"
+                        x-model="corteAutorizaForm.usr_id"
+                        @keydown.enter.prevent="focusSiguienteCorteInput($event)"
+                    >
+                        <option value="">Selecciona un usuario...</option>
+                        <template x-for="usuario in usuariosAutorizadosCorte" :key="`corte-user-${usuario.usr_id}`">
+                            <option :value="String(usuario.usr_id)" x-text="`${usuario.usr_nombre} · ${usuario.usr_usuario}`"></option>
+                        </template>
+                    </select>
+                    <div class="pos-field-error" x-show="corteAutorizaErrores.autoriza_usr_id" x-text="corteAutorizaErrores.autoriza_usr_id"></div>
+                </div>
+
+                <div>
+                    <label class="pos-field__label">Contraseña</label>
+                    <input
+                        type="password"
+                        class="pos-input corte-caja__input"
+                        x-model="corteAutorizaForm.password"
+                        placeholder="Captura la contraseña del usuario autorizado"
+                        autocomplete="off"
+                        @keydown.enter.prevent="confirmarCorteCaja()"
+                    />
+                    <div class="pos-field-error" x-show="corteAutorizaErrores.autoriza_password" x-text="corteAutorizaErrores.autoriza_password"></div>
+                </div>
+
+                <div style="display:flex;justify-content:flex-end;gap:.6rem;">
+                    <button type="button" class="pos-btn pos-btn--ghost" @click="cerrarModalAutorizacionCorte()">Cancelar</button>
+                    <button
+                        type="button"
+                        class="pos-btn pos-btn--cobrar"
+                        :disabled="guardandoCorte"
+                        @click="confirmarCorteCaja()"
+                        x-text="guardandoCorte ? 'Confirmando...' : 'Confirmar'"
+                    ></button>
                 </div>
             </div>
         </div>
@@ -2377,6 +3273,16 @@
                     </div>
 
                 </div>
+
+                <div class="d-flex justify-content-end mt-4 pt-2 border-top">
+                    <a
+                        href="{{ route('desktop.dashboard') }}"
+                        class="btn btn-label-secondary"
+                    >
+                        <i class="ti tabler-arrow-left me-1"></i>
+                        Regresar al dashboard
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -2390,6 +3296,9 @@ function posApp() {
     const estadoInicial = @json($estado ?? []);
     const almacenesVentaInicial = @json($almacenesVenta ?? []);
     const vendedoresInicial = @json($vendedores ?? []);
+    const usuariosAutorizadosRetiroInicial = @json($usuariosAutorizadosRetiro ?? []);
+    const usuariosAutorizadosCorteInicial = @json($usuariosAutorizadosCorte ?? []);
+    const categoriasGastoSugeridasInicial = @json($categoriasGastoSugeridas ?? []);
     const usuarioActualId = {{ (int) (auth()->user()->usr_id ?? 0) }};
     const usuarioActualNombre = @json((string) (auth()->user()->usr_nombre ?? auth()->user()->usr_usuario ?? 'Sin vendedor'));
     const rutaBuscarProducto = '{{ route('operacion.escaneo_productos.buscar') }}';
@@ -2400,6 +3309,9 @@ function posApp() {
     const rutaCobrarVenta = '{{ route('pos.ventas.cobrar') }}';
     const rutaCambioStore = '{{ route('pos.cambios.store') }}';
     const rutaVentasDia = '{{ route('pos.ventas.dia') }}';
+    const rutaRetiroCajaStore = '{{ route('pos.caja.retiros.store') }}';
+    const rutaGastoCajaStore = '{{ route('pos.caja.gastos.store') }}';
+    const rutaCorteCajaStore = '{{ route('pos.caja.cortes.store') }}';
     const rutaBuscarVentaFolio = '{{ route('pos.ventas.buscar_folio') }}';
     const rutaPedidosPendientes = '{{ route('pos.pedidos.pendientes') }}';
     const rutaTicketVentaBase = '{{ url('/pos/ventas') }}';
@@ -2407,11 +3319,14 @@ function posApp() {
     const puedeCrearCliente = @json($puedeCrearCliente ?? false);
     const puedeCancelarVenta = @json($puedeCancelarVenta ?? false);
     const puedeRegistrarCambio = @json($puedeRegistrarCambio ?? false);
+    const puedeRegistrarRetiroCaja = @json($puedeRegistrarRetiroCaja ?? false);
+    const puedeRegistrarGastoCaja = @json($puedeRegistrarGastoCaja ?? false);
     return {
         // ── Config ───────────────────────────────────────────────
         tab:             'ventas',
         sucursal:        '{{ $sucursal ?? "ADRIEL SABAH" }}',
         cajaNombre:      '{{ $caja ?? "Sin caja activa" }}',
+        usuarioActualNombre: usuarioActualNombre,
         impresionEstado: 'Sin actividad',
         sesionActiva: estadoInicial.sesion_activa ?? null,
         mostrarModalCaja: false,
@@ -2436,6 +3351,10 @@ function posApp() {
         cargandoPedidosPendientes: false,
         almacenesVenta: Array.isArray(almacenesVentaInicial) ? almacenesVentaInicial : [],
         vendedores: Array.isArray(vendedoresInicial) ? vendedoresInicial : [],
+        usuariosAutorizadosRetiro: Array.isArray(usuariosAutorizadosRetiroInicial) ? usuariosAutorizadosRetiroInicial : [],
+        usuariosAutorizadosCorte: Array.isArray(usuariosAutorizadosCorteInicial) ? usuariosAutorizadosCorteInicial : [],
+        categoriasGastoSugeridas: Array.isArray(categoriasGastoSugeridasInicial) ? categoriasGastoSugeridasInicial : [],
+        mostrarSugerenciasCategoriaGasto: false,
         vendedorSeleccionadoId: '',
         ventaAlmacenId: '',
         ventaAlmacenNombre: '',
@@ -2447,17 +3366,34 @@ function posApp() {
         mostrarModalTickets: false,
         mostrarModalCambio: false,
         mostrarModalAviso: false,
+        mostrarModalMovimientoCaja: false,
         mostrarModalDescuentoItem: false,
+        mostrarCorteCaja: false,
+        mostrarModalCorteAutorizacion: false,
+        billetesCorte: [1000, 500, 200, 100, 50, 20],
+        monedasCorte: [],
+        corteCajaForm: {
+            denominaciones: { 1000: '', 500: '', 200: '', 100: '', 50: '', 20: '' },
+            cambio: '',
+            observaciones: '',
+        },
+        corteAutorizaForm: { usr_id: '', password: '' },
+        corteAutorizaErrores: {},
+        guardandoCorte: false,
         puedeCrearCliente: !!puedeCrearCliente,
         puedeCancelarVenta: !!puedeCancelarVenta,
         puedeRegistrarCambio: !!puedeRegistrarCambio,
+        puedeRegistrarRetiroCaja: !!puedeRegistrarRetiroCaja,
+        puedeRegistrarGastoCaja: !!puedeRegistrarGastoCaja,
         guardandoClienteNuevo: false,
         cobrandoVenta: false,
+        guardandoMovimientoCaja: false,
         cargandoTickets: false,
         cargandoVentaCambio: false,
         cpRowsCliente: [],
         pedidoPendienteReemplazo: null,
         ventasDelDia: [],
+        resumenCaja: null,
         filtroTicket: '',
         folioCambioBuscar: '',
         ventaCambioPreview: null,
@@ -2465,6 +3401,16 @@ function posApp() {
         cambioActual: null,
         modalAvisoTitulo: '',
         modalAvisoMensaje: '',
+        movimientoCajaTipo: 'retiro',
+        movimientoCajaForm: {
+            monto: '',
+            categoria: '',
+            referencia: '',
+            motivo: '',
+            autoriza_usr_id: '',
+            autoriza_password: '',
+        },
+        movimientoCajaErrores: {},
         tipoPagoSeleccionado: 'efectivo',
         pagoReferencia: '',
         pagoLineas: [],
@@ -2546,6 +3492,21 @@ function posApp() {
         get totalVentasDia() {
             return (this.ventasDelDia || []).reduce((sum, v) => sum + Number(v.psv_total || 0), 0);
         },
+        get categoriasGastoFiltradas() {
+            const query = String(this.movimientoCajaForm?.categoria || '').trim().toLowerCase();
+            const categorias = Array.isArray(this.categoriasGastoSugeridas) ? this.categoriasGastoSugeridas : [];
+
+            if (!query) {
+                return categorias.slice(0, 6);
+            }
+
+            return categorias
+                .filter((categoria) => String(categoria || '').toLowerCase().includes(query))
+                .slice(0, 6);
+        },
+        get retiroCajaRecomendado() {
+            return !!this.resumenCaja?.retiro_recomendado;
+        },
         get iva() {
             return 0;
         },
@@ -2606,6 +3567,7 @@ function posApp() {
                 this.mostrarModalCaja = false;
                 this.cajaNombre = this.sesionActiva.caja_nombre ?? this.cajaNombre;
                 this.aplicarAlmacenPorSesion();
+                await this.cargarVentasDia();
                 return;
             }
 
@@ -2624,6 +3586,7 @@ function posApp() {
             this.cajasAsignadas = data.cajas_asignadas ?? [];
             this.cajasParaAbrir = data.cajas_para_abrir ?? [];
             this.sesionesDisponibles = data.sesiones_disponibles ?? [];
+            this.resumenCaja = json.resumen || this.resumenCaja;
             this.aplicarPrioridadSesionPropia();
             this.aplicarAlmacenPorSesion();
         },
@@ -2672,6 +3635,7 @@ function posApp() {
             await this.recargarEstadoCaja();
             this.cajaNombre = this.sesionActiva?.caja_nombre ?? this.cajaNombre;
             this.mostrarModalCaja = false;
+            await this.cargarVentasDia();
         },
 
         async tomarCajaAbierta() {
@@ -2695,6 +3659,7 @@ function posApp() {
             await this.recargarEstadoCaja();
             this.cajaNombre = this.sesionActiva?.caja_nombre ?? this.cajaNombre;
             this.mostrarModalCaja = false;
+            await this.cargarVentasDia();
         },
 
         actualizarReloj() {
@@ -3340,6 +4305,7 @@ function posApp() {
 
         async cargarVentasDia() {
             this.cargandoTickets = true;
+            this.resumenCaja = null;
             try {
                 const q = (this.filtroTicket || '').trim();
                 const res = await fetch(`${rutaVentasDia}?q=${encodeURIComponent(q)}`, {
@@ -3348,6 +4314,10 @@ function posApp() {
                 if (!res.ok) return;
                 const json = await res.json();
                 this.ventasDelDia = Array.isArray(json?.data) ? json.data : [];
+                this.resumenCaja = json?.resumen || null;
+                if (this.sesionActiva?.caja_retiro_umbral && this.resumenCaja && this.resumenCaja.umbral_retiro == null) {
+                    this.resumenCaja.umbral_retiro = Number(this.sesionActiva.caja_retiro_umbral || 0);
+                }
             } finally {
                 this.cargandoTickets = false;
             }
@@ -3368,6 +4338,156 @@ function posApp() {
             this.mostrarModalResumenCaja = true;
         },
 
+        // ── Corte de caja ────────────────────────────────────────
+        async abrirCorteCaja() {
+            if (!this.sesionActiva) {
+                this.mostrarModalCaja = true;
+                return;
+            }
+            await this.cargarVentasDia();
+            this.corteCajaForm = {
+                denominaciones: { 1000: '', 500: '', 200: '', 100: '', 50: '', 20: '' },
+                cambio: '',
+                observaciones: '',
+            };
+            this.mostrarCorteCaja = true;
+            this.$nextTick(() => {
+                const primero = document.querySelector('.corte-caja__input');
+                if (primero) primero.focus();
+            });
+        },
+        cerrarCorteCaja() {
+            this.mostrarCorteCaja = false;
+        },
+        corteSubtotal(denominacion) {
+            return Number(this.corteCajaForm.denominaciones[denominacion] || 0) * Number(denominacion);
+        },
+        corteTotalBilletesYMonedas() {
+            return [...this.billetesCorte]
+                .reduce((suma, denom) => suma + this.corteSubtotal(denom), 0);
+        },
+        corteCajeroReporta() {
+            return this.corteTotalBilletesYMonedas() + Number(this.corteCajaForm.cambio || 0);
+        },
+        corteEfectivoEsperado() {
+            return Number(this.resumenCaja?.efectivo_disponible ?? 0);
+        },
+        corteDiferencia() {
+            return this.corteCajeroReporta() - this.corteEfectivoEsperado();
+        },
+        corteDiferenciaEstado() {
+            const diferencia = this.corteDiferencia();
+            if (Math.abs(diferencia) < 0.005) return 'ok';
+            return diferencia > 0 ? 'sobra' : 'falta';
+        },
+        metodoMonto(clave) {
+            const metodo = (this.resumenCaja?.ventas_por_metodo || []).find((m) => m.clave === clave);
+            return metodo ? Number(metodo.monto || 0) : 0;
+        },
+        tiempoSesionTexto() {
+            if (!this.sesionActiva?.abierta_at) return '—';
+            const inicio = new Date(String(this.sesionActiva.abierta_at).replace(' ', 'T'));
+            if (Number.isNaN(inicio.getTime())) return '—';
+            const minutosTotales = Math.max(0, Math.floor((Date.now() - inicio.getTime()) / 60000));
+            const dias = Math.floor(minutosTotales / 1440);
+            const horas = Math.floor((minutosTotales % 1440) / 60);
+            const minutos = minutosTotales % 60;
+            if (dias > 0) return `${dias} d ${horas} h`;
+            return horas > 0 ? `${horas} h ${minutos} min` : `${minutos} min`;
+        },
+        focusSiguienteCorteInput(event) {
+            const focusables = Array.from(document.querySelectorAll('.corte-caja__input'))
+                .filter((el) => el.offsetParent !== null);
+            const idx = focusables.indexOf(event.target);
+            if (idx === -1) return;
+            if (idx < focusables.length - 1) {
+                const siguiente = focusables[idx + 1];
+                siguiente.focus();
+                if (typeof siguiente.select === 'function') siguiente.select();
+            } else {
+                event.target.blur();
+            }
+        },
+        abrirModalAutorizacionCorte() {
+            this.corteAutorizaForm = { usr_id: '', password: '' };
+            this.corteAutorizaErrores = {};
+            this.mostrarModalCorteAutorizacion = true;
+        },
+        cerrarModalAutorizacionCorte() {
+            this.mostrarModalCorteAutorizacion = false;
+            this.guardandoCorte = false;
+            this.corteAutorizaErrores = {};
+        },
+        async confirmarCorteCaja() {
+            if (this.guardandoCorte) return;
+            this.corteAutorizaErrores = {};
+            if (!this.corteAutorizaForm.usr_id) {
+                this.corteAutorizaErrores.autoriza_usr_id = 'Selecciona el usuario autorizado.';
+            }
+            if (!this.corteAutorizaForm.password) {
+                this.corteAutorizaErrores.autoriza_password = 'Captura la contraseña.';
+            }
+            if (Object.keys(this.corteAutorizaErrores).length) return;
+
+            this.guardandoCorte = true;
+            try {
+                const payload = {
+                    denominaciones: { ...this.corteCajaForm.denominaciones },
+                    cambio: Number(this.corteCajaForm.cambio || 0),
+                    observaciones: this.corteCajaForm.observaciones || '',
+                    autoriza_usr_id: Number(this.corteAutorizaForm.usr_id || 0),
+                    autoriza_password: this.corteAutorizaForm.password || '',
+                };
+
+                const res = await fetch(rutaCorteCajaStore, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify(payload),
+                });
+                const json = await res.json().catch(() => ({}));
+
+                if (!res.ok) {
+                    const errors = json?.errors || {};
+                    this.corteAutorizaErrores = {
+                        autoriza_usr_id: Array.isArray(errors.autoriza_usr_id) ? errors.autoriza_usr_id[0] : undefined,
+                        autoriza_password: Array.isArray(errors.autoriza_password) ? errors.autoriza_password[0] : undefined,
+                        general: json?.message || (Array.isArray(errors.caja) ? errors.caja[0] : ''),
+                    };
+                    if (Array.isArray(errors.caja) && !this.corteAutorizaErrores.general) {
+                        this.corteAutorizaErrores.general = errors.caja[0];
+                    }
+                    return;
+                }
+
+                this.mostrarModalCorteAutorizacion = false;
+                this.mostrarCorteCaja = false;
+                this.items = [];
+                this.pedidoCargado = null;
+                this.cambioActual = null;
+                this.descuentoGlobal = 0;
+                this.notas = '';
+                await this.recargarEstadoCaja();
+                if (this.sesionActiva) {
+                    await this.cargarVentasDia();
+                } else {
+                    this.ventasDelDia = [];
+                    this.resumenCaja = null;
+                    this.mostrarModalCaja = true;
+                }
+                if (json?.data?.ticket_url) {
+                    window.open(json.data.ticket_url, '_blank');
+                }
+                alert(json?.message || 'Corte de caja registrado correctamente.');
+            } finally {
+                this.guardandoCorte = false;
+            }
+        },
+
         abrirTicketVenta(ventaId) {
             if (!ventaId) return;
             window.open(`${rutaTicketVentaBase}/${ventaId}/ticket`, '_blank');
@@ -3375,6 +4495,14 @@ function posApp() {
 
         etiquetaOperacion(tipo) {
             return String(tipo || 'venta') === 'cambio' ? 'Cambio' : 'Venta';
+        },
+        etiquetaMetodoPago(metodo) {
+            const key = String(metodo || '').toLowerCase();
+            if (key === 'efectivo') return 'Efectivo';
+            if (key === 'tarjeta') return 'Tarjeta';
+            if (key === 'mixto') return 'Mixto';
+            if (key === 'sin_pago') return 'Sin pago';
+            return key ? key.replace(/_/g, ' ') : 'N/A';
         },
 
         etiquetaEstatus(estatus) {
@@ -3787,9 +4915,110 @@ function posApp() {
         },
 
         // ── Cash / drawer ─────────────────────────────────────────
-        ingresoCaja()    { alert('Ingreso a caja — próximamente'); },
-        retiroCaja()     { alert('Retiro de caja — próximamente'); },
-        gastoCaja()      { alert('Gasto de caja — próximamente'); },
+        async retiroCaja()     {
+            if (!this.puedeRegistrarRetiroCaja) {
+                this.abrirModalAviso('Sin permiso', 'Tu usuario no tiene permiso para registrar retiros de caja.');
+                return;
+            }
+            if (!this.sesionActiva) {
+                this.mostrarModalCaja = true;
+                return;
+            }
+            if (!this.resumenCaja) {
+                await this.cargarVentasDia();
+            }
+            this.movimientoCajaTipo = 'retiro';
+            this.movimientoCajaErrores = {};
+            this.movimientoCajaForm = { monto: '', categoria: '', referencia: '', motivo: '', autoriza_usr_id: '', autoriza_password: '' };
+            this.mostrarSugerenciasCategoriaGasto = false;
+            this.mostrarModalMovimientoCaja = true;
+        },
+        async gastoCaja()      {
+            if (!this.puedeRegistrarGastoCaja) {
+                this.abrirModalAviso('Sin permiso', 'Tu usuario no tiene permiso para registrar gastos de caja.');
+                return;
+            }
+            if (!this.sesionActiva) {
+                this.mostrarModalCaja = true;
+                return;
+            }
+            if (!this.resumenCaja) {
+                await this.cargarVentasDia();
+            }
+            this.movimientoCajaTipo = 'gasto';
+            this.movimientoCajaErrores = {};
+            this.movimientoCajaForm = { monto: '', categoria: '', referencia: '', motivo: '', autoriza_usr_id: '', autoriza_password: '' };
+            this.mostrarSugerenciasCategoriaGasto = false;
+            this.mostrarModalMovimientoCaja = true;
+        },
+        cerrarModalMovimientoCaja() {
+            this.mostrarModalMovimientoCaja = false;
+            this.guardandoMovimientoCaja = false;
+            this.movimientoCajaErrores = {};
+            this.movimientoCajaForm = { monto: '', categoria: '', referencia: '', motivo: '', autoriza_usr_id: '', autoriza_password: '' };
+            this.mostrarSugerenciasCategoriaGasto = false;
+        },
+        seleccionarCategoriaGasto(categoria) {
+            this.movimientoCajaForm.categoria = String(categoria || '');
+            this.mostrarSugerenciasCategoriaGasto = false;
+        },
+        async guardarMovimientoCaja() {
+            if (this.guardandoMovimientoCaja) return;
+            this.movimientoCajaErrores = {};
+            const payload = {
+                tipo: this.movimientoCajaTipo,
+                monto: Number(this.movimientoCajaForm.monto || 0),
+                categoria: this.movimientoCajaTipo === 'gasto' ? (this.movimientoCajaForm.categoria || '') : null,
+                referencia: this.movimientoCajaTipo === 'retiro' ? (this.movimientoCajaForm.referencia || '') : null,
+                motivo: this.movimientoCajaForm.motivo || '',
+                autoriza_usr_id: this.movimientoCajaTipo === 'retiro' ? Number(this.movimientoCajaForm.autoriza_usr_id || 0) : null,
+                autoriza_password: this.movimientoCajaTipo === 'retiro' ? (this.movimientoCajaForm.autoriza_password || '') : null,
+            };
+
+            this.guardandoMovimientoCaja = true;
+            try {
+                const res = await fetch(this.movimientoCajaTipo === 'retiro' ? rutaRetiroCajaStore : rutaGastoCajaStore, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify(payload),
+                });
+
+                const json = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    const errors = json?.errors || {};
+                    this.movimientoCajaErrores = Object.fromEntries(
+                        Object.entries(errors).map(([key, value]) => [key, Array.isArray(value) ? value[0] : value])
+                    );
+                    if (!Object.keys(this.movimientoCajaErrores).length) {
+                        this.movimientoCajaErrores.general = json?.message || 'Revisa la información capturada e intenta nuevamente.';
+                    }
+                    return;
+                }
+
+                const ticketUrl = json?.data?.ticket_url || '';
+                const categoriaRegistrada = String(this.movimientoCajaForm.categoria || '').trim();
+                if (this.movimientoCajaTipo === 'gasto' && categoriaRegistrada) {
+                    const yaExiste = this.categoriasGastoSugeridas.some(
+                        (categoria) => String(categoria || '').trim().toLowerCase() === categoriaRegistrada.toLowerCase()
+                    );
+                    if (!yaExiste) {
+                        this.categoriasGastoSugeridas.unshift(categoriaRegistrada);
+                    }
+                }
+                this.cerrarModalMovimientoCaja();
+                await this.cargarVentasDia();
+                if (ticketUrl) window.open(ticketUrl, '_blank');
+            } catch (error) {
+                this.abrirModalAviso('Sin conexión', 'No fue posible registrar el movimiento de caja en este momento.');
+            } finally {
+                this.guardandoMovimientoCaja = false;
+            }
+        },
         devolucion()     {
             if (!this.puedeRegistrarCambio) {
                 alert('Tu usuario no tiene permiso para registrar cambios.');
@@ -3800,7 +5029,7 @@ function posApp() {
             this.ventaCambioPreview = null;
             this.folioCambioBuscar = '';
         },
-        corteCaja()      { alert('Corte de caja — próximamente'); },
+        corteCaja()      { this.abrirCorteCaja(); },
         async abandonarCaja()  {
             if (!this.sesionActiva) {
                 window.location.href = '{{ route('desktop.dashboard') }}';
@@ -4070,6 +5299,7 @@ function posApp() {
                 const ventaId = Number(json?.data?.psv_id || 0);
                 this.mostrarModalPago = false;
                 this.nuevaVenta();
+                await this.cargarVentasDia();
                 if (ventaId > 0 && this.imprimirDespuesCobro) this.abrirTicketVenta(ventaId);
             } catch (error) {
                 alert('Error de conexión al cobrar la venta.');

@@ -24,10 +24,18 @@ class Caja extends Model
         'caj_alm_id',
         'caj_nombre',
         'caj_clave',
+        'caj_retiro_umbral',
         'caj_estatus',
         'caj_created_by_usr_id',
         'caj_updated_by_usr_id',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'caj_retiro_umbral' => 'decimal:2',
+        ];
+    }
 
     public function sucursal()
     {

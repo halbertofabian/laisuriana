@@ -4,18 +4,24 @@ namespace Tests\Feature\Operacion;
 
 use App\Models\Almacen;
 use App\Models\Caja;
+use App\Models\CajaMovimiento;
 use App\Models\CajaSesion;
 use App\Models\CajaSesionUsuario;
 use App\Models\CajaUsuario;
 use App\Models\ExistenciaAlmacen;
 use App\Models\PosCambioDetalle;
+use App\Models\PosCorteCaja;
 use App\Models\PosVenta;
 use App\Models\ProductoSku;
+use App\Models\Rol;
 use App\Models\Sucursal;
 use App\Models\TipoAlmacen;
 use App\Models\Usuario;
+use App\Models\UsuarioRol;
+use App\Models\UsuarioSucursal;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 class PosCambiosYCancelacionesTest extends TestCase
@@ -170,7 +176,216 @@ class PosCambiosYCancelacionesTest extends TestCase
         ]);
     }
 
-    private function prepararEscenarioPos(): array
+    public function test_puede_registrar_retiro_de_caja_y_aparece_en_resumen_separado(): void
+    {
+        [$admin, $sucursal, $almacen] = $this->prepararEscenarioPos(100);
+        $autorizador = $this->crearUsuarioAutorizadorCorte($sucursal->scl_id);
+        $sku = ProductoSku::query()->where('psk_codigo', 'SKU-POLO-CH-AZM')->firstOrFail();
+
+        $this->setExistencia($sku->psk_id, $sucursal->scl_id, $almacen->alm_id, 5);
+        $this->crearVentaBase($admin, $sucursal->scl_id, $almacen->alm_id, $sku->psk_id, 349.90);
+
+        $response = $this->withSession(['sucursal_activa_id' => $sucursal->scl_id])
+            ->actingAs($admin)
+            ->postJson(route('pos.caja.retiros.store'), [
+                'monto' => 200,
+                'referencia' => 'Resguardo nocturno',
+                'motivo' => 'Retiro preventivo por excedente de efectivo.',
+                'autoriza_usr_id' => $autorizador->usr_id,
+                'autoriza_password' => 'Corte12345',
+            ]);
+
+        $response->assertOk();
+        $this->assertDatabaseHas('tbl_caja_movimientos_cjm', [
+            'cjm_tipo' => 'retiro',
+            'cjm_monto' => 200,
+            'cjm_referencia' => 'Resguardo nocturno',
+        ]);
+
+        $resumen = $this->withSession(['sucursal_activa_id' => $sucursal->scl_id])
+            ->actingAs($admin)
+            ->getJson(route('pos.ventas.dia'));
+
+        $resumen->assertOk();
+        $this->assertEquals(200.0, (float) $resumen->json('resumen.retiros'));
+        $this->assertEquals(0.0, (float) $resumen->json('resumen.gastos'));
+        $this->assertEquals(249.9, (float) $resumen->json('resumen.efectivo_disponible'));
+
+        $movimiento = CajaMovimiento::query()->where('cjm_tipo', 'retiro')->firstOrFail();
+        $ticket = $this->actingAs($admin)->get(route('pos.caja.movimientos.ticket', $movimiento));
+        $ticket->assertOk();
+        $ticket->assertHeader('content-type', 'application/pdf');
+    }
+
+    public function test_puede_registrar_gasto_de_caja_y_valida_efectivo_disponible(): void
+    {
+        [$admin, $sucursal, $almacen] = $this->prepararEscenarioPos(50);
+        $sku = ProductoSku::query()->where('psk_codigo', 'SKU-GAB-120-AZM')->firstOrFail();
+
+        $this->setExistencia($sku->psk_id, $sucursal->scl_id, $almacen->alm_id, 3);
+        $this->crearVentaBase($admin, $sucursal->scl_id, $almacen->alm_id, $sku->psk_id, 129.50);
+
+        $ok = $this->withSession(['sucursal_activa_id' => $sucursal->scl_id])
+            ->actingAs($admin)
+            ->postJson(route('pos.caja.gastos.store'), [
+                'monto' => 40,
+                'categoria' => 'Papelería',
+                'motivo' => 'Compra de insumo operativo.',
+            ]);
+
+        $ok->assertOk();
+        $this->assertDatabaseHas('tbl_caja_movimientos_cjm', [
+            'cjm_tipo' => 'gasto',
+            'cjm_categoria' => 'Papelería',
+            'cjm_monto' => 40,
+        ]);
+
+        $excede = $this->withSession(['sucursal_activa_id' => $sucursal->scl_id])
+            ->actingAs($admin)
+            ->postJson(route('pos.caja.gastos.store'), [
+                'monto' => 500,
+                'categoria' => 'Papelería',
+                'motivo' => 'No debería permitirlo.',
+            ]);
+
+        $excede->assertStatus(422);
+        $excede->assertJsonValidationErrors(['monto']);
+    }
+
+    public function test_puede_realizar_corte_de_caja_y_cierra_la_sesion(): void
+    {
+        [$admin, $sucursal, $almacen] = $this->prepararEscenarioPos(150);
+        $autorizador = $this->crearUsuarioAutorizadorCorte($sucursal->scl_id);
+        $sku = ProductoSku::query()->where('psk_codigo', 'SKU-POLO-CH-AZM')->firstOrFail();
+
+        $this->setExistencia($sku->psk_id, $sucursal->scl_id, $almacen->alm_id, 6);
+        $this->crearVentaBase($admin, $sucursal->scl_id, $almacen->alm_id, $sku->psk_id, 349.90);
+
+        $gasto = $this->withSession(['sucursal_activa_id' => $sucursal->scl_id])
+            ->actingAs($admin)
+            ->postJson(route('pos.caja.gastos.store'), [
+                'monto' => 20,
+                'categoria' => 'Limpieza',
+                'motivo' => 'Compra de insumo de limpieza.',
+            ]);
+
+        $gasto->assertOk();
+
+        $response = $this->withSession(['sucursal_activa_id' => $sucursal->scl_id])
+            ->actingAs($admin)
+            ->postJson(route('pos.caja.cortes.store'), [
+                'denominaciones' => [
+                    '1000' => 0,
+                    '500' => 0,
+                    '200' => 2,
+                    '100' => 0,
+                    '50' => 1,
+                    '20' => 1,
+                ],
+                'cambio' => 9.90,
+                'observaciones' => 'Cierre sin incidencias.',
+                'autoriza_usr_id' => $autorizador->usr_id,
+                'autoriza_password' => 'Corte12345',
+            ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.pco_efectivo_esperado', 479.9);
+        $response->assertJsonPath('data.pco_efectivo_reportado', 479.9);
+        $this->assertEquals(0.0, (float) $response->json('data.pco_diferencia'));
+
+        $corte = PosCorteCaja::query()->firstOrFail();
+        $this->assertSame('cerrado', $corte->pco_estado);
+        $this->assertDatabaseHas('tbl_pos_corte_denominaciones_pdn', [
+            'pdn_pco_id' => $corte->pco_id,
+            'pdn_clave' => '200',
+            'pdn_cantidad_piezas' => 2,
+            'pdn_monto' => 400,
+        ]);
+        $this->assertDatabaseHas('tbl_pos_corte_denominaciones_pdn', [
+            'pdn_pco_id' => $corte->pco_id,
+            'pdn_clave' => 'cambio',
+            'pdn_monto' => 9.90,
+        ]);
+        $this->assertDatabaseHas('tbl_caja_sesiones_cse', [
+            'cse_id' => $corte->pco_cse_id,
+            'cse_estatus' => 'cerrada',
+        ]);
+        $this->assertDatabaseMissing('tbl_caja_sesion_usuarios_csu', [
+            'csu_cse_id' => $corte->pco_cse_id,
+            'csu_usr_id' => $admin->usr_id,
+            'csu_estatus' => 'activo',
+            'csu_salida_at' => null,
+        ]);
+
+        $ventaPosterior = $this->withSession(['sucursal_activa_id' => $sucursal->scl_id])
+            ->actingAs($admin)
+            ->postJson(route('pos.ventas.cobrar'), [
+                'almacen_id' => $almacen->alm_id,
+                'metodo_pago' => 'efectivo',
+                'monto_efectivo' => 129.50,
+                'items' => [
+                    [
+                        'psk_id' => $sku->psk_id,
+                        'cantidad' => 1,
+                        'precio' => 129.50,
+                    ],
+                ],
+            ]);
+
+        $ventaPosterior->assertStatus(422);
+        $ventaPosterior->assertJsonValidationErrors(['caja']);
+
+        $gastoPosterior = $this->withSession(['sucursal_activa_id' => $sucursal->scl_id])
+            ->actingAs($admin)
+            ->postJson(route('pos.caja.gastos.store'), [
+                'monto' => 10,
+                'categoria' => 'Papelería',
+                'motivo' => 'No debe permitirse tras el corte.',
+            ]);
+
+        $gastoPosterior->assertStatus(422);
+        $gastoPosterior->assertJsonValidationErrors(['caja']);
+
+        $ticket = $this->actingAs($admin)->get(route('pos.caja.cortes.ticket', $corte));
+        $ticket->assertOk();
+        $ticket->assertHeader('content-type', 'application/pdf');
+    }
+
+    public function test_no_cierra_caja_si_la_autorizacion_del_corte_es_invalida(): void
+    {
+        [$admin, $sucursal, $almacen] = $this->prepararEscenarioPos(50);
+        $autorizador = $this->crearUsuarioAutorizadorCorte($sucursal->scl_id);
+        $sku = ProductoSku::query()->where('psk_codigo', 'SKU-GAB-120-AZM')->firstOrFail();
+
+        $this->setExistencia($sku->psk_id, $sucursal->scl_id, $almacen->alm_id, 3);
+        $this->crearVentaBase($admin, $sucursal->scl_id, $almacen->alm_id, $sku->psk_id, 129.50);
+
+        $response = $this->withSession(['sucursal_activa_id' => $sucursal->scl_id])
+            ->actingAs($admin)
+            ->postJson(route('pos.caja.cortes.store'), [
+                'denominaciones' => [
+                    '1000' => 0,
+                    '500' => 0,
+                    '200' => 0,
+                    '100' => 1,
+                    '50' => 1,
+                    '20' => 1,
+                ],
+                'cambio' => 9.50,
+                'autoriza_usr_id' => $autorizador->usr_id,
+                'autoriza_password' => 'incorrecta',
+            ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['autoriza_usr_id']);
+        $this->assertDatabaseCount('tbl_pos_cortes_pco', 0);
+        $this->assertDatabaseHas('tbl_caja_sesiones_cse', [
+            'cse_usr_apertura_id' => $admin->usr_id,
+            'cse_estatus' => 'activa',
+        ]);
+    }
+
+    private function prepararEscenarioPos(float $montoApertura = 0): array
     {
         $this->seed(DatabaseSeeder::class);
 
@@ -213,7 +428,7 @@ class PosCambiosYCancelacionesTest extends TestCase
             'cse_caj_id' => $caja->caj_id,
             'cse_scl_id' => $sucursal->scl_id,
             'cse_usr_apertura_id' => $admin->usr_id,
-            'cse_monto_apertura' => 0,
+            'cse_monto_apertura' => $montoApertura,
             'cse_abierta_at' => now(),
             'cse_estatus' => 'activa',
         ]);
@@ -272,5 +487,36 @@ class PosCambiosYCancelacionesTest extends TestCase
             ->where('exa_scl_id', $sucursalId)
             ->where('exa_alm_id', $almacenId)
             ->value('exa_existencia');
+    }
+
+    private function crearUsuarioAutorizadorCorte(int $sucursalId): Usuario
+    {
+        $rolSupervisor = Rol::query()->where('rol_nombre', 'Supervisor')->firstOrFail();
+        $usuario = Usuario::query()->create([
+            'usr_usuario' => 'aut.corte.' . Usuario::query()->count(),
+            'usr_password' => Hash::make('Corte12345'),
+            'usr_nombre' => 'Autorizador Corte',
+            'usr_email' => 'aut.corte.' . now()->timestamp . '@lasuriana.local',
+            'usr_estatus' => 'activo',
+        ]);
+
+        UsuarioRol::query()->create([
+            'url_usr_id' => $usuario->usr_id,
+            'url_rol_id' => $rolSupervisor->rol_id,
+            'url_estatus' => 'activo',
+            'url_deleted' => false,
+            'url_deleted_at' => null,
+        ]);
+
+        UsuarioSucursal::query()->create([
+            'usc_usr_id' => $usuario->usr_id,
+            'usc_scl_id' => $sucursalId,
+            'usc_es_predeterminada' => true,
+            'usc_estatus' => 'activo',
+            'usc_deleted' => false,
+            'usc_deleted_at' => null,
+        ]);
+
+        return $usuario;
     }
 }

@@ -58,6 +58,7 @@ class CajaService
                 'caj_alm_id' => $almacenId,
                 'caj_nombre' => $datos['caj_nombre'],
                 'caj_clave' => $this->generarClaveInterna((int) $datos['caj_scl_id'], (string) $datos['caj_nombre']),
+                'caj_retiro_umbral' => round((float) ($datos['caj_retiro_umbral'] ?? 0), 2),
                 'caj_estatus' => $datos['caj_estatus'],
                 'caj_created_by_usr_id' => optional($request->user())->usr_id,
                 'caj_updated_by_usr_id' => optional($request->user())->usr_id,
@@ -73,6 +74,7 @@ class CajaService
                 [
                     'caj_scl_id' => $caja->caj_scl_id,
                     'caj_clave' => $caja->caj_clave,
+                    'caj_retiro_umbral' => $caja->caj_retiro_umbral,
                     'caj_estatus' => $caja->caj_estatus,
                     'usuarios' => $usuarios->pluck('usr_usuario')->all(),
                 ]
@@ -94,6 +96,7 @@ class CajaService
                 'caj_scl_id' => (int) $datos['caj_scl_id'],
                 'caj_alm_id' => $almacenId,
                 'caj_nombre' => $datos['caj_nombre'],
+                'caj_retiro_umbral' => round((float) ($datos['caj_retiro_umbral'] ?? 0), 2),
                 'caj_estatus' => $datos['caj_estatus'],
                 'caj_updated_by_usr_id' => optional($request->user())->usr_id,
             ]);
@@ -107,6 +110,7 @@ class CajaService
                 (string) $caja->caj_id,
                 [
                     'caj_scl_id' => $caja->caj_scl_id,
+                    'caj_retiro_umbral' => $caja->caj_retiro_umbral,
                     'caj_estatus' => $caja->caj_estatus,
                     'usuarios' => $usuarios->pluck('usr_usuario')->all(),
                 ]
