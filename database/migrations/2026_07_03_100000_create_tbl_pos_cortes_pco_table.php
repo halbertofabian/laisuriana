@@ -18,7 +18,7 @@ return new class extends Migration
             $table->unsignedBigInteger('pco_usr_autorizo_id');
             $table->unsignedBigInteger('pco_usr_apertura_id')->nullable();
             $table->timestamp('pco_abierta_at')->nullable()->index();
-            $table->timestamp('pco_cerrada_at')->index();
+            $table->dateTime('pco_cerrada_at')->index();
             $table->decimal('pco_efectivo_esperado', 14, 2)->default(0);
             $table->decimal('pco_efectivo_reportado', 14, 2)->default(0);
             $table->decimal('pco_diferencia', 14, 2)->default(0);
