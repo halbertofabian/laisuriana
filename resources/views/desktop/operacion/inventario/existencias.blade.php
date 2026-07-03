@@ -84,6 +84,24 @@
         .desktop-inv-bar__spacer { flex: 1 1 auto; }
         .desktop-inv-bar__divider { width: 1px; height: 22px; background: var(--stroke); }
         .desktop-inv-bar .desktop-btn { height: 32px; }
+        .desktop-inv-bar__selection {
+            display: inline-flex;
+            align-items: center;
+            min-height: 32px;
+            padding: 0 10px;
+            border-radius: var(--r-md);
+            background: var(--surface);
+            border: 1px solid var(--stroke);
+            color: var(--text-2);
+            font-size: .78rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .desktop-inv-bar__selection.is-active {
+            border-color: rgba(47, 111, 237, .22);
+            background: rgba(47, 111, 237, .08);
+            color: var(--brand);
+        }
         /* Botón "Filtros avanzados" (Azure Portal) */
         .desktop-inv-filterbtn {
             display: inline-flex;
@@ -203,12 +221,33 @@
         .desktop-inv-pill--na .desktop-inv-pill__val { color: var(--text-2); }
         /* ===== Celda Producto: título + detalle en 2 líneas compactas ===== */
         .desktop-inv-prod-cell { white-space: nowrap; }
+        .desktop-inv-prodwrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+        .desktop-inv-select {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 auto;
+        }
+        .desktop-inv-row-check,
+        .desktop-inv-select-all {
+            width: 16px;
+            height: 16px;
+            margin: 0;
+            cursor: pointer;
+            accent-color: var(--brand);
+        }
         .desktop-inv-prod {
             display: flex;
             flex-direction: column;
             gap: 0;
             max-width: 360px;
             line-height: 1.22;
+            min-width: 0;
         }
         .desktop-inv-prod__title {
             font-weight: 600; color: var(--text);
@@ -244,6 +283,8 @@
         /* Densidad alta: filas compactas (estilo ERP/hoja de trabajo) */
         .desktop-inv-table tbody td { padding-top: 4px !important; padding-bottom: 4px !important; vertical-align: middle; }
         .desktop-inv-table tbody tr.is-selected td { background: #eaf1fd; }
+        .desktop-inv-table tbody tr.is-bulk-selected td { background: rgba(47, 111, 237, .08); }
+        .desktop-inv-table tbody tr.is-bulk-selected.is-selected td { background: #dfeafb; }
 
         /* ===== Área de tabla con scroll horizontal SIEMPRE visible ===== */
         .desktop-inv-tablearea {
@@ -485,14 +526,17 @@
             </button>
 
             <span class="desktop-inv-bar__divider"></span>
+            @if(!empty($soloNegativas))
+                <span class="desktop-inv-bar__selection" id="desktop-inv-selected-count">0 seleccionados</span>
+            @endif
 
             <button type="button" class="desktop-btn desktop-btn--primary" id="btn-filtrar">Aplicar</button>
             <div class="desktop-inv-export">
                 <button type="button" class="desktop-btn desktop-btn--default" id="btn-exportar" data-overflow aria-haspopup="true" aria-expanded="false">
-                    Exportar
+                    Acciones
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                 </button>
-                <div class="desktop-menu" role="menu" aria-label="Exportar">
+                <div class="desktop-menu" role="menu" aria-label="Acciones">
                     <button type="button" class="desktop-menu__item" id="btn-exportar-excel">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="m9 13 6 6"/><path d="m15 13-6 6"/></svg>
                         Exportar Excel
@@ -501,6 +545,12 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15h6"/><path d="M9 18h6"/></svg>
                         Exportar PDF
                     </button>
+                    @if(!empty($soloNegativas))
+                        <button type="button" class="desktop-menu__item" id="btn-ajustar-cero" disabled>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                            Existencias 0
+                        </button>
+                    @endif
                 </div>
             </div>
         </div>
@@ -517,7 +567,18 @@
                         <th>Marca</th>
                         <th>Modelo</th>
                         <th>Línea</th>
-                        <th>Producto</th>
+                        <th>
+                            @if(!empty($soloNegativas))
+                                <span class="desktop-inv-prodwrap">
+                                    <span class="desktop-inv-select">
+                                        <input type="checkbox" class="desktop-inv-select-all" id="desktop-inv-select-all" aria-label="Seleccionar registros visibles">
+                                    </span>
+                                    <span>Producto</span>
+                                </span>
+                            @else
+                                Producto
+                            @endif
+                        </th>
                         <th>Color</th>
                         <th>Tallas</th>
                         <th class="desktop-inv-th-metric desktop-inv-metric--start" style="text-align:right;">Total art.</th>
@@ -652,14 +713,17 @@
                 productos: @json(route('desktop.operacion.inventario.productos.buscar')),
                 exportarExcel: @json($exportExcelRoute ?? route('desktop.operacion.inventario.existencias.exportar.excel')),
                 exportarPdf: @json($exportPdfRoute ?? route('desktop.operacion.inventario.existencias.exportar.pdf')),
+                ajustarCero: @json(route('desktop.operacion.inventario.existencias_negativas.ajustar_cero')),
                 kardexDetalle: @json(url('/desktop/operacion/inventario/kardex/__SKU__/detalle')),
             };
+            const puedeAjustarNegativas = @json((bool) (auth()->user()?->tienePermiso('inventario_base.entrada') || auth()->user()?->tienePermiso('inventario_base.ajustar')));
 
             const $table = $('#tbl-existencias');
             let tabla = null;
             let selectedRowIdx = null;
             let pendingSelect = null;
             let contextTarget = null;
+            const selectedRowKeys = new Set();
 
             function getDataRows() {
                 return $table.find('tbody tr').not('.dataTables_empty');
@@ -667,6 +731,54 @@
 
             function escapeHtml(text) {
                 return $('<div>').text(text ?? '').html();
+            }
+
+            function normalizeMojibake(text) {
+                let value = String(text ?? '');
+                const replacements = [
+                    ['\u00C3\u00B3', 'ó'],
+                    ['\u00C3\u00AD', 'í'],
+                    ['\u00C3\u00A9', 'é'],
+                    ['\u00C3\u00A1', 'á'],
+                    ['\u00C3\u00BA', 'ú'],
+                    ['\u00C3\u00B1', 'ñ'],
+                    ['\u00C3\u201C', 'Ó'],
+                    ['\u00C3\u0089', 'É'],
+                    ['\u00C3\u008D', 'Í'],
+                    ['\u00C3\u009A', 'Ú'],
+                    ['\u00C3\u2018', 'Ñ'],
+                    ['\u00C2\u00B7', '·'],
+                    ['\u00C3\u201A\u00C2\u00B7', '·'],
+                ];
+
+                replacements.forEach(function (pair) {
+                    value = value.split(pair[0]).join(pair[1]);
+                });
+
+                return value;
+            }
+
+            function sanitizePaneText() {
+                const root = document.querySelector('.desktop-pane');
+                if (!root) return;
+
+                root.querySelectorAll('input[placeholder]').forEach(function (input) {
+                    input.setAttribute('placeholder', normalizeMojibake(input.getAttribute('placeholder') || ''));
+                });
+
+                root.querySelectorAll('th,label,button,span,option,.desktop-inv-drawer__title').forEach(function (node) {
+                    if (!node.childElementCount) {
+                        node.textContent = normalizeMojibake(node.textContent || '');
+                    }
+                });
+            }
+
+            function getRowKey(row) {
+                if (row && row.row_key) {
+                    return String(row.row_key);
+                }
+
+                return String(row?.prd_id || 0) + ':' + String(row?.color_vat_id || 0);
             }
 
             // Celda Producto: 2 líneas compactas con la misma composición usada en catálogo.
@@ -685,6 +797,29 @@
                 return '<div class="desktop-inv-prod" title="' + escapeHtml(tip) + '">' +
                     '<span class="desktop-inv-prod__title">' + escapeHtml(title) + '</span>' +
                     (sub ? '<span class="desktop-inv-prod__sub">' + escapeHtml(sub) + '</span>' : '') +
+                '</div>';
+            }
+
+            function renderProductoSeleccionable(_, __, row) {
+                const title = row.producto_nombre || row.concepto_nombre || '-';
+                const sub = [
+                    row.marca_nombre || 'S/M',
+                    row.modelo_nombre || 'S/Mo',
+                    row.concepto_nombre || 'S/C',
+                    row.descripcion_nombre || 'S/D',
+                    row.producto_codigo || 'S/CI'
+                ].join(' Â· ');
+                const tip = title + (sub ? ' Â· ' + sub : '');
+                const rowKey = getRowKey(row);
+
+                return '<div class="desktop-inv-prodwrap">' +
+                    '<span class="desktop-inv-select">' +
+                        '<input type="checkbox" class="desktop-inv-row-check" data-row-key="' + escapeHtml(rowKey) + '" aria-label="Seleccionar registro">' +
+                    '</span>' +
+                    '<div class="desktop-inv-prod" title="' + escapeHtml(tip) + '">' +
+                        '<span class="desktop-inv-prod__title">' + escapeHtml(title) + '</span>' +
+                        (sub ? '<span class="desktop-inv-prod__sub">' + escapeHtml(sub) + '</span>' : '') +
+                    '</div>' +
                 '</div>';
             }
 
@@ -736,6 +871,54 @@
                     ' · <span class="desktop-inv-colorcell__sku">' + escapeHtml(skus) + '</span>' +
                 '</div>';
             }
+
+            renderProducto = function (_, __, row) {
+                const title = normalizeMojibake(row.producto_nombre || row.concepto_nombre || '-');
+                const sub = [
+                    normalizeMojibake(row.marca_nombre || 'S/M'),
+                    normalizeMojibake(row.modelo_nombre || 'S/Mo'),
+                    normalizeMojibake(row.concepto_nombre || 'S/C'),
+                    normalizeMojibake(row.descripcion_nombre || 'S/D'),
+                    normalizeMojibake(row.producto_codigo || 'S/CI')
+                ].join(' · ');
+                const tip = title + (sub ? ' · ' + sub : '');
+                return '<div class="desktop-inv-prod" title="' + escapeHtml(tip) + '">' +
+                    '<span class="desktop-inv-prod__title">' + escapeHtml(title) + '</span>' +
+                    (sub ? '<span class="desktop-inv-prod__sub">' + escapeHtml(sub) + '</span>' : '') +
+                '</div>';
+            };
+
+            renderProductoSeleccionable = function (_, __, row) {
+                const title = normalizeMojibake(row.producto_nombre || row.concepto_nombre || '-');
+                const sub = [
+                    normalizeMojibake(row.marca_nombre || 'S/M'),
+                    normalizeMojibake(row.modelo_nombre || 'S/Mo'),
+                    normalizeMojibake(row.concepto_nombre || 'S/C'),
+                    normalizeMojibake(row.descripcion_nombre || 'S/D'),
+                    normalizeMojibake(row.producto_codigo || 'S/CI')
+                ].join(' · ');
+                const tip = title + (sub ? ' · ' + sub : '');
+                const rowKey = getRowKey(row);
+
+                return '<div class="desktop-inv-prodwrap">' +
+                    '<span class="desktop-inv-select">' +
+                        '<input type="checkbox" class="desktop-inv-row-check" data-row-key="' + escapeHtml(rowKey) + '" aria-label="Seleccionar registro">' +
+                    '</span>' +
+                    '<div class="desktop-inv-prod" title="' + escapeHtml(tip) + '">' +
+                        '<span class="desktop-inv-prod__title">' + escapeHtml(title) + '</span>' +
+                        (sub ? '<span class="desktop-inv-prod__sub">' + escapeHtml(sub) + '</span>' : '') +
+                    '</div>' +
+                '</div>';
+            };
+
+            renderColor = function (_, __, row) {
+                const color = normalizeMojibake(row.color_nombre || 'Sin color');
+                const skus = (row.sku_total || 0) + ' SKU(s)';
+                return '<div class="desktop-inv-colorcell" title="' + escapeHtml(color + ' · ' + skus) + '">' +
+                    '<span class="desktop-inv-colorcell__name">' + escapeHtml(color) + '</span>' +
+                    ' · <span class="desktop-inv-colorcell__sku">' + escapeHtml(skus) + '</span>' +
+                '</div>';
+            };
 
             function formatMoney(value) {
                 return Number(value || 0).toLocaleString('es-MX', {
@@ -842,6 +1025,57 @@
                 $('#desktop-existencias-pagination').html(html);
             }
 
+            function setBulkSelectionVisual($row, checked) {
+                $row.toggleClass('is-bulk-selected', checked);
+                $row.find('.desktop-inv-row-check').prop('checked', checked);
+            }
+
+            function syncSelectAllVisible() {
+                const rows = getDataRows();
+                let visibles = 0;
+                let marcados = 0;
+
+                rows.each(function () {
+                    const data = tabla ? tabla.row(this).data() : null;
+                    if (!data) return;
+                    visibles += 1;
+                    if (selectedRowKeys.has(getRowKey(data))) {
+                        marcados += 1;
+                    }
+                });
+
+                const checkbox = document.getElementById('desktop-inv-select-all');
+                if (!checkbox) return;
+                checkbox.checked = visibles > 0 && marcados === visibles;
+                checkbox.indeterminate = marcados > 0 && marcados < visibles;
+            }
+
+            function syncBulkSelectionUI() {
+                const total = selectedRowKeys.size;
+                const $count = $('#desktop-inv-selected-count');
+                if ($count.length) {
+                    $count.text(total + ' seleccionados').toggleClass('is-active', total > 0);
+                }
+
+                const $ajustar = $('#btn-ajustar-cero');
+                if ($ajustar.length) {
+                    $ajustar.prop('disabled', total === 0 || !puedeAjustarNegativas);
+                }
+
+                syncSelectAllVisible();
+            }
+
+            function clearBulkSelection() {
+                if (!selectedRowKeys.size) {
+                    syncBulkSelectionUI();
+                    return;
+                }
+
+                selectedRowKeys.clear();
+                getDataRows().removeClass('is-bulk-selected').find('.desktop-inv-row-check').prop('checked', false);
+                syncBulkSelectionUI();
+            }
+
             function buildTabla() {
                 tabla = $table.DataTable({
                     processing: true,
@@ -880,7 +1114,7 @@
                         { data: 'marca_nombre', visible: false },
                         { data: 'modelo_nombre', visible: false },
                         { data: 'linea_nombre', visible: false },
-                        { data: null, className: 'desktop-inv-prod-cell', render: renderProducto },
+                        { data: null, className: 'desktop-inv-prod-cell', render: soloNegativas ? renderProductoSeleccionable : renderProducto },
                         { data: 'color_nombre', render: renderColor },
                         { data: 'tallas', orderable: false, searchable: false, render: renderTallas },
                         { data: 'total_articulos', className: 'desktop-inv-num desktop-inv-metric desktop-inv-metric--start desktop-inv-num--strong', render: function (v) { return formatMoney(v); } },
@@ -892,6 +1126,7 @@
                     drawCallback: function () {
                         renderFooter();
                         syncInvHScroll();
+                        clearBulkSelection();
                         if (pendingSelect === 'first') {
                             pendingSelect = null;
                             selectRow(0);
@@ -1059,6 +1294,74 @@
                 return qs ? base + '?' + qs : base;
             }
 
+            function buildBulkPayload() {
+                return {
+                    row_keys: Array.from(selectedRowKeys),
+                    min_scl_id: $('#flt-scl').val() || null,
+                    min_alm_id: $('#flt-alm').val() || null,
+                    prd_mrc_id: $('#flt-mrc').val() || null,
+                    prd_mdl_id: $('#flt-mdl').val() || null,
+                    prd_lna_id: $('#flt-lna').val() || null,
+                    prd_ctg_id: $('#flt-ctg').val() || null,
+                    prd_dsc_id: $('#flt-dsc').val() || null,
+                    prd_id: $('#flt-prd').val() || null,
+                    buscar: $('#flt-buscar').val().trim() || null,
+                    solo_disponibles: $('#flt-solo-disponibles').is(':checked') ? 1 : 0
+                };
+            }
+
+            async function ejecutarAjusteCero() {
+                const total = selectedRowKeys.size;
+
+                if (!total) {
+                    DesktopUI.message('Validación', 'Selecciona al menos un registro para continuar.', 'warning');
+                    return;
+                }
+
+                if (!puedeAjustarNegativas) {
+                    DesktopUI.message('Permisos', 'No tienes permisos para ajustar existencias negativas.', 'error');
+                    return;
+                }
+
+                const confirmed = await DesktopUI.confirm({
+                    title: 'Confirmar ajuste masivo',
+                    message: 'Se ajustarán ' + total + ' registro(s) seleccionados para dejar sus existencias negativas en 0. Esta acción genera movimientos de kardex.',
+                    okText: 'Aplicar ajuste',
+                    danger: true,
+                });
+
+                if (!confirmed) {
+                    return;
+                }
+
+                try {
+                    const resp = await $.ajax({
+                        url: rutas.ajustarCero,
+                        method: 'POST',
+                        dataType: 'json',
+                        data: buildBulkPayload(),
+                    });
+
+                    const data = resp?.data || {};
+                    clearBulkSelection();
+                    recargarTabla(false);
+
+                    DesktopUI.message(
+                        'Éxito',
+                        'Registros ajustados: ' + Number(data.adjusted_rows || 0)
+                            + '. Registros omitidos: ' + Number(data.omitted_rows || 0)
+                            + '. Movimientos generados: ' + Number(data.adjusted_records || 0) + '.',
+                        'success'
+                    );
+                } catch (xhr) {
+                    const body = xhr?.responseJSON?.message
+                        || xhr?.responseJSON?.errors
+                        || 'No fue posible aplicar el ajuste masivo.';
+                    const message = typeof body === 'string' ? body : JSON.stringify(body);
+                    DesktopUI.message('Error', message, 'error');
+                }
+            }
+
             // ===== Scrollbar horizontal propio (track + thumb), siempre visible =====
             const invWrapEl = document.getElementById('inv-wrap');
             const invAreaEl = document.getElementById('inv-tablearea');
@@ -1184,12 +1487,14 @@
             }
 
             initSelect2();
+            sanitizePaneText();
             aplicarFiltroConceptosPorLinea();
             syncAlmacenesPorSucursal();
             aplicarFiltrosDesdeQuery();
             actualizarIndicadores();
             buildTabla();
             $('#flt-length').val(String(tabla ? tabla.page.len() : 100));
+            syncBulkSelectionUI();
             syncInvHScroll();
 
             $('#btn-recargar-existencias').on('click', function () {
@@ -1212,25 +1517,30 @@
             $('#flt-prd, #flt-solo-disponibles').on('change', actualizarIndicadores);
             $('#flt-length').on('change', function () {
                 if (!tabla) return;
+                clearBulkSelection();
                 tabla.page.len(Number($(this).val() || 100)).draw();
             });
             $('#flt-buscar').on('input', actualizarIndicadores);
             $('#btn-filtrar').on('click', function () {
+                clearBulkSelection();
                 recargarTabla(true);
                 actualizarIndicadores();
             });
             $('#btn-limpiar').on('click', function () {
+                clearBulkSelection();
                 limpiarFiltros();
                 actualizarIndicadores();
             });
             $('#btn-inv-filtros').on('click', abrirDrawer);
             $('[data-close-inv-drawer]').on('click', cerrarDrawer);
             $('#btn-aplicar-drawer').on('click', function () {
+                clearBulkSelection();
                 recargarTabla(true);
                 actualizarIndicadores();
                 cerrarDrawer();
             });
             $('#btn-limpiar-drawer').on('click', function () {
+                clearBulkSelection();
                 limpiarFiltros();
                 actualizarIndicadores();
             });
@@ -1240,6 +1550,7 @@
             $('#btn-exportar-pdf').on('click', function () {
                 window.open(buildExportUrl(rutas.exportarPdf), '_blank');
             });
+            $('#btn-ajustar-cero').on('click', ejecutarAjusteCero);
             $('#flt-buscar').on('keydown', function (event) {
                 if (event.key === 'Enter') {
                     event.preventDefault();
@@ -1264,6 +1575,45 @@
             $table.find('tbody').on('click', 'tr', function () {
                 const idx = getDataRows().index(this);
                 if (idx >= 0) selectRow(idx);
+            });
+            $table.find('tbody').on('click', '.desktop-inv-row-check', function (event) {
+                event.stopPropagation();
+                const rowKey = String($(this).data('row-key') || '');
+                if (!rowKey) return;
+
+                if (this.checked) {
+                    selectedRowKeys.add(rowKey);
+                } else {
+                    selectedRowKeys.delete(rowKey);
+                }
+
+                setBulkSelectionVisual($(this).closest('tr'), this.checked);
+                syncBulkSelectionUI();
+            });
+            $('#desktop-inv-select-all').on('click mousedown keydown', function (event) {
+                event.stopPropagation();
+            });
+            $table.find('thead').on('click mousedown keydown', '.desktop-inv-select', function (event) {
+                event.stopPropagation();
+            });
+            $('#desktop-inv-select-all').on('change', function () {
+                const checked = !!this.checked;
+
+                getDataRows().each(function () {
+                    const data = tabla ? tabla.row(this).data() : null;
+                    if (!data) return;
+                    const rowKey = getRowKey(data);
+
+                    if (checked) {
+                        selectedRowKeys.add(rowKey);
+                    } else {
+                        selectedRowKeys.delete(rowKey);
+                    }
+
+                    setBulkSelectionVisual($(this), checked);
+                });
+
+                syncBulkSelectionUI();
             });
 
             $(document).on('keydown.desktop-existencias-nav', function (e) {

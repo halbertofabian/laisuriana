@@ -798,6 +798,13 @@
 
     <script src="{{ $templateAssetBase }}/vendor/libs/jquery/jquery.js"></script>
     <script>
+        $.ajaxSetup({
+            cache: false,
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        });
+
         (function () {
             var shell = document.getElementById('app-shell');
             var toggle = document.getElementById('nav-toggle');

@@ -113,6 +113,8 @@
         .desktop-rme-meta { display: flex; flex-direction: column; gap: 1px; line-height: 1.2; min-width: 0; }
         .desktop-rme-meta__title { font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .desktop-rme-meta__sub { font-size: .74rem; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .desktop-rme-meta--wrap .desktop-rme-meta__title,
+        .desktop-rme-meta--wrap .desktop-rme-meta__sub { white-space: normal; overflow: visible; text-overflow: clip; }
         .desktop-rme-num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600; }
 
         .desktop-rme-state {
@@ -179,7 +181,7 @@
         <div class="desktop-rme-bar">
             <div class="desktop-rme-bar__search">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-                <input id="flt-buscar" type="search" placeholder="Buscar folio, referencia o proveedor">
+                <input id="flt-buscar" type="search" placeholder="Buscar folio, referencia, proveedor o marca">
             </div>
             <div class="desktop-rme-bar__field">
                 <select class="desktop-toolbar__select" id="flt-length">
@@ -208,6 +210,7 @@
                         <th>Fecha captura</th>
                         <th>Folio</th>
                         <th>Estado</th>
+                        <th>Marcas</th>
                         <th>Sucursal / Almacén</th>
                         <th>Proveedor</th>
                         <th style="text-align:right;">Líneas</th>
@@ -265,6 +268,15 @@
                         <option value="finalizado">Finalizado</option>
                         <option value="borrador">Borrador</option>
                         <option value="cancelado">Cancelado</option>
+                    </select>
+                </div>
+                <div class="desktop-field">
+                    <label for="flt-marca">Marca</label>
+                    <select id="flt-marca">
+                        <option value="">Todas</option>
+                        @foreach(($opciones['marcas'] ?? []) as $marca)
+                            <option value="{{ $marca->mrc_id }}">{{ $marca->mrc_nombre }}</option>
+                        @endforeach
                     </select>
                 </div>
             </div>
@@ -326,6 +338,10 @@
 
             function renderMeta(title, subtitle) {
                 return '<div class="desktop-rme-meta"><span class="desktop-rme-meta__title">' + escapeHtml(title || '—') + '</span>' +
+                    (subtitle ? '<span class="desktop-rme-meta__sub">' + escapeHtml(subtitle) + '</span>' : '') + '</div>';
+            }
+            function renderMetaWrap(title, subtitle) {
+                return '<div class="desktop-rme-meta desktop-rme-meta--wrap"><span class="desktop-rme-meta__title">' + escapeHtml(title || '—') + '</span>' +
                     (subtitle ? '<span class="desktop-rme-meta__sub">' + escapeHtml(subtitle) + '</span>' : '') + '</div>';
             }
             function formatDateValue(date) {
@@ -398,6 +414,7 @@
             function contarFiltrosAvanzados() {
                 let count = 0;
                 if ($('#flt-estado').val()) count += 1;
+                if ($('#flt-marca').val()) count += 1;
                 if ($('#flt-periodo').val() !== 'semana_en_curso') count += 1;
                 if ($('#flt-periodo').val() === 'rango_personalizado' && ($('#flt-desde').val() || $('#flt-hasta').val())) count += 1;
                 return count;
@@ -480,6 +497,7 @@
                         data: function (d) {
                             const fechas = getFechasFiltro();
                             d.estado = $('#flt-estado').val();
+                            d.marca_id = $('#flt-marca').val();
                             d.fecha_desde = fechas.desde;
                             d.fecha_hasta = fechas.hasta;
                             d.buscar = $('#flt-buscar').val().trim();
@@ -489,6 +507,7 @@
                         { data: 'rme_fecha_captura', render: function (v, _, row) { return renderMeta(fecha(v), row.rme_documento_referencia || ''); } },
                         { data: 'rme_folio', render: function (v) { return renderMeta(v || '—'); } },
                         { data: 'rme_estado', render: renderEstado },
+                        { data: 'marcas_nombres', orderable: false, render: function (v) { return renderMetaWrap(v || '—'); } },
                         { data: null, orderable: false, render: function (_, __, row) { return renderMeta(row.sucursal_nombre || '—', row.almacen_nombre || ''); } },
                         { data: 'proveedor_nombre', orderable: false, render: function (v) { return renderMeta(v || '—'); } },
                         { data: 'total_lineas', orderable: false, className: 'desktop-rme-num', render: num },
@@ -508,6 +527,7 @@
             }
             function limpiarFiltros() {
                 $('#flt-estado').val('');
+                $('#flt-marca').val('');
                 $('#flt-periodo').val('semana_en_curso');
                 $('#flt-desde').val('');
                 $('#flt-hasta').val('');

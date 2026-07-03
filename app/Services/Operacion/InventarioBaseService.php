@@ -26,7 +26,10 @@ use TCPDF;
 
 class InventarioBaseService
 {
-    public function __construct(private readonly AuditoriaService $auditoriaService)
+    public function __construct(
+        private readonly AuditoriaService $auditoriaService,
+        private readonly ExistenciaMatrizService $existenciaMatrizService,
+    )
     {
     }
 
@@ -1015,8 +1018,19 @@ class InventarioBaseService
             ->whereNull('rmd_deleted_at')
             ->groupBy('rmd_rme_id');
 
+        $marcasSub = DB::table('tbl_recepcion_mercancia_detalle_rmd as rmd')
+            ->join('tbl_producto_skus_psk as psk', 'psk.psk_id', '=', 'rmd.rmd_psk_id')
+            ->join('tbl_productos_prd as prd', 'prd.prd_id', '=', 'psk.psk_prd_id')
+            ->leftJoin('tbl_marcas_mrc as mrc', 'mrc.mrc_id', '=', 'prd.prd_mrc_id')
+            ->selectRaw("rmd.rmd_rme_id, GROUP_CONCAT(DISTINCT mrc.mrc_nombre ORDER BY mrc.mrc_nombre SEPARATOR ', ') as marcas_nombres")
+            ->where('rmd.rmd_deleted', false)
+            ->whereNull('rmd.rmd_deleted_at')
+            ->whereNotNull('mrc.mrc_nombre')
+            ->groupBy('rmd.rmd_rme_id');
+
         return DB::table('tbl_recepciones_mercancia_rme as rme')
             ->leftJoinSub($detalleSub, 'det', fn ($join) => $join->on('det.rmd_rme_id', '=', 'rme.rme_id'))
+            ->leftJoinSub($marcasSub, 'mar', fn ($join) => $join->on('mar.rmd_rme_id', '=', 'rme.rme_id'))
             ->leftJoin('tbl_sucursales_scl as scl', 'scl.scl_id', '=', 'rme.rme_scl_id')
             ->leftJoin('tbl_almacenes_alm as alm', 'alm.alm_id', '=', 'rme.rme_alm_id')
             ->leftJoin('tbl_proveedores_prv as prv', 'prv.prv_id', '=', 'rme.rme_prv_id')
@@ -1041,6 +1055,7 @@ class InventarioBaseService
                 'rme.rme_cancelacion_motivo',
                 'scl.scl_nombre as sucursal_nombre',
                 'alm.alm_nombre as almacen_nombre',
+                DB::raw("COALESCE(mar.marcas_nombres, '') as marcas_nombres"),
                 'prv.prv_nombre_empresa as proveedor_nombre',
                 'usr_creo.usr_nombre as usuario_creo',
                 'usr_conf.usr_nombre as usuario_confirmo',
@@ -1068,6 +1083,19 @@ class InventarioBaseService
             ->where('rme.rme_deleted', false)
             ->whereNull('rme.rme_deleted_at')
             ->when(!empty($filtros['estado']), fn ($q) => $q->where('rme.rme_estado', (string) $filtros['estado']))
+            ->when(!empty($filtros['marca_id']), function ($q) use ($filtros): void {
+                $marcaId = (int) $filtros['marca_id'];
+                $q->whereExists(function ($exists) use ($marcaId): void {
+                    $exists->selectRaw('1')
+                        ->from('tbl_recepcion_mercancia_detalle_rmd as rmdx')
+                        ->join('tbl_producto_skus_psk as pskx', 'pskx.psk_id', '=', 'rmdx.rmd_psk_id')
+                        ->join('tbl_productos_prd as prdx', 'prdx.prd_id', '=', 'pskx.psk_prd_id')
+                        ->whereColumn('rmdx.rmd_rme_id', 'rme.rme_id')
+                        ->where('rmdx.rmd_deleted', false)
+                        ->whereNull('rmdx.rmd_deleted_at')
+                        ->where('prdx.prd_mrc_id', $marcaId);
+                });
+            })
             ->when(!empty($filtros['fecha_desde']), fn ($q) => $q->whereDate('rme.rme_fecha_captura', '>=', $filtros['fecha_desde']))
             ->when(!empty($filtros['fecha_hasta']), fn ($q) => $q->whereDate('rme.rme_fecha_captura', '<=', $filtros['fecha_hasta']))
             ->when(!empty($filtros['buscar']), function ($q) use ($filtros): void {
@@ -1080,6 +1108,17 @@ class InventarioBaseService
                                 ->from('tbl_proveedores_prv as prvx')
                                 ->whereColumn('prvx.prv_id', 'rme.rme_prv_id')
                                 ->where('prvx.prv_nombre_empresa', 'like', "%{$buscar}%");
+                        })
+                        ->orWhereExists(function ($exists) use ($buscar): void {
+                            $exists->selectRaw('1')
+                                ->from('tbl_recepcion_mercancia_detalle_rmd as rmdx')
+                                ->join('tbl_producto_skus_psk as pskx', 'pskx.psk_id', '=', 'rmdx.rmd_psk_id')
+                                ->join('tbl_productos_prd as prdx', 'prdx.prd_id', '=', 'pskx.psk_prd_id')
+                                ->join('tbl_marcas_mrc as mrcx', 'mrcx.mrc_id', '=', 'prdx.prd_mrc_id')
+                                ->whereColumn('rmdx.rmd_rme_id', 'rme.rme_id')
+                                ->where('rmdx.rmd_deleted', false)
+                                ->whereNull('rmdx.rmd_deleted_at')
+                                ->where('mrcx.mrc_nombre', 'like', "%{$buscar}%");
                         });
                 });
             });
@@ -1099,8 +1138,19 @@ class InventarioBaseService
             ->whereNull('rmd_deleted_at')
             ->groupBy('rmd_rme_id');
 
+        $marcasSub = DB::table('tbl_recepcion_mercancia_detalle_rmd as rmd')
+            ->join('tbl_producto_skus_psk as psk', 'psk.psk_id', '=', 'rmd.rmd_psk_id')
+            ->join('tbl_productos_prd as prd', 'prd.prd_id', '=', 'psk.psk_prd_id')
+            ->leftJoin('tbl_marcas_mrc as mrc', 'mrc.mrc_id', '=', 'prd.prd_mrc_id')
+            ->selectRaw("rmd.rmd_rme_id, GROUP_CONCAT(DISTINCT mrc.mrc_nombre ORDER BY mrc.mrc_nombre SEPARATOR ', ') as marcas_nombres")
+            ->where('rmd.rmd_deleted', false)
+            ->whereNull('rmd.rmd_deleted_at')
+            ->whereNotNull('mrc.mrc_nombre')
+            ->groupBy('rmd.rmd_rme_id');
+
         $data = $base()
             ->leftJoinSub($detalleSub, 'det', fn ($join) => $join->on('det.rmd_rme_id', '=', 'rme.rme_id'))
+            ->leftJoinSub($marcasSub, 'mar', fn ($join) => $join->on('mar.rmd_rme_id', '=', 'rme.rme_id'))
             ->leftJoin('tbl_sucursales_scl as scl', 'scl.scl_id', '=', 'rme.rme_scl_id')
             ->leftJoin('tbl_almacenes_alm as alm', 'alm.alm_id', '=', 'rme.rme_alm_id')
             ->leftJoin('tbl_proveedores_prv as prv', 'prv.prv_id', '=', 'rme.rme_prv_id')
@@ -1122,6 +1172,7 @@ class InventarioBaseService
                 'rme.rme_cancelacion_motivo',
                 'scl.scl_nombre as sucursal_nombre',
                 'alm.alm_nombre as almacen_nombre',
+                DB::raw("COALESCE(mar.marcas_nombres, '') as marcas_nombres"),
                 'prv.prv_nombre_empresa as proveedor_nombre',
                 'usr_creo.usr_nombre as usuario_creo',
                 'usr_conf.usr_nombre as usuario_confirmo',
@@ -2957,6 +3008,103 @@ class InventarioBaseService
             }
 
             return ['movimientos' => $movimientos];
+        });
+    }
+
+    public function ajustarExistenciasNegativasMasivo(Request $request, array $datos): array
+    {
+        return DB::transaction(function () use ($request, $datos): array {
+            $rowKeys = collect($datos['row_keys'] ?? [])
+                ->filter(fn ($rowKey) => is_string($rowKey) && preg_match('/^\d+:\d+$/', $rowKey) === 1)
+                ->unique()
+                ->values()
+                ->all();
+
+            $seleccionados = count($rowKeys);
+            $motivo = 'Ajuste masivo por existencias negativas a cero';
+            $referencia = 'EXN-CERO-' . now()->format('YmdHis');
+            $filtros = Arr::only($datos, [
+                'prd_id',
+                'prd_mrc_id',
+                'prd_mdl_id',
+                'prd_lna_id',
+                'prd_ctg_id',
+                'prd_dsc_id',
+                'buscar',
+                'min_scl_id',
+                'min_alm_id',
+                'solo_disponibles',
+            ]);
+
+            $objetivos = $this->existenciaMatrizService->listarExistenciasNegativasSeleccionadas($rowKeys, $filtros);
+            $rowKeysEncontrados = $objetivos->pluck('row_key')->filter()->unique()->values();
+            $folios = [];
+            $movimientosIds = [];
+            $rowKeysAjustados = [];
+            $ajustados = 0;
+            $omitidos = 0;
+
+            foreach ($objetivos as $objetivo) {
+                $cantidad = round(abs((float) ($objetivo->existencia_actual ?? 0)), 2);
+
+                if ($cantidad <= 0) {
+                    $omitidos++;
+                    continue;
+                }
+
+                $movimiento = $this->registrarMovimientoInterno(
+                    request: $request,
+                    datos: [
+                        'min_psk_id' => (int) $objetivo->psk_id,
+                        'min_scl_id' => (int) $objetivo->scl_id,
+                        'min_alm_id' => (int) $objetivo->alm_id,
+                        'min_cantidad' => $cantidad,
+                        'min_fecha_movimiento' => now()->toDateTimeString(),
+                        'min_documento_referencia' => $referencia,
+                        'min_motivo_texto' => $motivo,
+                        'min_observaciones' => 'Ajuste generado desde existencias negativas.',
+                    ],
+                    tmiClave: 'inventario.entrada',
+                    documentoTipo: 'ajuste_masivo_negativos_cero',
+                    signo: 1,
+                    movimientoOrigenId: null,
+                    reversaDeId: null,
+                    esReversa: false,
+                );
+
+                $this->auditoriaService->registrarAccion(
+                    $request,
+                    'inventario_base.entrada',
+                    'tbl_movimientos_inventario_min',
+                    (string) $movimiento->min_id,
+                    [
+                        'min_folio' => $movimiento->min_folio,
+                        'min_psk_id' => $movimiento->min_psk_id,
+                        'min_scl_id' => $movimiento->min_scl_id,
+                        'min_alm_id' => $movimiento->min_alm_id,
+                        'min_cantidad' => $movimiento->min_cantidad,
+                        'min_documento_tipo' => $movimiento->min_documento_tipo,
+                        'accion_origen' => 'existencias_negativas_cero_masivo',
+                    ]
+                );
+
+                $ajustados++;
+                $folios[] = $movimiento->min_folio;
+                $movimientosIds[] = (int) $movimiento->min_id;
+                $rowKeysAjustados[] = (string) $objetivo->row_key;
+            }
+
+            return [
+                'selected_rows' => $seleccionados,
+                'matched_rows' => $rowKeysEncontrados->count(),
+                'adjusted_rows' => collect($rowKeysAjustados)->unique()->count(),
+                'omitted_rows' => max(0, $seleccionados - $rowKeysEncontrados->count()),
+                'adjusted_records' => $ajustados,
+                'omitted_records' => $omitidos,
+                'movement_ids' => $movimientosIds,
+                'folios' => $folios,
+                'motivo' => $motivo,
+            ];
         });
     }
 
