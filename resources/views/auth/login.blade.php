@@ -15,9 +15,6 @@
     <title>Inicio de sesión | {{ config('app.name', 'La iSuriana Retail') }}</title>
 
     <link rel="icon" type="image/x-icon" href="{{ $templateAssetBase }}/img/favicon/favicon.ico" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
     <link rel="stylesheet" href="{{ $templateAssetBase }}/vendor/fonts/iconify-icons.css" />
     <link rel="stylesheet" href="{{ $templateAssetBase }}/vendor/libs/node-waves/node-waves.css" />
@@ -30,6 +27,191 @@
     <script src="{{ $templateAssetBase }}/vendor/js/helpers.js"></script>
     <script src="{{ $templateAssetBase }}/js/config.js"></script>
     <style>
+        :root {
+            --ls-bg: #f5f7fa;
+            --ls-surface: rgba(255, 255, 255, 0.92);
+            --ls-surface-solid: #ffffff;
+            --ls-surface-muted: #f3f6f9;
+            --ls-panel: linear-gradient(180deg, rgba(255,255,255,.9) 0%, rgba(245,248,252,.94) 100%);
+            --ls-stroke: #e4e8ee;
+            --ls-stroke-strong: #d8dfe8;
+            --ls-text: #1b1f23;
+            --ls-text-2: #5a6472;
+            --ls-text-3: #8b93a1;
+            --ls-brand: #0f6cbd;
+            --ls-brand-hover: #115ea3;
+            --ls-brand-soft: #eff6fc;
+            --ls-brand-soft-2: #dcecfb;
+            --ls-shadow-card: 0 18px 50px rgba(16, 24, 40, 0.12), 0 2px 10px rgba(16, 24, 40, 0.06);
+            --ls-shadow-soft: 0 1px 3px rgba(16, 24, 40, 0.06);
+            --ls-radius-sm: 6px;
+            --ls-radius-md: 10px;
+            --ls-radius-lg: 16px;
+            --ls-radius-xl: 24px;
+            --ls-font: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body { height: 100%; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: var(--ls-font);
+            color: var(--ls-text);
+            background:
+                radial-gradient(circle at top left, rgba(15, 108, 189, 0.1), transparent 28%),
+                radial-gradient(circle at bottom right, rgba(89, 173, 255, 0.12), transparent 26%),
+                linear-gradient(180deg, #f8fafc 0%, #f3f6fa 100%);
+        }
+
+        .login-layout {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+        }
+
+        .login-brand {
+            display: inline-flex;
+            align-items: center;
+            gap: .8rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .login-brand__icon {
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #0f6cbd 0%, #1452a3 100%);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 1.15rem;
+            box-shadow: 0 8px 20px rgba(15, 108, 189, 0.25);
+        }
+
+        .login-brand__name {
+            font-size: 1rem;
+            font-weight: 600;
+            letter-spacing: -.01em;
+            color: var(--ls-text);
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 430px;
+            padding: 2rem 2rem 1.6rem;
+            border-radius: var(--ls-radius-xl);
+            border: 1px solid rgba(255,255,255,.72);
+            background: var(--ls-panel);
+            box-shadow: var(--ls-shadow-card);
+            backdrop-filter: blur(24px);
+        }
+
+        .login-card__head {
+            margin-bottom: 1.5rem;
+        }
+
+        .login-card__title {
+            font-size: 1.9rem;
+            font-weight: 700;
+            line-height: 1.1;
+            letter-spacing: -.03em;
+            color: #12304b;
+            margin: 0 0 .55rem;
+        }
+
+        .login-card__sub {
+            font-size: .94rem;
+            line-height: 1.6;
+            color: var(--ls-text-2);
+            margin: 0;
+        }
+
+        .login-card .form-label {
+            font-size: .8rem;
+            font-weight: 600;
+            color: var(--ls-text-2);
+            margin-bottom: .5rem;
+        }
+
+        .login-card .form-control {
+            min-height: 46px;
+            padding: .78rem .92rem;
+            border: 1px solid var(--ls-stroke);
+            border-radius: var(--ls-radius-md);
+            background: rgba(255,255,255,.9);
+            color: var(--ls-text);
+            font-size: .93rem;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.85);
+            transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+        }
+
+        .login-card .form-control::placeholder {
+            color: #8f98a7;
+        }
+
+        .login-card .form-control:focus {
+            border-color: var(--ls-brand);
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(15, 108, 189, 0.14);
+            outline: none;
+        }
+
+        .login-card .form-hint {
+            font-size: .76rem;
+            color: var(--ls-text-3);
+            margin: .45rem 0 0;
+        }
+
+        .login-actions {
+            margin-top: 1.35rem;
+        }
+
+        .login-btn {
+            width: 100%;
+            min-height: 46px;
+            border: none;
+            border-radius: var(--ls-radius-md);
+            background: linear-gradient(180deg, #0f6cbd 0%, #115ea3 100%);
+            color: #fff;
+            font-size: .94rem;
+            font-weight: 600;
+            letter-spacing: -.01em;
+            box-shadow: 0 10px 18px rgba(15, 108, 189, 0.24);
+            transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+            cursor: pointer;
+        }
+
+        .login-btn:hover {
+            background: linear-gradient(180deg, #115ea3 0%, #0f548c 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 14px 22px rgba(15, 108, 189, 0.26);
+        }
+
+        .login-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-top: 1.3rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(216, 223, 232, 0.9);
+            font-size: .78rem;
+            color: var(--ls-text-3);
+        }
+
+        .login-footer {
+            margin-top: 1rem;
+            text-align: center;
+            font-size: .78rem;
+            color: var(--ls-text-3);
+        }
+
         #messageModal .modal-content {
             border: 0;
             border-radius: 1rem;
@@ -134,6 +316,32 @@
             opacity: 1;
         }
 
+        @media (max-width: 1080px) {
+            .login-layout {
+                padding: 1.25rem;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .login-layout {
+                padding: .9rem;
+            }
+
+            .login-card {
+                padding: 1.4rem;
+                border-radius: 22px;
+            }
+
+            .login-card__title {
+                font-size: 1.65rem;
+            }
+
+            .login-meta {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+
         @media (max-width: 575.98px) {
             .app-message-actions {
                 justify-content: stretch;
@@ -163,154 +371,27 @@
             .app-message-shell {
                 animation: none;
             }
+
+            .login-btn {
+                transition: none;
+            }
         }
     </style>
 </head>
-<style>
-    :root {
-        --ls-accent: #635bff;
-        --ls-accent-hover: #4f46e5;
-        --ls-text-primary: #0a2540;
-        --ls-text-secondary: #425466;
-        --ls-text-muted: #6b7c93;
-        --ls-border: #e6ebf1;
-        --ls-surface: #ffffff;
-        --ls-surface-2: #f6f9fc;
-        --ls-radius: .5rem;
-        --ls-radius-lg: .75rem;
-        --ls-radius-xl: 1rem;
-        --ls-shadow-sm: 0 1px 3px rgba(10,37,64,.06), 0 1px 2px rgba(10,37,64,.04);
-        --ls-shadow-lg: 0 8px 24px rgba(10,37,64,.10), 0 1px 3px rgba(10,37,64,.06);
-    }
-
-    html, body { height: 100%; }
-
-    body {
-        background: var(--ls-surface-2);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 100vh;
-    }
-
-    .login-shell {
-        width: 100%;
-        max-width: 420px;
-        padding: 1.5rem;
-    }
-
-    .login-brand {
-        display: flex;
-        align-items: center;
-        gap: .6rem;
-        justify-content: center;
-        margin-bottom: 2rem;
-    }
-
-    .login-brand__icon {
-        width: 2.4rem;
-        height: 2.4rem;
-        border-radius: .6rem;
-        background: var(--ls-accent);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #fff;
-        font-size: 1.15rem;
-    }
-
-    .login-brand__name {
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: var(--ls-text-primary);
-        letter-spacing: -.01em;
-    }
-
-    .login-card {
-        background: var(--ls-surface);
-        border: 1px solid var(--ls-border);
-        border-radius: var(--ls-radius-xl);
-        box-shadow: var(--ls-shadow-lg);
-        padding: 2rem 2.25rem;
-    }
-
-    .login-card__title {
-        font-size: 1.35rem;
-        font-weight: 700;
-        color: var(--ls-text-primary);
-        margin: 0 0 .3rem;
-    }
-
-    .login-card__sub {
-        font-size: .9rem;
-        color: var(--ls-text-muted);
-        margin: 0 0 1.75rem;
-    }
-
-    .login-card .form-label {
-        font-size: .8rem;
-        font-weight: 600;
-        color: var(--ls-text-secondary);
-        margin-bottom: .35rem;
-    }
-
-    .login-card .form-control {
-        font-size: .9rem;
-        border: 1px solid var(--ls-border);
-        border-radius: var(--ls-radius);
-        color: var(--ls-text-primary);
-        box-shadow: 0 1px 2px rgba(10,37,64,.04);
-        transition: border-color .15s, box-shadow .15s;
-    }
-
-    .login-card .form-control:focus {
-        border-color: var(--ls-accent);
-        box-shadow: 0 0 0 3px rgba(99,91,255,.12);
-        outline: none;
-    }
-
-    .login-card .form-hint {
-        font-size: .74rem;
-        color: var(--ls-text-muted);
-        margin: .3rem 0 0;
-    }
-
-    .login-btn {
-        width: 100%;
-        padding: .65rem;
-        font-size: .9rem;
-        font-weight: 700;
-        border-radius: var(--ls-radius);
-        background: var(--ls-accent);
-        border: none;
-        color: #fff;
-        cursor: pointer;
-        transition: background .15s;
-        margin-top: .25rem;
-    }
-
-    .login-btn:hover { background: var(--ls-accent-hover); }
-
-    .login-footer {
-        text-align: center;
-        margin-top: 1.5rem;
-        font-size: .78rem;
-        color: var(--ls-text-muted);
-    }
-</style>
 <body>
-<div class="login-shell">
-
-    <div class="login-brand">
-        <div class="login-brand__icon">
-            <i class="ti tabler-building-store"></i>
-        </div>
-        <span class="login-brand__name">La iSuriana Retail</span>
-    </div>
-
+<div class="login-layout">
     <div class="login-card">
-        <h1 class="login-card__title">Iniciar sesión</h1>
-        <p class="login-card__sub">Ingresa con tu usuario y contraseña para continuar.</p>
+        <div class="login-brand">
+            <div class="login-brand__icon">
+                <i class="ti tabler-building-store"></i>
+            </div>
+            <span class="login-brand__name">La iSuriana Retail</span>
+        </div>
+
+        <div class="login-card__head">
+            <h1 class="login-card__title">Iniciar sesión</h1>
+            <p class="login-card__sub">Ingresa con tu usuario y contraseña.</p>
+        </div>
 
         <form id="login-form">
             <div class="mb-4">
@@ -321,7 +402,7 @@
                     id="usuario"
                     name="usuario"
                     list="usuarios_sugeridos"
-                    placeholder="Escribe tu usuario…"
+                    placeholder="Escribe tu usuario..."
                     autocomplete="off"
                     required
                     autofocus
@@ -330,7 +411,7 @@
                 <p class="form-hint">Escribe al menos 2 caracteres para buscar.</p>
             </div>
 
-            <div class="mb-4">
+            <div class="mb-3">
                 <label for="password" class="form-label">Contraseña</label>
                 <input
                     type="password"
@@ -342,14 +423,19 @@
                 />
             </div>
 
-            <button class="login-btn" type="submit">Entrar al sistema</button>
+            <div class="login-actions">
+                <button class="login-btn" type="submit">Entrar al sistema</button>
+            </div>
         </form>
-    </div>
 
-    <div class="login-footer">
-        Sistema de gestión retail &mdash; {{ now()->year }}
-    </div>
+        <div class="login-meta">
+            <span>{{ now()->format('Y') }}</span>
+        </div>
 
+        <div class="login-footer">
+            Sistema de gestión retail
+        </div>
+    </div>
 </div>
 
 <div class="modal fade" id="messageModal" tabindex="-1" aria-hidden="true">

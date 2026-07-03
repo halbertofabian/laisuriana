@@ -30,7 +30,7 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Inicio de sesión exitoso.',
-            'redirect' => route('dashboard'),
+            'redirect' => route('desktop.dashboard'),
         ]);
     }
 

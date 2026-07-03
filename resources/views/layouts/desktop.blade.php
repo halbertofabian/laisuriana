@@ -1,6 +1,7 @@
 @php($templateAssetBase = asset('vendor-template/assets'))
 @php($desktopUser = auth()->user())
 @php($desktopInitials = collect(explode(' ', trim($desktopUser?->usr_nombre ?? 'La Suriana')))->filter()->take(2)->map(fn ($p) => mb_substr($p, 0, 1))->implode(''))
+@php($desktopProfile = $desktopUser?->roles()->orderBy('rol_nombre')->value('rol_nombre') ?? 'Usuario')
 <!doctype html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
@@ -222,6 +223,86 @@
             width: 3px; border-radius: 0 3px 3px 0; background: var(--brand);
         }
         .nav-item.is-disabled { color: var(--text-3); cursor: default; pointer-events: none; }
+
+        .nav-user {
+            margin-top: auto;
+            padding: 10px 6px 0;
+        }
+        .nav-user__card {
+            border: 1px solid var(--stroke);
+            border-radius: var(--r-lg);
+            background: var(--surface);
+            box-shadow: var(--shadow-2);
+            padding: 10px;
+        }
+        .nav-user__head {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            min-width: 0;
+        }
+        .nav-user__avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex: none;
+            font-size: .74rem;
+            font-weight: 700;
+            color: #fff;
+            background: linear-gradient(135deg, #2b7de0, #1452a3);
+        }
+        .nav-user__meta {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .nav-user__name {
+            font-size: .8rem;
+            font-weight: 600;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .nav-user__role {
+            font-size: .72rem;
+            color: var(--text-3);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .nav-user__actions {
+            margin-top: 10px;
+        }
+        .nav-user__logout {
+            width: 100%;
+            justify-content: flex-start;
+        }
+        .nav-user__logout svg {
+            width: 16px;
+            height: 16px;
+        }
+        .app.is-rail .nav-user__card {
+            padding: 8px 4px;
+        }
+        .app.is-rail .nav-user__meta,
+        .app.is-rail .nav-user__logout span {
+            display: none;
+        }
+        .app.is-rail .nav-user__head,
+        .app.is-rail .nav-user__actions {
+            justify-content: center;
+        }
+        .app.is-rail .nav-user__logout {
+            width: 32px;
+            min-width: 32px;
+            padding: 0;
+            justify-content: center;
+        }
 
         /* Main */
         .app__main {
@@ -767,6 +848,27 @@
                     <span class="nav-item__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg></span>
                     <span class="nav-item__label">Reportes</span>
                 </a>
+            </div>
+
+            <div class="nav-user">
+                <div class="nav-user__card">
+                    <div class="nav-user__head">
+                        <span class="nav-user__avatar" title="{{ $desktopUser?->usr_nombre }}">{{ strtoupper($desktopInitials) }}</span>
+                        <div class="nav-user__meta">
+                            <span class="nav-user__name">{{ $desktopUser?->usr_nombre ?? 'Sin usuario' }}</span>
+                            <span class="nav-user__role">{{ $desktopProfile }}</span>
+                        </div>
+                    </div>
+                    <div class="nav-user__actions">
+                        <form method="POST" action="{{ route('logout') }}">
+                            @csrf
+                            <button type="submit" class="desktop-btn desktop-btn--danger nav-user__logout" title="Salir">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+                                <span>Salir</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
             </div>
         </nav>
 

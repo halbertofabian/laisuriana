@@ -26,7 +26,7 @@ use Illuminate\Support\Facades\Route;
 Route::pattern('tipo', 'marcas|lineas|categorias|descripciones|unidades|conceptos|motivos');
 
 Route::get('/', function () {
-    return auth()->check() ? redirect()->route('dashboard') : redirect()->route('login');
+    return auth()->check() ? redirect()->route('desktop.dashboard') : redirect()->route('login');
 });
 
 Route::middleware('guest')->group(function () {
