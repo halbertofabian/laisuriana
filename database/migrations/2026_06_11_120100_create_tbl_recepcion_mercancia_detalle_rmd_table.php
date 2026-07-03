@@ -27,6 +27,11 @@ return new class extends Migration
             });
         }
 
+        $driver = DB::getDriverName();
+        if ($driver === 'sqlite') {
+            return;
+        }
+
         $schema = DB::getDatabaseName();
         $hasIndex = function (string $indexName) use ($schema): bool {
             return DB::table('information_schema.statistics')

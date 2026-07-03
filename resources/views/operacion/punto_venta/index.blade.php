@@ -340,6 +340,136 @@
         @media (max-width: 900px) {
             .cash-summary__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         }
+        .pos-cambio-banner {
+            margin: .8rem 0 1rem;
+            padding: 1rem 1.25rem;
+            border: 1px solid #f2d6a2;
+            border-radius: 6px;
+            background: #fffaf2;
+            box-shadow: none;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: center;
+            column-gap: 1.25rem;
+            row-gap: .65rem;
+        }
+        .pos-cambio-banner__main {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: .28rem;
+        }
+        .pos-cambio-banner__top {
+            display: flex;
+            align-items: baseline;
+            gap: .7rem;
+            flex-wrap: wrap;
+        }
+        .pos-cambio-banner__title {
+            font-size: .96rem;
+            font-weight: 800;
+            color: #8a4b15;
+            letter-spacing: -.01em;
+        }
+        .pos-cambio-banner__hint {
+            font-size: .8rem;
+            color: #8b5e34;
+            line-height: 1.45;
+        }
+        .pos-cambio-status {
+            color: #c2410c;
+            font-size: .78rem;
+            font-weight: 800;
+            line-height: 1.4;
+        }
+        .pos-cambio-banner__meta {
+            font-size: .84rem;
+            color: #8a4b15;
+            line-height: 1.45;
+        }
+        .pos-cambio-banner__meta strong {
+            color: #7c2d12;
+            font-weight: 800;
+        }
+        .pos-cambio-banner__action {
+            flex-shrink: 0;
+            align-self: start;
+        }
+        .pos-cambio-banner__action .pos-btn {
+            background: #fff;
+            border-color: #d9e3f2;
+            color: #526581;
+            border-radius: 6px;
+            padding-inline: .9rem;
+            min-height: 36px;
+            box-shadow: none;
+        }
+        @media (max-width: 900px) {
+            .pos-cambio-banner {
+                grid-template-columns: 1fr;
+            }
+            .pos-cambio-banner__action {
+                align-self: flex-start;
+            }
+        }
+        .pay-change-summary {
+            margin-top: 1rem;
+            padding: 1.15rem 1.2rem 1.05rem;
+            border: 1px solid #f7d7b5;
+            border-radius: 20px;
+            background: linear-gradient(180deg, #fffdf8 0%, #fff6ea 100%);
+            box-shadow: 0 10px 22px rgba(190, 124, 42, .08);
+        }
+        .pay-change-summary__title {
+            font-size: .8rem;
+            font-weight: 800;
+            color: #9a3412;
+            letter-spacing: .02em;
+            text-transform: uppercase;
+            margin-bottom: .9rem;
+        }
+        .pay-change-summary__rows {
+            display: grid;
+            gap: .7rem;
+        }
+        .pay-change-summary__row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 1rem;
+            font-size: .84rem;
+            color: #7c2d12;
+        }
+        .pay-change-summary__row span:first-child {
+            color: #8b5e34;
+        }
+        .pay-change-summary__row strong {
+            font-size: .95rem;
+            font-weight: 800;
+            color: #7c2d12;
+        }
+        .pay-change-summary__divider {
+            margin: .85rem 0;
+            border-top: 1px dashed #f7b267;
+        }
+        .pay-change-summary__total {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 1rem;
+            font-size: 1rem;
+            color: #9a3412;
+        }
+        .pay-change-summary__total strong {
+            font-size: 1.1rem;
+            font-weight: 900;
+        }
+        .pay-change-summary__copy {
+            margin-top: .8rem;
+            font-size: .76rem;
+            line-height: 1.45;
+            color: #8b5e34;
+        }
         /* ── Pay modal shell ────────────────────────────────────── */
         .pay-modal__card {
             width: min(1060px, 94vw);
@@ -1298,6 +1428,25 @@
                 </button>
             </div>
 
+            <div x-cloak x-show="cambioActivo" class="pos-cambio-banner">
+                <div class="pos-cambio-banner__main">
+                    <div class="pos-cambio-banner__top">
+                        <span class="pos-cambio-banner__title">Cambio en proceso</span>
+                        <span x-show="cambioInvalidoMenorValor" class="pos-cambio-status">Falta completar el importe para continuar.</span>
+                    </div>
+                    <div class="pos-cambio-banner__meta">
+                        Referencia <strong x-text="cambioActual?.psv_folio || 'N/D'"></strong>
+                        · Disponible <strong x-text="fmt(creditoCambio)"></strong>
+                    </div>
+                    <div class="pos-cambio-banner__hint">
+                        Elige tus nuevos artículos para aplicar este saldo.
+                    </div>
+                </div>
+                <div class="pos-cambio-banner__action">
+                    <button class="pos-btn pos-btn--ghost pos-btn--sm" @click="cancelarCambioActual()">Quitar cambio</button>
+                </div>
+            </div>
+
             {{-- Ticket table --}}
             <div class="pos-ticket-wrap">
                 <table class="pos-ticket-table">
@@ -1415,9 +1564,23 @@
 
             {{-- Total --}}
             <div class="pos-total-block">
-                <div class="pos-total-block__lbl">Total</div>
+                <div class="pos-total-block__lbl" x-text="cambioActivo ? 'Diferencia a pagar' : 'Total'"></div>
                 <div class="pos-total-block__amount">
                     <span>$</span><span x-text="fmtNum(total)"></span>
+                </div>
+            </div>
+
+            <div class="pos-panel__block" x-cloak x-show="cambioActivo">
+                <div class="pos-panel__row">
+                    <span class="pos-panel__lbl">Nuevo carrito</span>
+                    <span class="pos-panel__val" x-text="fmt(subtotal - descuento)"></span>
+                </div>
+                <div class="pos-panel__row">
+                    <span class="pos-panel__lbl">Crédito aplicado</span>
+                    <span class="pos-panel__val pos-panel__val--danger" x-text="'-' + fmt(creditoCambio)"></span>
+                </div>
+                <div style="font-size:.76rem;color:var(--ls-text-muted);line-height:1.35;margin-top:.45rem;">
+                    Estás cobrando únicamente la diferencia entre el nuevo carrito y la mercancía devuelta.
                 </div>
             </div>
 
@@ -1426,20 +1589,6 @@
                 <div class="pos-panel__row">
                     <span class="pos-panel__lbl">Pagado</span>
                     <span class="pos-panel__val pos-panel__val--muted" x-text="fmt(pagado)"></span>
-                </div>
-            </div>
-
-            {{-- Cambio + IVA --}}
-            <div class="pos-panel__block">
-                <div class="pos-panel__row">
-                    <span class="pos-panel__lbl">Cambio</span>
-                    <span class="pos-panel__val"
-                          :class="cambio > 0 ? 'pos-panel__val--danger' : ''"
-                          x-text="fmt(cambio)"></span>
-                </div>
-                <div class="pos-panel__row">
-                    <span class="pos-panel__lbl">IVA</span>
-                    <span class="pos-panel__val pos-panel__val--muted" x-text="fmt(iva)"></span>
                 </div>
             </div>
 
@@ -1508,7 +1657,7 @@
             </button>
             <button class="pos-btn pos-btn--ghost" @click="devolucion()">
                 <span class="kbd">F8</span>
-                Devolución
+                Cambio
             </button>
             <button class="pos-btn pos-btn--ghost" @click="buscarTicket()">
                 <span class="kbd">F9</span>
@@ -1601,6 +1750,19 @@
         </div>
     </div>
 
+    <div x-cloak x-show="mostrarModalAviso" class="variant-modal" @keydown.escape.window="cerrarModalAviso()">
+        <div class="variant-modal__card" style="max-width:520px;">
+            <div class="variant-modal__head" style="display:flex;justify-content:space-between;align-items:center;gap:.75rem;">
+                <span x-text="modalAvisoTitulo || 'Aviso'"></span>
+                <button type="button" class="pos-btn pos-btn--ghost pos-btn--sm" @click="cerrarModalAviso()">Cerrar</button>
+            </div>
+            <div style="padding:1rem 1rem .85rem;font-size:.88rem;line-height:1.5;color:var(--ls-text-secondary);" x-text="modalAvisoMensaje"></div>
+            <div style="padding:0 1rem 1rem;display:flex;justify-content:flex-end;">
+                <button type="button" class="pos-btn pos-btn--success-outline" @click="cerrarModalAviso()">Entendido</button>
+            </div>
+        </div>
+    </div>
+
     <div x-cloak x-show="mostrarModalTickets" class="variant-modal">
         <div class="variant-modal__card" style="max-width:760px;">
             <div class="variant-modal__head">Tickets del día</div>
@@ -1621,10 +1783,16 @@
                             <div>
                                 <div style="font-weight:700;font-size:.82rem;" x-text="v.psv_folio"></div>
                                 <div style="font-size:.74rem;color:var(--ls-text-muted);" x-text="`${v.psv_fecha_cobro || ''} · ${v.psv_metodo_pago || ''}`"></div>
+                                <div style="font-size:.72rem;color:var(--ls-text-muted);" x-text="`${etiquetaOperacion(v.psv_tipo_operacion)} · ${etiquetaEstatus(v.psv_estatus)}`"></div>
                             </div>
-                            <div style="display:flex;align-items:center;gap:.55rem;">
+                            <div style="display:flex;align-items:center;gap:.45rem;flex-wrap:wrap;justify-content:flex-end;">
                                 <span style="font-weight:700;font-size:.82rem;" x-text="fmt(v.psv_total)"></span>
                                 <button class="pos-btn pos-btn--ghost" @click="abrirTicketVenta(v.psv_id)">Imprimir</button>
+                                <button
+                                    x-show="puedeRegistrarCambio && v.psv_estatus !== 'cancelada' && v.psv_tipo_operacion === 'venta'"
+                                    class="pos-btn pos-btn--ghost"
+                                    @click="abrirCambioDesdeVenta(v.psv_id)"
+                                >Cambio</button>
                             </div>
                         </div>
                     </template>
@@ -1632,6 +1800,117 @@
             </div>
             <div style="padding:.7rem .9rem;display:flex;justify-content:flex-end;">
                 <button class="pos-btn pos-btn--ghost" @click="mostrarModalTickets = false">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <div x-cloak x-show="mostrarModalCambio" class="variant-modal">
+        <div class="variant-modal__card" style="max-width:920px;">
+            <div class="variant-modal__head" style="display:flex;justify-content:space-between;align-items:center;gap:.75rem;">
+                <span>Cambio / devolución sin reembolso</span>
+                <button class="pos-btn pos-btn--ghost pos-btn--sm" @click="cerrarModalCambio()">Cerrar</button>
+            </div>
+            <div style="padding:1rem;">
+                <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.85rem;">
+                    <input
+                        type="text"
+                        class="pos-input"
+                        x-model="folioCambioBuscar"
+                        @keydown.enter.prevent="buscarVentaCambioPorFolio()"
+                        placeholder="Captura el folio de la venta original"
+                    />
+                    <button class="pos-btn pos-btn--ghost" @click="buscarVentaCambioPorFolio()" :disabled="cargandoVentaCambio">Buscar</button>
+                </div>
+                <template x-if="mensajeCambio">
+                    <div style="font-size:.78rem;color:#b42318;margin-bottom:.7rem;" x-text="mensajeCambio"></div>
+                </template>
+                <template x-if="ventaCambioPreview">
+                    <div>
+                        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.75rem;margin-bottom:.9rem;">
+                            <div style="padding:.7rem;border:1px solid var(--ls-border);border-radius:.7rem;background:#fff;">
+                                <div style="font-size:.72rem;color:var(--ls-text-muted);">Folio</div>
+                                <div style="font-size:.86rem;font-weight:700;" x-text="ventaCambioPreview.psv_folio"></div>
+                            </div>
+                            <div style="padding:.7rem;border:1px solid var(--ls-border);border-radius:.7rem;background:#fff;">
+                                <div style="font-size:.72rem;color:var(--ls-text-muted);">Cliente</div>
+                                <div style="font-size:.86rem;font-weight:700;" x-text="ventaCambioPreview.cliente_nombre"></div>
+                            </div>
+                            <div style="padding:.7rem;border:1px solid var(--ls-border);border-radius:.7rem;background:#fff;">
+                                <div style="font-size:.72rem;color:var(--ls-text-muted);">Tipo</div>
+                                <div style="font-size:.86rem;font-weight:700;" x-text="etiquetaOperacion(ventaCambioPreview.psv_tipo_operacion)"></div>
+                            </div>
+                            <div style="padding:.7rem;border:1px solid var(--ls-border);border-radius:.7rem;background:#fff;">
+                                <div style="font-size:.72rem;color:var(--ls-text-muted);">Estatus</div>
+                                <div style="font-size:.86rem;font-weight:700;" x-text="etiquetaEstatus(ventaCambioPreview.psv_estatus)"></div>
+                            </div>
+                        </div>
+                        <div style="max-height:320px;overflow:auto;border:1px solid var(--ls-border);border-radius:.75rem;background:#fff;">
+                            <table class="pos-ticket-table" style="min-width:100%;">
+                                <thead>
+                                    <tr>
+                                        <th style="padding-left:.8rem;">Producto</th>
+                                        <th>Disponible</th>
+                                        <th>Precio</th>
+                                        <th>Devolver</th>
+                                        <th>Condición</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template x-for="detalle in ventaCambioPreview.detalle" :key="detalle.pvd_id">
+                                        <tr>
+                                            <td style="padding-left:.8rem;">
+                                                <div style="font-weight:700;font-size:.78rem;" x-text="detalle.sku_nombre || detalle.psk_codigo"></div>
+                                                <div style="font-size:.72rem;color:var(--ls-text-muted);" x-text="detalle.psk_codigo"></div>
+                                            </td>
+                                            <td x-text="fmtNum(detalle.cantidad_disponible)"></td>
+                                            <td x-text="fmt(detalle.precio_unitario)"></td>
+                                            <td>
+                                                <div class="pos-ticket__qty-wrap" style="justify-content:center;">
+                                                    <button
+                                                        type="button"
+                                                        class="pos-ticket__qty-btn"
+                                                        @click="decCantidadCambio(detalle)"
+                                                    >
+                                                        <i class="ti tabler-minus"></i>
+                                                    </button>
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        step="0.01"
+                                                        class="pos-ticket__qty-input"
+                                                        x-model="detalle.devolver_cantidad"
+                                                        @input="normalizarCantidadCambio(detalle)"
+                                                        :max="detalle.cantidad_disponible"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        class="pos-ticket__qty-btn"
+                                                        @click="incCantidadCambio(detalle)"
+                                                    >
+                                                        <i class="ti tabler-plus"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <select class="pos-input" x-model="detalle.condicion" style="min-width:140px;">
+                                                    <option value="reventa">Reventa</option>
+                                                    <option value="revision">Revisión</option>
+                                                </select>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;gap:.75rem;margin-top:.9rem;">
+                            <div style="font-size:.8rem;color:var(--ls-text-muted);">
+                                Crédito calculado:
+                                <strong style="color:var(--ls-text);" x-text="fmt(creditoCambioPreview())"></strong>
+                            </div>
+                            <button class="pos-btn pos-btn--cobrar" @click="activarCambioDesdePreview()">Usar este cambio en el carrito</button>
+                        </div>
+                    </div>
+                </template>
             </div>
         </div>
     </div>
@@ -1718,6 +1997,34 @@
                     <div class="pay-total-card">
                         <p class="pay-total-label">Total a cobrar</p>
                         <div class="pay-total-amount" x-text="fmt(total)"></div>
+                    </div>
+
+                    <div
+                        x-cloak
+                        x-show="cambioActivo"
+                        class="pay-change-summary"
+                    >
+                        <div class="pay-change-summary__title">
+                            Resumen
+                        </div>
+                        <div class="pay-change-summary__rows">
+                            <div class="pay-change-summary__row">
+                                <span>Selección</span>
+                                <strong x-text="fmt(subtotal - descuento)"></strong>
+                            </div>
+                            <div class="pay-change-summary__row">
+                                <span>Saldo a favor</span>
+                                <strong x-text="'-' + fmt(creditoCambio)"></strong>
+                            </div>
+                        </div>
+                        <div class="pay-change-summary__divider"></div>
+                        <div class="pay-change-summary__total">
+                            <span>Importe final</span>
+                            <strong x-text="fmt(total)"></strong>
+                        </div>
+                        <div class="pay-change-summary__copy">
+                            Se aplicó tu saldo disponible a esta selección.
+                        </div>
                     </div>
 
                     {{-- Payment methods --}}
@@ -2091,10 +2398,15 @@ function posApp() {
     const rutaCrearCliente = '{{ route('operacion.clientes.store') }}';
     const rutaCpBuscarCliente = '{{ route('operacion.clientes.cp.buscar') }}';
     const rutaCobrarVenta = '{{ route('pos.ventas.cobrar') }}';
+    const rutaCambioStore = '{{ route('pos.cambios.store') }}';
     const rutaVentasDia = '{{ route('pos.ventas.dia') }}';
+    const rutaBuscarVentaFolio = '{{ route('pos.ventas.buscar_folio') }}';
     const rutaPedidosPendientes = '{{ route('pos.pedidos.pendientes') }}';
     const rutaTicketVentaBase = '{{ url('/pos/ventas') }}';
+    const rutaCancelarVentaBase = '{{ url('/pos/ventas') }}';
     const puedeCrearCliente = @json($puedeCrearCliente ?? false);
+    const puedeCancelarVenta = @json($puedeCancelarVenta ?? false);
+    const puedeRegistrarCambio = @json($puedeRegistrarCambio ?? false);
     return {
         // ── Config ───────────────────────────────────────────────
         tab:             'ventas',
@@ -2133,15 +2445,26 @@ function posApp() {
         mostrarModalPago: false,
         mostrarModalResumenCaja: false,
         mostrarModalTickets: false,
+        mostrarModalCambio: false,
+        mostrarModalAviso: false,
         mostrarModalDescuentoItem: false,
         puedeCrearCliente: !!puedeCrearCliente,
+        puedeCancelarVenta: !!puedeCancelarVenta,
+        puedeRegistrarCambio: !!puedeRegistrarCambio,
         guardandoClienteNuevo: false,
         cobrandoVenta: false,
         cargandoTickets: false,
+        cargandoVentaCambio: false,
         cpRowsCliente: [],
         pedidoPendienteReemplazo: null,
         ventasDelDia: [],
         filtroTicket: '',
+        folioCambioBuscar: '',
+        ventaCambioPreview: null,
+        mensajeCambio: '',
+        cambioActual: null,
+        modalAvisoTitulo: '',
+        modalAvisoMensaje: '',
         tipoPagoSeleccionado: 'efectivo',
         pagoReferencia: '',
         pagoLineas: [],
@@ -2206,10 +2529,19 @@ function posApp() {
             return this.subtotal * (this.descuentoGlobal / 100);
         },
         get total() {
-            return Math.max(0, this.subtotal - this.descuento);
+            return Math.max(0, this.subtotal - this.descuento - this.creditoCambio);
         },
         get cambio() {
             return Math.max(0, this.pagado - this.total);
+        },
+        get creditoCambio() {
+            return Number(this.cambioActual?.credito_total || 0);
+        },
+        get cambioActivo() {
+            return !!this.cambioActual?.venta_origen_id;
+        },
+        get cambioInvalidoMenorValor() {
+            return this.cambioActivo && (this.subtotal - this.descuento) < this.creditoCambio;
         },
         get totalVentasDia() {
             return (this.ventasDelDia || []).reduce((sum, v) => sum + Number(v.psv_total || 0), 0);
@@ -2785,6 +3117,195 @@ function posApp() {
             await this.cargarVentasDia();
         },
 
+        async buscarVentaCambioPorFolio() {
+            const folio = String(this.folioCambioBuscar || '').trim();
+            if (!folio) {
+                this.mensajeCambio = 'Captura un folio para buscar la venta.';
+                return;
+            }
+
+            this.cargandoVentaCambio = true;
+            this.mensajeCambio = '';
+            this.ventaCambioPreview = null;
+            try {
+                const res = await fetch(`${rutaBuscarVentaFolio}?folio=${encodeURIComponent(folio)}`, {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                const json = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    this.mensajeCambio = json?.message || 'No fue posible consultar la venta.';
+                    return;
+                }
+                const venta = json?.data || null;
+                if (!venta) {
+                    this.mensajeCambio = 'No se encontró la venta solicitada.';
+                    return;
+                }
+                this.ventaCambioPreview = {
+                    ...venta,
+                    detalle: (venta.detalle || []).map((detalle) => ({
+                        ...detalle,
+                        devolver_cantidad: 0,
+                        condicion: 'reventa',
+                    })),
+                };
+            } catch (error) {
+                this.mensajeCambio = 'Error de conexión al consultar la venta.';
+            } finally {
+                this.cargandoVentaCambio = false;
+            }
+        },
+
+        creditoCambioPreview() {
+            if (!this.ventaCambioPreview) return 0;
+            return Number((this.ventaCambioPreview.detalle || []).reduce((sum, detalle) => {
+                const cantidad = Number(detalle.devolver_cantidad || 0);
+                return sum + (cantidad * Number(detalle.precio_unitario || 0));
+            }, 0).toFixed(2));
+        },
+
+        normalizarCantidadCambio(detalle) {
+            const max = Number(detalle.cantidad_disponible || 0);
+            const actual = Math.max(0, Number(detalle.devolver_cantidad || 0));
+            detalle.devolver_cantidad = Number(Math.min(max, actual).toFixed(2));
+        },
+
+        stepCantidadCambio(detalle) {
+            const disponible = Number(detalle?.cantidad_disponible || 0);
+            return Number.isInteger(disponible) ? 1 : 0.01;
+        },
+
+        incCantidadCambio(detalle) {
+            const step = this.stepCantidadCambio(detalle);
+            detalle.devolver_cantidad = Number((Number(detalle.devolver_cantidad || 0) + step).toFixed(2));
+            this.normalizarCantidadCambio(detalle);
+        },
+
+        decCantidadCambio(detalle) {
+            const step = this.stepCantidadCambio(detalle);
+            detalle.devolver_cantidad = Number((Math.max(0, Number(detalle.devolver_cantidad || 0) - step)).toFixed(2));
+            this.normalizarCantidadCambio(detalle);
+        },
+
+        activarCambioDesdePreview() {
+            if (!this.ventaCambioPreview) return;
+            const devoluciones = (this.ventaCambioPreview.detalle || [])
+                .filter((detalle) => Number(detalle.devolver_cantidad || 0) > 0)
+                .map((detalle) => ({
+                    pvd_id: Number(detalle.pvd_id),
+                    psk_id: Number(detalle.psk_id),
+                    sku_nombre: detalle.sku_nombre || '',
+                    cantidad: Number(detalle.devolver_cantidad || 0),
+                    condicion: detalle.condicion || 'reventa',
+                    importe_credito: Number((Number(detalle.devolver_cantidad || 0) * Number(detalle.precio_unitario || 0)).toFixed(2)),
+                }));
+
+            if (!devoluciones.length) {
+                this.mensajeCambio = 'Selecciona al menos una partida para devolver.';
+                return;
+            }
+
+            if (this.items.length > 0 && !confirm('El carrito actual se reemplazará para capturar el nuevo cambio. ¿Deseas continuar?')) {
+                return;
+            }
+
+            this.items = [];
+            this.pedidoCargado = null;
+            this.cambioActual = {
+                venta_origen_id: Number(this.ventaCambioPreview.psv_id),
+                psv_folio: this.ventaCambioPreview.psv_folio,
+                cliente_nombre: this.ventaCambioPreview.cliente_nombre,
+                devoluciones,
+                credito_total: Number(devoluciones.reduce((sum, item) => sum + Number(item.importe_credito || 0), 0).toFixed(2)),
+            };
+            this.mostrarModalCambio = false;
+            this.mensajeCambio = '';
+            this.ventaCambioPreview = null;
+            this.folioCambioBuscar = '';
+            this.$nextTick(() => this.$refs.productoInput?.focus());
+        },
+
+        cancelarCambioActual() {
+            if (!this.cambioActivo) return;
+            if (!confirm('Se quitará el flujo de cambio actual del ticket. ¿Deseas continuar?')) return;
+            this.cambioActual = null;
+        },
+
+        cerrarModalCambio() {
+            this.mostrarModalCambio = false;
+            this.mensajeCambio = '';
+            this.ventaCambioPreview = null;
+            this.folioCambioBuscar = '';
+        },
+
+        async abrirCambioDesdeVenta(ventaId) {
+            this.mostrarModalTickets = false;
+            this.mostrarModalCambio = true;
+            this.cargandoVentaCambio = true;
+            this.mensajeCambio = '';
+            try {
+                const res = await fetch(`${rutaTicketVentaBase}/${ventaId}`, {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                const json = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    this.mensajeCambio = json?.message || 'No fue posible cargar la venta.';
+                    return;
+                }
+                const venta = json?.data || null;
+                if (!venta) {
+                    this.mensajeCambio = 'No se encontró la venta seleccionada.';
+                    return;
+                }
+                this.folioCambioBuscar = venta.psv_folio || '';
+                this.ventaCambioPreview = {
+                    ...venta,
+                    detalle: (venta.detalle || []).map((detalle) => ({
+                        ...detalle,
+                        devolver_cantidad: 0,
+                        condicion: 'reventa',
+                    })),
+                };
+            } catch (error) {
+                this.mensajeCambio = 'Error de conexión al consultar la venta.';
+            } finally {
+                this.cargandoVentaCambio = false;
+            }
+        },
+
+        async cancelarVentaRegistrada(venta) {
+            if (!this.puedeCancelarVenta || !venta?.psv_id) return;
+            const motivo = prompt(`Motivo de cancelación para ${venta.psv_folio}:`);
+            if (motivo === null) return;
+            if (!String(motivo).trim()) {
+                alert('Debes capturar un motivo de cancelación.');
+                return;
+            }
+
+            try {
+                const res = await fetch(`${rutaCancelarVentaBase}/${venta.psv_id}/cancelar`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({ motivo }),
+                });
+                const json = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    const first = Object.values(json?.errors || {})[0];
+                    alert(first ? first[0] : (json?.message || 'No fue posible cancelar la venta.'));
+                    return;
+                }
+                await this.cargarVentasDia();
+                alert(json?.message || 'Venta cancelada correctamente.');
+            } catch (error) {
+                alert('Error de conexión al cancelar la venta.');
+            }
+        },
+
         async cargarPedidosPendientes() {
             this.cargandoPedidosPendientes = true;
             this.pedidoMensaje = '';
@@ -2852,6 +3373,14 @@ function posApp() {
             window.open(`${rutaTicketVentaBase}/${ventaId}/ticket`, '_blank');
         },
 
+        etiquetaOperacion(tipo) {
+            return String(tipo || 'venta') === 'cambio' ? 'Cambio' : 'Venta';
+        },
+
+        etiquetaEstatus(estatus) {
+            return String(estatus || '') === 'cancelada' ? 'Cancelada' : 'Cobrada';
+        },
+
         cerrarModalPedido() {
             this.mostrarModalPedido = false;
             this.pedidoMensaje = '';
@@ -2900,6 +3429,7 @@ function posApp() {
         },
 
         aplicarPedidoEnTicket(pedido, cerrarModalPedido = false) {
+            this.cambioActual = null;
             this.items = (pedido.detalle || []).map((d) => ({
                 pskId: d.ppd_psk_id,
                 origen: 'pedido',
@@ -3215,6 +3745,7 @@ function posApp() {
                 this.items = [];
                 this.notas = '';
                 this.pedidoCargado = null;
+                this.cambioActual = null;
                 this.ventaAlmacenId = '';
                 this.ventaAlmacenNombre = '';
                 this.clienteSeleccionado = null;
@@ -3232,6 +3763,7 @@ function posApp() {
             this.clienteSeleccionado = null;
             this.descuentoGlobal     = 0;
             this.pedidoCargado       = null;
+            this.cambioActual        = null;
             this.ventaAlmacenId      = '';
             this.ventaAlmacenNombre  = '';
             this.aplicarAlmacenPorSesion();
@@ -3258,7 +3790,16 @@ function posApp() {
         ingresoCaja()    { alert('Ingreso a caja — próximamente'); },
         retiroCaja()     { alert('Retiro de caja — próximamente'); },
         gastoCaja()      { alert('Gasto de caja — próximamente'); },
-        devolucion()     { alert('Devolución — próximamente'); },
+        devolucion()     {
+            if (!this.puedeRegistrarCambio) {
+                alert('Tu usuario no tiene permiso para registrar cambios.');
+                return;
+            }
+            this.mostrarModalCambio = true;
+            this.mensajeCambio = '';
+            this.ventaCambioPreview = null;
+            this.folioCambioBuscar = '';
+        },
         corteCaja()      { alert('Corte de caja — próximamente'); },
         async abandonarCaja()  {
             if (!this.sesionActiva) {
@@ -3280,14 +3821,35 @@ function posApp() {
             window.location.href = '{{ route('desktop.dashboard') }}';
         },
         salir()          { window.location.href = '{{ route('desktop.dashboard') }}'; },
+        abrirModalAviso(titulo, mensaje) {
+            this.modalAvisoTitulo = titulo || 'Aviso';
+            this.modalAvisoMensaje = mensaje || '';
+            this.mostrarModalAviso = true;
+        },
+        cerrarModalAviso() {
+            this.mostrarModalAviso = false;
+            this.modalAvisoTitulo = '';
+            this.modalAvisoMensaje = '';
+        },
         async cobrar()         {
             if (!this.items.length) return;
             if (!this.sesionActiva) {
                 this.mostrarModalCaja = true;
                 return;
             }
+            if (this.cambioActivo && this.cambioInvalidoMenorValor) {
+                this.abrirModalAviso(
+                    'Completa la selección del cambio',
+                    'Para continuar, agrega artículos por un valor igual o mayor al saldo disponible de este cambio.'
+                );
+                return;
+            }
             if (!this.ventaAlmacenId) {
                 this.mostrarModalAlmacenVenta = true;
+                return;
+            }
+            if (this.cambioActivo && Number(this.total || 0) === 0) {
+                this.confirmarCobro(true);
                 return;
             }
             this.inicializarPagoModal();
@@ -3425,12 +3987,13 @@ function posApp() {
                     recibido: Number(ln.recibido ?? ln.monto ?? 0),
                 }))
                 .filter((ln) => ln.recibido > 0);
-            if (lineasValidas.length === 0) {
+
+            if (!this.cambioActivo && lineasValidas.length === 0) {
                 alert('Captura al menos un método de pago.');
                 return;
             }
 
-            if (this.totalPagoCapturado < this.total) {
+            if (this.totalPagoCapturado < this.total && !(this.cambioActivo && Number(this.total || 0) === 0)) {
                 alert('El pago no cubre el total.');
                 return;
             }
@@ -3442,17 +4005,16 @@ function posApp() {
                 .filter((ln) => this.metodoTarjeta(ln.metodo))
                 .reduce((s, ln) => s + ln.recibido, 0);
 
-            const metodoPagoBackend = (lineasValidas.length === 1)
+            const metodoPagoBackend = (lineasValidas.length === 0)
+                ? 'sin_pago'
+                : (lineasValidas.length === 1)
                 ? (lineasValidas[0].metodo === 'efectivo' ? 'efectivo' : 'tarjeta')
                 : 'mixto';
 
-            const payload = {
-                almacen_id: Number(this.ventaAlmacenId),
-                cliente_id: this.clienteSeleccionado?.cli_id ? Number(this.clienteSeleccionado.cli_id) : null,
-                pedido_id: this.pedidoCargado?.pdp_id ? Number(this.pedidoCargado.pdp_id) : null,
+            const payloadBase = {
                 notas: [this.notas || '', this.pagoReferencia ? `Ref: ${this.pagoReferencia}` : ''].filter(Boolean).join(' | ') || null,
                 descuento_global: Number(this.descuentoGlobal || 0),
-                metodo_pago: metodoPagoBackend,
+                metodo_pago: (this.cambioActivo && Number(this.total || 0) === 0) ? 'sin_pago' : metodoPagoBackend,
                 monto_efectivo: Number(montoEfectivo || 0),
                 monto_tarjeta: Number(montoTarjeta || 0),
                 items: this.items.map((i) => ({
@@ -3467,10 +4029,27 @@ function posApp() {
                     descuento: i.descuentoTipo === 'porcentaje' ? Number(i.descuento || 0) : 0,
                 })),
             };
+            const payload = this.cambioActivo
+                ? {
+                    ...payloadBase,
+                    almacen_id: Number(this.ventaAlmacenId),
+                    venta_origen_id: Number(this.cambioActual.venta_origen_id),
+                    devoluciones: (this.cambioActual.devoluciones || []).map((d) => ({
+                        pvd_id: Number(d.pvd_id),
+                        cantidad: Number(d.cantidad),
+                        condicion: d.condicion || 'reventa',
+                    })),
+                }
+                : {
+                    ...payloadBase,
+                    almacen_id: Number(this.ventaAlmacenId),
+                    cliente_id: this.clienteSeleccionado?.cli_id ? Number(this.clienteSeleccionado.cli_id) : null,
+                    pedido_id: this.pedidoCargado?.pdp_id ? Number(this.pedidoCargado.pdp_id) : null,
+                };
 
             this.cobrandoVenta = true;
             try {
-                const res = await fetch(rutaCobrarVenta, {
+                const res = await fetch(this.cambioActivo ? rutaCambioStore : rutaCobrarVenta, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

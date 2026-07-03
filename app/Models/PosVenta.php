@@ -28,9 +28,12 @@ class PosVenta extends Model
         'psv_usr_id',
         'psv_cli_id',
         'psv_pdp_id',
+        'psv_tipo_operacion',
+        'psv_venta_origen_id',
         'psv_estatus',
         'psv_subtotal',
         'psv_descuento',
+        'psv_credito_cambio',
         'psv_total',
         'psv_metodo_pago',
         'psv_pago_detalle',
@@ -38,6 +41,9 @@ class PosVenta extends Model
         'psv_cambio',
         'psv_notas',
         'psv_fecha_cobro',
+        'psv_cancelado_at',
+        'psv_cancelado_by_usr_id',
+        'psv_cancelacion_motivo',
         'psv_created_by_usr_id',
         'psv_updated_by_usr_id',
     ];
@@ -47,11 +53,13 @@ class PosVenta extends Model
         return [
             'psv_subtotal' => 'decimal:2',
             'psv_descuento' => 'decimal:2',
+            'psv_credito_cambio' => 'decimal:2',
             'psv_total' => 'decimal:2',
             'psv_pago_detalle' => 'array',
             'psv_pagado' => 'decimal:2',
             'psv_cambio' => 'decimal:2',
             'psv_fecha_cobro' => 'datetime',
+            'psv_cancelado_at' => 'datetime',
         ];
     }
 
@@ -85,5 +93,29 @@ class PosVenta extends Model
     public function vendedor()
     {
         return $this->belongsTo(Usuario::class, 'psv_usr_id', 'usr_id');
+    }
+
+    public function ventaOrigen()
+    {
+        return $this->belongsTo(self::class, 'psv_venta_origen_id', 'psv_id');
+    }
+
+    public function cambiosRelacionados()
+    {
+        return $this->hasMany(self::class, 'psv_venta_origen_id', 'psv_id')
+            ->where('psv_deleted', false)
+            ->whereNull('psv_deleted_at');
+    }
+
+    public function cambioDevoluciones()
+    {
+        return $this->hasMany(PosCambioDetalle::class, 'pcd_psv_id', 'psv_id')
+            ->where('pcd_deleted', false)
+            ->whereNull('pcd_deleted_at');
+    }
+
+    public function canceladoPor()
+    {
+        return $this->belongsTo(Usuario::class, 'psv_cancelado_by_usr_id', 'usr_id');
     }
 }

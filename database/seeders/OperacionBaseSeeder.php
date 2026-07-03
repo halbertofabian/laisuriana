@@ -2,6 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\Models\Almacen;
+use App\Models\Sucursal;
 use App\Models\TipoAlmacen;
 use Illuminate\Database\Seeder;
 
@@ -48,6 +50,25 @@ class OperacionBaseSeeder extends Seeder
                 'tal_deleted' => false,
                 'tal_deleted_at' => null,
             ]);
+        }
+
+        $sucursalMatriz = Sucursal::query()->where('scl_clave', 'MATRIZ')->first();
+        $tipoPrincipal = TipoAlmacen::query()->where('tal_clave', 'principal')->first();
+
+        if ($sucursalMatriz && $tipoPrincipal) {
+            Almacen::query()->updateOrCreate(
+                [
+                    'alm_scl_id' => $sucursalMatriz->scl_id,
+                    'alm_clave' => 'ALM-MATRIZ-PRINCIPAL',
+                ],
+                [
+                    'alm_tal_id' => $tipoPrincipal->tal_id,
+                    'alm_nombre' => 'Almacén Principal Matriz',
+                    'alm_estatus' => 'activo',
+                    'alm_created_by_usr_id' => null,
+                    'alm_updated_by_usr_id' => null,
+                ]
+            );
         }
     }
 }

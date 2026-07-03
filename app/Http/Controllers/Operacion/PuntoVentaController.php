@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Operacion;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Operacion\CancelPosVentaRequest;
 use App\Http\Requests\Operacion\StorePosVentaRequest;
+use App\Http\Requests\Operacion\StorePosCambioRequest;
 use App\Models\Almacen;
 use App\Models\Cliente;
 use App\Models\PosVenta;
@@ -11,7 +13,9 @@ use App\Models\Caja;
 use App\Models\PosTicketConfiguracion;
 use App\Models\ProductoSku;
 use App\Models\Usuario;
+use App\Services\Operacion\PosCambioVentaService;
 use App\Services\Operacion\PosCajaSesionService;
+use App\Services\Operacion\PosVentaCancelacionService;
 use App\Services\Operacion\PosVentaService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,6 +26,8 @@ class PuntoVentaController extends Controller
     public function __construct(
         private readonly PosCajaSesionService $posCajaSesionService,
         private readonly PosVentaService $posVentaService,
+        private readonly PosVentaCancelacionService $posVentaCancelacionService,
+        private readonly PosCambioVentaService $posCambioVentaService,
     ) {
     }
 
@@ -47,6 +53,8 @@ class PuntoVentaController extends Controller
             ])
             ->values();
         $puedeCrearCliente = $usuario?->tienePermiso('cliente.crear') ?? false;
+        $puedeCancelarVenta = $usuario?->tienePermiso('pos.cancelar_venta') ?? false;
+        $puedeRegistrarCambio = $usuario?->tienePermiso('pos.cambio_devolucion') ?? false;
         $vendedores = Usuario::query()
             ->where('usr_estatus', 'activo')
             ->where('usr_deleted', false)
@@ -60,7 +68,16 @@ class PuntoVentaController extends Controller
             ])
             ->values();
 
-        return view('operacion.punto_venta.index', compact('sucursal', 'caja', 'estado', 'almacenesVenta', 'puedeCrearCliente', 'vendedores'));
+        return view('operacion.punto_venta.index', compact(
+            'sucursal',
+            'caja',
+            'estado',
+            'almacenesVenta',
+            'puedeCrearCliente',
+            'puedeCancelarVenta',
+            'puedeRegistrarCambio',
+            'vendedores'
+        ));
     }
 
     public function estadoCaja(Request $request): JsonResponse
@@ -166,6 +183,64 @@ class PuntoVentaController extends Controller
         ]);
     }
 
+    public function registrarCambio(StorePosCambioRequest $request): JsonResponse
+    {
+        $venta = $this->posCambioVentaService->registrar($request, $request->user(), $request->validated());
+
+        return response()->json([
+            'message' => 'Cambio/devolución registrado correctamente.',
+            'data' => [
+                'psv_id' => $venta->psv_id,
+                'psv_folio' => $venta->psv_folio,
+                'psv_total' => (float) $venta->psv_total,
+                'psv_credito_cambio' => (float) $venta->psv_credito_cambio,
+            ],
+        ]);
+    }
+
+    public function cancelarVenta(CancelPosVentaRequest $request, PosVenta $venta): JsonResponse
+    {
+        $venta = $this->posVentaCancelacionService->cancelar(
+            $request,
+            $request->user(),
+            $venta,
+            (string) $request->validated('motivo')
+        );
+
+        return response()->json([
+            'message' => 'Venta cancelada correctamente.',
+            'data' => [
+                'psv_id' => (int) $venta->psv_id,
+                'psv_folio' => (string) $venta->psv_folio,
+                'psv_estatus' => (string) $venta->psv_estatus,
+                'psv_cancelado_at' => optional($venta->psv_cancelado_at)->format('Y-m-d H:i:s'),
+            ],
+        ]);
+    }
+
+    public function buscarVentaPorFolio(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'folio' => ['required', 'string', 'max:50'],
+        ]);
+
+        $venta = $this->posCambioVentaService->obtenerVentaParaCambio((string) $data['folio']);
+        if (!$venta) {
+            return response()->json([
+                'message' => 'No se encontró la venta solicitada.',
+            ], 404);
+        }
+
+        return response()->json(['data' => $venta]);
+    }
+
+    public function showVenta(PosVenta $venta): JsonResponse
+    {
+        return response()->json([
+            'data' => $this->posCambioVentaService->obtenerVentaPorId($venta),
+        ]);
+    }
+
     public function ventasDelDia(Request $request): JsonResponse
     {
         $usuario = $request->user();
@@ -184,7 +259,7 @@ class PuntoVentaController extends Controller
             })
             ->orderByDesc('psv_id')
             ->limit(100)
-            ->get(['psv_id', 'psv_folio', 'psv_total', 'psv_fecha_cobro', 'psv_metodo_pago']);
+            ->get(['psv_id', 'psv_folio', 'psv_total', 'psv_fecha_cobro', 'psv_metodo_pago', 'psv_estatus', 'psv_tipo_operacion']);
 
         return response()->json([
             'data' => $rows->map(fn (PosVenta $v) => [
@@ -193,6 +268,8 @@ class PuntoVentaController extends Controller
                 'psv_total' => (float) $v->psv_total,
                 'psv_fecha_cobro' => optional($v->psv_fecha_cobro)->format('Y-m-d H:i:s'),
                 'psv_metodo_pago' => (string) ($v->psv_metodo_pago ?? ''),
+                'psv_estatus' => (string) ($v->psv_estatus ?? ''),
+                'psv_tipo_operacion' => (string) ($v->psv_tipo_operacion ?? 'venta'),
             ])->values(),
         ]);
     }
@@ -257,6 +334,7 @@ class PuntoVentaController extends Controller
             'cajaSesion.caja:caj_id,caj_nombre',
             'cliente:cli_id,cli_nombre,cli_apellido_paterno,cli_apellido_materno,cli_razon_social',
             'vendedor:usr_id,usr_nombre,usr_usuario',
+            'ventaOrigen:psv_id,psv_folio',
             'detalle.sku:psk_id,psk_prd_id,psk_nombre',
             'detalle.sku.valoresAtributo:vat_id,vat_valor',
             'detalle.sku.producto:prd_id,prd_nombre,prd_mrc_id,prd_mdl_id,prd_lna_id,prd_ctg_id,prd_dsc_id',
@@ -266,6 +344,7 @@ class PuntoVentaController extends Controller
             'detalle.sku.producto.categoria:ctg_id,ctg_nombre',
             'detalle.sku.producto.descripcionCatalogo:dsc_id,dsc_nombre',
             'detalle.vendedor:usr_id,usr_nombre,usr_usuario',
+            'cambioDevoluciones.sku:psk_id,psk_nombre',
         ]);
         $ticketConfig = PosTicketConfiguracion::query()->first();
 
@@ -289,6 +368,7 @@ class PuntoVentaController extends Controller
 
         $fmt = static fn ($v) => number_format((float) $v, 2, '.', ',');
         $metodo = strtoupper((string) ($venta->psv_metodo_pago ?? ''));
+        $tipoOperacion = (string) ($venta->psv_tipo_operacion ?? 'venta');
         $ticketBrand = 'Matriz Comitán';
         $almacenNombre = trim((string) ($venta->almacen?->alm_nombre ?? ''));
         $cajaNombre = trim((string) ($venta->caja?->caj_nombre ?? $venta->cajaSesion?->caja?->caj_nombre ?? ''));
@@ -333,6 +413,16 @@ class PuntoVentaController extends Controller
             $html .= '<div style="font-size:7px;line-height:1.5;margin-top:3px;text-align:center;">' . nl2br(e((string) $ticketConfig->ptc_texto_encabezado)) . '</div>';
         }
         $html .= '<div style="font-size:7px;margin-top:3px;">Fecha: ' . e($fecha) . '<br/>Método: ' . e($metodo) . '</div>';
+        if ($tipoOperacion === 'cambio') {
+            $html .= '<div style="font-size:7px;text-align:center;margin-top:2px;"><b>Cambio aplicado</b>';
+            if ($venta->ventaOrigen?->psv_folio) {
+                $html .= '<br/>Referencia: ' . e((string) $venta->ventaOrigen->psv_folio);
+            }
+            $html .= '</div>';
+        }
+        if ($venta->psv_estatus === 'cancelada') {
+            $html .= '<div style="font-size:8px;text-align:center;margin-top:3px;color:#b42318;"><b>VENTA CANCELADA</b></div>';
+        }
         $html .= '<hr/>';
         $html .= '<table cellspacing="0" cellpadding="1" style="font-size:7px;width:100%;margin-bottom:2px;">';
         $html .= '<tr><td width="34%"><b>Caja</b></td><td width="66%" align="right">' . e($cajaNombre !== '' ? $cajaNombre : 'Sin caja') . '</td></tr>';
@@ -355,13 +445,32 @@ class PuntoVentaController extends Controller
             $html .= '</tr>';
         }
         $html .= '</table>';
+        if ($venta->cambioDevoluciones->isNotEmpty()) {
+            $html .= '<hr/>';
+            $html .= '<div style="font-size:7px;font-weight:bold;">Productos devueltos</div>';
+            $html .= '<table cellspacing="0" cellpadding="2" style="font-size:7px;width:100%;">';
+            foreach ($venta->cambioDevoluciones as $devolucion) {
+                $html .= '<tr>';
+                $html .= '<td width="55%">' . e((string) ($devolucion->sku?->psk_nombre ?? 'Producto')) . '</td>';
+                $html .= '<td width="20%" align="right">' . e($fmt($devolucion->pcd_cantidad)) . '</td>';
+                $html .= '<td width="25%" align="right">$' . e($fmt($devolucion->pcd_importe_credito)) . '</td>';
+                $html .= '</tr>';
+            }
+            $html .= '</table>';
+        }
         $html .= '<hr/>';
         $html .= '<table cellspacing="0" cellpadding="1" style="font-size:8px;width:100%;">';
         $html .= '<tr><td>Subtotal</td><td align="right">$' . e($fmt($venta->psv_subtotal)) . '</td></tr>';
         $html .= '<tr><td>Descuento</td><td align="right">$' . e($fmt($venta->psv_descuento)) . '</td></tr>';
+        if ((float) $venta->psv_credito_cambio > 0) {
+            $html .= '<tr><td>Crédito cambio</td><td align="right">-$' . e($fmt($venta->psv_credito_cambio)) . '</td></tr>';
+        }
         $html .= '<tr><td><b>Total</b></td><td align="right"><b>$' . e($fmt($venta->psv_total)) . '</b></td></tr>';
         $html .= '<tr><td>Pagado</td><td align="right">$' . e($fmt($venta->psv_pagado)) . '</td></tr>';
         $html .= '<tr><td>Cambio</td><td align="right">$' . e($fmt($venta->psv_cambio)) . '</td></tr>';
+        if ($venta->psv_estatus === 'cancelada') {
+            $html .= '<tr><td>Motivo cancelación</td><td align="right">' . e((string) ($venta->psv_cancelacion_motivo ?? 'N/D')) . '</td></tr>';
+        }
         $html .= '</table>';
         $html .= '<div style="text-align:center;font-size:7px;line-height:1.5;margin-top:5px;">'
             . nl2br(e((string) ($ticketConfig?->ptc_texto_pie ?: 'Gracias por su compra')))
@@ -443,6 +552,7 @@ class PuntoVentaController extends Controller
                 'psv.psv_total',
                 'psv.psv_metodo_pago',
                 'psv.psv_estatus',
+                'psv.psv_tipo_operacion',
                 'caj.caj_nombre',
                 'alm.alm_nombre',
                 'usr.usr_nombre as vendedor',

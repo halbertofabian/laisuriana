@@ -57,4 +57,11 @@ class PosVentaDetalle extends Model
     {
         return $this->belongsTo(Usuario::class, 'pvd_usr_id', 'usr_id');
     }
+
+    public function cambiosDevolucion()
+    {
+        return $this->hasMany(PosCambioDetalle::class, 'pcd_pvd_origen_id', 'pvd_id')
+            ->where('pcd_deleted', false)
+            ->whereNull('pcd_deleted_at');
+    }
 }

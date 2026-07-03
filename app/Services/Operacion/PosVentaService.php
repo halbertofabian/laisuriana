@@ -43,36 +43,14 @@ class PosVentaService
                 ]);
             }
 
-            $skuIds = collect($datos['items'])->pluck('psk_id')->map(fn ($v) => (int) $v)->unique()->values();
-            $skus = ProductoSku::query()->whereIn('psk_id', $skuIds)->get()->keyBy('psk_id');
-            $pedidoDetalles = $this->pedidoDetallesParaVenta($datos);
             $pedido = !empty($datos['pedido_id'])
                 ? PedidoPiso::query()->find((int) $datos['pedido_id'])
                 : null;
-
-            $subtotal = 0.0;
-            $detalle = collect($datos['items'])->map(function ($item) use (&$subtotal, $skus, $pedidoDetalles, $usuario) {
-                $skuId = (int) $item['psk_id'];
-                $cantidad = round((float) $item['cantidad'], 2);
-                $sku = $skus->get($skuId);
-                $precio = round((float) ($item['precio'] ?? $sku?->psk_precio ?? 0), 2);
-                $configDescuento = $this->resolverDescuentoLineaVenta($item, $pedidoDetalles, $cantidad, $precio);
-                $subtotal += $configDescuento['total'];
-
-                return [
-                    'psk_id' => $skuId,
-                    'usr_id' => $this->resolverVendedorLinea($item, $pedidoDetalles),
-                    'cantidad' => $cantidad,
-                    'precio' => $precio,
-                    'descuento_porcentaje' => $configDescuento['descuento_porcentaje_equivalente'],
-                    'descuento_importe' => $configDescuento['descuento_importe'],
-                    'importe' => $configDescuento['total'],
-                ];
-            })->values();
-
-            $descuentoGlobalPct = round((float) ($datos['descuento_global'] ?? 0), 2);
-            $descuentoGlobalMonto = round($subtotal * ($descuentoGlobalPct / 100), 2);
-            $total = round(max(0, $subtotal - $descuentoGlobalMonto), 2);
+            $preparacion = $this->prepararDetalleVenta($datos);
+            $detalle = $preparacion['detalle'];
+            $subtotal = $preparacion['subtotal'];
+            $descuentoGlobalMonto = $this->calcularDescuentoGlobal($subtotal, (float) ($datos['descuento_global'] ?? 0));
+            $total = $this->calcularTotalVenta($subtotal, $descuentoGlobalMonto);
             $metodoPago = (string) ($datos['metodo_pago'] ?? 'efectivo');
             $montoEfectivo = round((float) ($datos['monto_efectivo'] ?? 0), 2);
             $montoTarjeta = round((float) ($datos['monto_tarjeta'] ?? 0), 2);
@@ -93,9 +71,11 @@ class PosVentaService
                 'psv_usr_id' => (int) $usuario->usr_id,
                 'psv_cli_id' => !empty($datos['cliente_id']) ? (int) $datos['cliente_id'] : ($pedido?->pdp_cli_id ? (int) $pedido->pdp_cli_id : null),
                 'psv_pdp_id' => !empty($datos['pedido_id']) ? (int) $datos['pedido_id'] : null,
+                'psv_tipo_operacion' => 'venta',
                 'psv_estatus' => 'cobrada',
                 'psv_subtotal' => $subtotal,
                 'psv_descuento' => $descuentoGlobalMonto,
+                'psv_credito_cambio' => 0,
                 'psv_total' => $total,
                 'psv_metodo_pago' => $metodoPago,
                 'psv_pago_detalle' => [
@@ -168,7 +148,55 @@ class PosVentaService
         });
     }
 
-    private function crearFolio(int $almacenId): string
+    public function prepararDetalleVenta(array $datos): array
+    {
+        $skuIds = collect($datos['items'])
+            ->pluck('psk_id')
+            ->map(fn ($v) => (int) $v)
+            ->unique()
+            ->values();
+        $skus = ProductoSku::query()->whereIn('psk_id', $skuIds)->get()->keyBy('psk_id');
+        $pedidoDetalles = $this->pedidoDetallesParaVenta($datos);
+
+        $subtotal = 0.0;
+        $detalle = collect($datos['items'])->map(function ($item) use (&$subtotal, $skus, $pedidoDetalles) {
+            $skuId = (int) $item['psk_id'];
+            $cantidad = round((float) $item['cantidad'], 2);
+            $sku = $skus->get($skuId);
+            $precio = round((float) ($item['precio'] ?? $sku?->psk_precio ?? 0), 2);
+            $configDescuento = $this->resolverDescuentoLineaVenta($item, $pedidoDetalles, $cantidad, $precio);
+            $subtotal += $configDescuento['total'];
+
+            return [
+                'psk_id' => $skuId,
+                'usr_id' => $this->resolverVendedorLinea($item, $pedidoDetalles),
+                'cantidad' => $cantidad,
+                'precio' => $precio,
+                'descuento_porcentaje' => $configDescuento['descuento_porcentaje_equivalente'],
+                'descuento_importe' => $configDescuento['descuento_importe'],
+                'importe' => $configDescuento['total'],
+            ];
+        })->values();
+
+        return [
+            'detalle' => $detalle,
+            'subtotal' => round($subtotal, 2),
+        ];
+    }
+
+    public function calcularDescuentoGlobal(float $subtotal, float $descuentoGlobalPct): float
+    {
+        $porcentaje = round($descuentoGlobalPct, 2);
+
+        return round($subtotal * ($porcentaje / 100), 2);
+    }
+
+    public function calcularTotalVenta(float $subtotal, float $descuentoGlobalMonto): float
+    {
+        return round(max(0, $subtotal - $descuentoGlobalMonto), 2);
+    }
+
+    public function crearFolio(int $almacenId): string
     {
         $prefix = 'VTA-' . str_pad((string) $almacenId, 3, '0', STR_PAD_LEFT) . '-';
         $last = PosVenta::query()
