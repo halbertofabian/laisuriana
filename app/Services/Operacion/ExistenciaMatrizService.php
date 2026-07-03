@@ -79,6 +79,84 @@ class ExistenciaMatrizService
         return $this->hidratarTallas($filas, $filtros);
     }
 
+    public function listarExistenciasNegativasSeleccionadas(array $rowKeys, array $filtros = []): Collection
+    {
+        $rowKeys = collect($rowKeys)
+            ->filter(fn ($rowKey) => is_string($rowKey) && preg_match('/^\d+:\d+$/', $rowKey) === 1)
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($rowKeys)) {
+            return collect();
+        }
+
+        return DB::table('tbl_existencias_almacen_exa as exa')
+            ->join('tbl_producto_skus_psk as psk', 'psk.psk_id', '=', 'exa.exa_psk_id')
+            ->join('tbl_productos_prd as prd', 'prd.prd_id', '=', 'psk.psk_prd_id')
+            ->leftJoin('tbl_marcas_mrc as mrc', 'mrc.mrc_id', '=', 'prd.prd_mrc_id')
+            ->leftJoin('tbl_modelos_mdl as mdl', 'mdl.mdl_id', '=', 'prd.prd_mdl_id')
+            ->leftJoin('tbl_lineas_lna as lna', 'lna.lna_id', '=', 'prd.prd_lna_id')
+            ->leftJoin('tbl_categorias_ctg as ctg', 'ctg.ctg_id', '=', 'prd.prd_ctg_id')
+            ->leftJoin('tbl_descripciones_dsc as dsc', 'dsc.dsc_id', '=', 'prd.prd_dsc_id')
+            ->leftJoinSub($this->subqueryValorAtributoPorSku('color'), 'color', function ($join): void {
+                $join->on('color.psk_id', '=', 'psk.psk_id');
+            })
+            ->where('exa.exa_deleted', false)
+            ->whereNull('exa.exa_deleted_at')
+            ->where('exa.exa_estatus', 'activo')
+            ->where('exa.exa_existencia', '<', 0)
+            ->where('psk.psk_deleted', false)
+            ->whereNull('psk.psk_deleted_at')
+            ->where('psk.psk_estatus', 'activo')
+            ->where('prd.prd_deleted', false)
+            ->whereNull('prd.prd_deleted_at')
+            ->where('prd.prd_estatus', 'activo')
+            ->when(!empty($filtros['min_scl_id']), fn ($q) => $q->where('exa.exa_scl_id', (int) $filtros['min_scl_id']))
+            ->when(!empty($filtros['min_alm_id']), fn ($q) => $q->where('exa.exa_alm_id', (int) $filtros['min_alm_id']))
+            ->when(!empty($filtros['prd_id']), fn ($q) => $q->where('prd.prd_id', (int) $filtros['prd_id']))
+            ->when(!empty($filtros['prd_mrc_id']), fn ($q) => $q->where('prd.prd_mrc_id', (int) $filtros['prd_mrc_id']))
+            ->when(!empty($filtros['prd_mdl_id']), fn ($q) => $q->where('prd.prd_mdl_id', (int) $filtros['prd_mdl_id']))
+            ->when(!empty($filtros['prd_lna_id']), fn ($q) => $q->where('prd.prd_lna_id', (int) $filtros['prd_lna_id']))
+            ->when(!empty($filtros['prd_ctg_id']), fn ($q) => $q->where('prd.prd_ctg_id', (int) $filtros['prd_ctg_id']))
+            ->when(!empty($filtros['prd_dsc_id']), fn ($q) => $q->where('prd.prd_dsc_id', (int) $filtros['prd_dsc_id']))
+            ->when(!empty($filtros['buscar']), function ($q) use ($filtros): void {
+                $buscar = trim((string) $filtros['buscar']);
+                $q->where(function ($sub) use ($buscar): void {
+                    $sub->where('prd.prd_codigo', 'like', "%{$buscar}%")
+                        ->orWhere('prd.prd_nombre', 'like', "%{$buscar}%")
+                        ->orWhere('mrc.mrc_nombre', 'like', "%{$buscar}%")
+                        ->orWhere('mdl.mdl_nombre', 'like', "%{$buscar}%")
+                        ->orWhere('lna.lna_nombre', 'like', "%{$buscar}%")
+                        ->orWhere('ctg.ctg_nombre', 'like', "%{$buscar}%")
+                        ->orWhere('dsc.dsc_nombre', 'like', "%{$buscar}%")
+                        ->orWhere('color.vat_valor', 'like', "%{$buscar}%")
+                        ->orWhere('psk.psk_codigo', 'like', "%{$buscar}%")
+                        ->orWhere('psk.psk_nombre', 'like', "%{$buscar}%");
+                });
+            })
+            ->whereIn(DB::raw("CONCAT(prd.prd_id, ':', COALESCE(color.vat_id, 0))"), $rowKeys)
+            ->orderBy('prd.prd_id')
+            ->orderBy('color.vat_id')
+            ->orderBy('exa.exa_scl_id')
+            ->orderBy('exa.exa_alm_id')
+            ->orderBy('psk.psk_id')
+            ->get([
+                DB::raw("CONCAT(prd.prd_id, ':', COALESCE(color.vat_id, 0)) as row_key"),
+                'prd.prd_id',
+                DB::raw('COALESCE(color.vat_id, 0) as color_vat_id'),
+                'exa.exa_psk_id as psk_id',
+                'exa.exa_scl_id as scl_id',
+                'exa.exa_alm_id as alm_id',
+                'exa.exa_existencia as existencia_actual',
+                'prd.prd_codigo as producto_codigo',
+                'prd.prd_nombre as producto_nombre',
+                DB::raw("COALESCE(color.vat_valor, 'Sin color') as color_nombre"),
+                'psk.psk_codigo',
+                'psk.psk_nombre',
+            ]);
+    }
+
     private function hidratarTallas(Collection $filas, array $filtros = []): array
     {
         if ($filas->isEmpty()) {
@@ -160,6 +238,7 @@ class ExistenciaMatrizService
             }
 
             return [
+                'row_key' => $rowKey,
                 'prd_id' => $productoId,
                 'producto_codigo' => (string) $fila->producto_codigo,
                 'producto_nombre' => (string) $fila->producto_nombre,

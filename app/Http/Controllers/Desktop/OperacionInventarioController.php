@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Desktop;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Operacion\Inventario\BulkAjustarExistenciasNegativasRequest;
 use App\Http\Requests\Operacion\Inventario\ConfirmRecepcionMercanciaRequest;
 use App\Http\Requests\Operacion\Inventario\ListExistenciaMatrizRequest;
 use App\Http\Requests\Operacion\Inventario\ShowKardexDetalleRequest;
@@ -191,6 +192,7 @@ class OperacionInventarioController extends Controller
     {
         $datos = $request->validate([
             'estado' => ['nullable', 'string', 'max:30'],
+            'marca_id' => ['nullable', 'integer'],
             'fecha_desde' => ['nullable', 'date'],
             'fecha_hasta' => ['nullable', 'date'],
             'buscar' => ['nullable', 'string', 'max:120'],
@@ -642,6 +644,16 @@ class OperacionInventarioController extends Controller
     public function exportarPdfExistenciasNegativas(Request $request): \Illuminate\Http\Response
     {
         return $this->exportarPdfExistencias($request, true);
+    }
+
+    public function ajustarExistenciasNegativasCero(BulkAjustarExistenciasNegativasRequest $request): JsonResponse
+    {
+        $resultado = $this->inventarioService->ajustarExistenciasNegativasMasivo($request, $request->validated());
+
+        return response()->json([
+            'message' => 'Ajuste masivo procesado correctamente.',
+            'data' => $resultado,
+        ]);
     }
 
     private function renderExistenciasView(bool $soloNegativas = false)
