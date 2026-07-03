@@ -121,6 +121,11 @@
                             <label class="form-label">Nombre de caja <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="caj_nombre" name="caj_nombre" maxlength="120" required />
                         </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Umbral de retiro</label>
+                            <input type="number" class="form-control" id="caj_retiro_umbral" name="caj_retiro_umbral" min="0" step="0.01" placeholder="0.00" />
+                            <small class="text-body-secondary">Cuando el efectivo estimado llegue a este monto, POS recomendará un retiro.</small>
+                        </div>
                         <div class="col-md-12">
                             <label class="form-label">Usuarios asignados <span class="text-danger">*</span></label>
                             <select class="form-select caja-usuarios-select" id="usuarios" name="usuarios[]" multiple required>
@@ -252,6 +257,7 @@
     function limpiarForm() {
         form.reset();
         document.getElementById('caj_id').value = '';
+        document.getElementById('caj_retiro_umbral').value = '';
         llenarAlmacenesPorSucursal('', '');
         $usuarios.val([]).trigger('change');
     }
@@ -277,6 +283,7 @@
         document.getElementById('caj_scl_id').value = row.caj_scl_id;
         llenarAlmacenesPorSucursal(row.caj_scl_id, row.caj_alm_id || '');
         document.getElementById('caj_nombre').value = row.caj_nombre;
+        document.getElementById('caj_retiro_umbral').value = row.caj_retiro_umbral || '';
         document.getElementById('caj_estatus').value = row.caj_estatus;
 
         const usuarios = (row.usuarios || []).map((u) => String(u));
@@ -292,6 +299,7 @@
             caj_scl_id: formData.get('caj_scl_id'),
             caj_alm_id: formData.get('caj_alm_id') || null,
             caj_nombre: formData.get('caj_nombre'),
+            caj_retiro_umbral: formData.get('caj_retiro_umbral') || 0,
             caj_estatus: formData.get('caj_estatus'),
             usuarios,
         };

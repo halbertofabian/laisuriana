@@ -74,6 +74,9 @@ class SeguridadBaseSeeder extends Seeder
             ['clave' => 'cliente.eliminar', 'descripcion' => 'Eliminar clientes (lógico)', 'modulo' => 'pos'],
             ['clave' => 'pos.cancelar_venta', 'descripcion' => 'Cancelar ventas POS registradas', 'modulo' => 'pos'],
             ['clave' => 'pos.cambio_devolucion', 'descripcion' => 'Registrar cambios/devoluciones sin reembolso en POS', 'modulo' => 'pos'],
+            ['clave' => 'pos.retiro_caja', 'descripcion' => 'Registrar retiros de caja en POS', 'modulo' => 'pos'],
+            ['clave' => 'pos.gasto_caja', 'descripcion' => 'Registrar gastos de caja en POS', 'modulo' => 'pos'],
+            ['clave' => 'pos.corte_caja', 'descripcion' => 'Autorizar cierres y cortes de caja en POS', 'modulo' => 'pos'],
         ];
 
         foreach ($permisosBase as $permiso) {
@@ -137,6 +140,9 @@ class SeguridadBaseSeeder extends Seeder
                     'cliente.editar',
                     'pos.cancelar_venta',
                     'pos.cambio_devolucion',
+                    'pos.retiro_caja',
+                    'pos.gasto_caja',
+                    'pos.corte_caja',
                 ],
             ],
             'Cajero' => [
@@ -150,6 +156,8 @@ class SeguridadBaseSeeder extends Seeder
                     'cliente.ver',
                     'pos.cancelar_venta',
                     'pos.cambio_devolucion',
+                    'pos.retiro_caja',
+                    'pos.gasto_caja',
                 ],
             ],
             'Vendedor piso' => [

@@ -11,6 +11,20 @@
         .desktop-perm-head { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--divider); }
         .desktop-perm-head strong { font-size: .92rem; font-weight: 600; }
         .desktop-perm-head span { display: block; font-size: .78rem; color: var(--text-2); margin-top: 2px; }
+        #desktop-rol-modal { padding: 32px 20px; overflow-y: auto; }
+        #desktop-rol-modal .desktop-modal__dialog { max-height: calc(100vh - 64px); }
+        #desktop-rol-form {
+            display: flex;
+            flex: 1 1 auto;
+            flex-direction: column;
+            min-height: 0;
+        }
+        #desktop-rol-modal .desktop-modal__body {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
+            padding-bottom: 16px;
+        }
         .desktop-perm-grid {
             display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
             gap: 14px; margin-top: 14px;

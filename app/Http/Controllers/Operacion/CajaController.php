@@ -69,6 +69,7 @@ class CajaController extends Controller
                 'caj_estatus' => $caja->caj_estatus,
                 'caj_scl_id' => $caja->caj_scl_id,
                 'caj_alm_id' => $caja->caj_alm_id,
+                'caj_retiro_umbral' => (float) ($caja->caj_retiro_umbral ?? 0),
                 'sucursal' => $caja->sucursal?->scl_nombre,
                 'almacen' => $caja->almacen?->alm_nombre,
                 'usuarios' => $caja->usuarios->map(fn ($u) => [
@@ -94,6 +95,7 @@ class CajaController extends Controller
                 'caj_clave' => $registro->caj_clave,
                 'caj_estatus' => $registro->caj_estatus,
                 'caj_alm_id' => $registro->caj_alm_id,
+                'caj_retiro_umbral' => (float) ($registro->caj_retiro_umbral ?? 0),
                 'usuarios' => $registro->usuarios->pluck('usr_id')->values(),
             ],
         ]);

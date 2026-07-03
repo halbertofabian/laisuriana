@@ -4,16 +4,22 @@ namespace App\Http\Controllers\Operacion;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Operacion\CancelPosVentaRequest;
+use App\Http\Requests\Operacion\StorePosCajaMovimientoRequest;
+use App\Http\Requests\Operacion\StorePosCorteCajaRequest;
 use App\Http\Requests\Operacion\StorePosVentaRequest;
 use App\Http\Requests\Operacion\StorePosCambioRequest;
 use App\Models\Almacen;
+use App\Models\CajaMovimiento;
 use App\Models\Cliente;
+use App\Models\PosCorteCaja;
 use App\Models\PosVenta;
 use App\Models\Caja;
 use App\Models\PosTicketConfiguracion;
 use App\Models\ProductoSku;
 use App\Models\Usuario;
 use App\Services\Operacion\PosCambioVentaService;
+use App\Services\Operacion\PosCajaMovimientoService;
+use App\Services\Operacion\PosCorteCajaService;
 use App\Services\Operacion\PosCajaSesionService;
 use App\Services\Operacion\PosVentaCancelacionService;
 use App\Services\Operacion\PosVentaService;
@@ -28,6 +34,8 @@ class PuntoVentaController extends Controller
         private readonly PosVentaService $posVentaService,
         private readonly PosVentaCancelacionService $posVentaCancelacionService,
         private readonly PosCambioVentaService $posCambioVentaService,
+        private readonly PosCajaMovimientoService $posCajaMovimientoService,
+        private readonly PosCorteCajaService $posCorteCajaService,
     ) {
     }
 
@@ -55,6 +63,50 @@ class PuntoVentaController extends Controller
         $puedeCrearCliente = $usuario?->tienePermiso('cliente.crear') ?? false;
         $puedeCancelarVenta = $usuario?->tienePermiso('pos.cancelar_venta') ?? false;
         $puedeRegistrarCambio = $usuario?->tienePermiso('pos.cambio_devolucion') ?? false;
+        $puedeRegistrarRetiroCaja = $usuario?->tienePermiso('pos.retiro_caja') ?? false;
+        $puedeRegistrarGastoCaja = $usuario?->tienePermiso('pos.gasto_caja') ?? false;
+        $usuariosAutorizadosCorte = $this->posCorteCajaService->usuariosAutorizados();
+        $usuariosAutorizadosRetiro = Usuario::query()
+            ->select('tbl_usuarios_usr.usr_id', 'tbl_usuarios_usr.usr_nombre', 'tbl_usuarios_usr.usr_usuario')
+            ->join('tbl_usuario_roles_url as url', 'url.url_usr_id', '=', 'tbl_usuarios_usr.usr_id')
+            ->join('tbl_rol_permisos_rpm as rpm', 'rpm.rpm_rol_id', '=', 'url.url_rol_id')
+            ->join('tbl_permisos_prm as prm', 'prm.prm_id', '=', 'rpm.rpm_prm_id')
+            ->where('prm.prm_clave', 'pos.retiro_caja')
+            ->where('tbl_usuarios_usr.usr_estatus', 'activo')
+            ->where('tbl_usuarios_usr.usr_deleted', false)
+            ->whereNull('tbl_usuarios_usr.usr_deleted_at')
+            ->where('url.url_estatus', 'activo')
+            ->where('url.url_deleted', false)
+            ->whereNull('url.url_deleted_at')
+            ->where('rpm.rpm_estatus', 'activo')
+            ->where('rpm.rpm_deleted', false)
+            ->whereNull('rpm.rpm_deleted_at')
+            ->where('prm.prm_estatus', 'activo')
+            ->where('prm.prm_deleted', false)
+            ->whereNull('prm.prm_deleted_at')
+            ->distinct()
+            ->orderBy('tbl_usuarios_usr.usr_nombre')
+            ->get()
+            ->map(fn (Usuario $u) => [
+                'usr_id' => (int) $u->usr_id,
+                'usr_nombre' => (string) $u->usr_nombre,
+                'usr_usuario' => (string) $u->usr_usuario,
+            ])
+            ->values();
+        $categoriasGastoSugeridas = CajaMovimiento::query()
+            ->where('cjm_tipo', 'gasto')
+            ->where('cjm_deleted', false)
+            ->whereNull('cjm_deleted_at')
+            ->where('cjm_estatus', 'registrado')
+            ->whereNotNull('cjm_categoria')
+            ->where('cjm_categoria', '!=', '')
+            ->when($estado['sesion_activa']['caja_scl_id'] ?? null, fn ($query, $sucursalId) => $query->where('cjm_scl_id', (int) $sucursalId))
+            ->orderByDesc('cjm_id')
+            ->pluck('cjm_categoria')
+            ->map(fn ($categoria) => trim((string) $categoria))
+            ->filter()
+            ->unique(fn ($categoria) => mb_strtolower($categoria))
+            ->values();
         $vendedores = Usuario::query()
             ->where('usr_estatus', 'activo')
             ->where('usr_deleted', false)
@@ -76,14 +128,22 @@ class PuntoVentaController extends Controller
             'puedeCrearCliente',
             'puedeCancelarVenta',
             'puedeRegistrarCambio',
+            'puedeRegistrarRetiroCaja',
+            'puedeRegistrarGastoCaja',
+            'usuariosAutorizadosCorte',
+            'usuariosAutorizadosRetiro',
+            'categoriasGastoSugeridas',
             'vendedores'
         ));
     }
 
     public function estadoCaja(Request $request): JsonResponse
     {
+        $resumen = $this->posCajaMovimientoService->resumenSesionActual($request->user());
+
         return response()->json([
             'data' => $this->posCajaSesionService->estadoUsuario($request->user()),
+            'resumen' => $resumen,
         ]);
     }
 
@@ -246,20 +306,53 @@ class PuntoVentaController extends Controller
         $usuario = $request->user();
         $estado = $this->posCajaSesionService->estadoUsuario($usuario);
         $sesion = $estado['sesion_activa'] ?? null;
+        $resumenCaja = $this->posCajaMovimientoService->resumenSesionActual($usuario);
         if (!$sesion) {
-            return response()->json(['data' => []]);
+            return response()->json([
+                'data' => [],
+                'resumen' => [
+                    'inicio_caja' => 0,
+                    'efectivo_ventas_neto' => 0,
+                    'efectivo_disponible' => 0,
+                    'umbral_retiro' => 0,
+                    'retiro_recomendado' => false,
+                    'excedente_umbral' => 0,
+                    'ventas_del_dia' => 0,
+                    'total_vendido' => 0,
+                    'ventas_por_metodo' => [],
+                    'credito_ventas' => 0,
+                    'abono_credito' => 0,
+                    'credito_cambios' => 0,
+                    'cantidad_cambios' => 0,
+                    'importe_cobrado_cambios' => 0,
+                    'gastos' => 0,
+                    'retiros' => 0,
+                ],
+            ]);
         }
 
         $buscar = trim((string) $request->query('q', ''));
         $rows = PosVenta::query()
             ->where('psv_cse_id', (int) $sesion['cse_id'])
-            ->whereDate('psv_fecha_cobro', now()->toDateString())
+            ->where('psv_deleted', false)
+            ->whereNull('psv_deleted_at')
+            ->where('psv_estatus', '!=', 'cancelada')
             ->when($buscar !== '', function ($q) use ($buscar): void {
                 $q->where('psv_folio', 'like', "%{$buscar}%");
             })
             ->orderByDesc('psv_id')
             ->limit(100)
-            ->get(['psv_id', 'psv_folio', 'psv_total', 'psv_fecha_cobro', 'psv_metodo_pago', 'psv_estatus', 'psv_tipo_operacion']);
+            ->get([
+                'psv_id',
+                'psv_folio',
+                'psv_total',
+                'psv_fecha_cobro',
+                'psv_metodo_pago',
+                'psv_pago_detalle',
+                'psv_estatus',
+                'psv_tipo_operacion',
+                'psv_credito_cambio',
+            ]);
 
         return response()->json([
             'data' => $rows->map(fn (PosVenta $v) => [
@@ -270,7 +363,75 @@ class PuntoVentaController extends Controller
                 'psv_metodo_pago' => (string) ($v->psv_metodo_pago ?? ''),
                 'psv_estatus' => (string) ($v->psv_estatus ?? ''),
                 'psv_tipo_operacion' => (string) ($v->psv_tipo_operacion ?? 'venta'),
+                'psv_credito_cambio' => (float) ($v->psv_credito_cambio ?? 0),
             ])->values(),
+            'resumen' => [
+                'inicio_caja' => round((float) ($resumenCaja['inicio_caja'] ?? 0), 2),
+                'efectivo_ventas_neto' => round((float) ($resumenCaja['efectivo_ventas_neto'] ?? 0), 2),
+                'efectivo_disponible' => round((float) ($resumenCaja['efectivo_disponible'] ?? 0), 2),
+                'umbral_retiro' => round((float) ($resumenCaja['umbral_retiro'] ?? 0), 2),
+                'retiro_recomendado' => (bool) ($resumenCaja['retiro_recomendado'] ?? false),
+                'excedente_umbral' => round((float) ($resumenCaja['excedente_umbral'] ?? 0), 2),
+                'ventas_del_dia' => (int) ($resumenCaja['ventas_del_dia'] ?? $rows->count()),
+                'total_vendido' => round((float) ($resumenCaja['total_vendido'] ?? 0), 2),
+                'ventas_por_metodo' => $resumenCaja['ventas_por_metodo'] ?? [],
+                'credito_ventas' => 0,
+                'abono_credito' => 0,
+                'credito_cambios' => round((float) ($resumenCaja['credito_cambios'] ?? 0), 2),
+                'cantidad_cambios' => (int) ($resumenCaja['cantidad_cambios'] ?? 0),
+                'importe_cobrado_cambios' => round((float) ($resumenCaja['importe_cobrado_cambios'] ?? 0), 2),
+                'gastos' => round((float) ($resumenCaja['gastos'] ?? 0), 2),
+                'retiros' => round((float) ($resumenCaja['retiros'] ?? 0), 2),
+            ],
+        ]);
+    }
+
+    public function registrarRetiroCaja(StorePosCajaMovimientoRequest $request): JsonResponse
+    {
+        $payload = $request->validated();
+        $payload['tipo'] = 'retiro';
+        $movimiento = $this->posCajaMovimientoService->registrar($request, $request->user(), $payload);
+
+        return response()->json([
+            'message' => 'Retiro de caja registrado correctamente.',
+            'data' => [
+                'cjm_id' => $movimiento->cjm_id,
+                'cjm_folio' => $movimiento->cjm_folio,
+                'ticket_url' => route('pos.caja.movimientos.ticket', $movimiento),
+            ],
+        ]);
+    }
+
+    public function registrarGastoCaja(StorePosCajaMovimientoRequest $request): JsonResponse
+    {
+        $payload = $request->validated();
+        $payload['tipo'] = 'gasto';
+        $movimiento = $this->posCajaMovimientoService->registrar($request, $request->user(), $payload);
+
+        return response()->json([
+            'message' => 'Gasto de caja registrado correctamente.',
+            'data' => [
+                'cjm_id' => $movimiento->cjm_id,
+                'cjm_folio' => $movimiento->cjm_folio,
+                'ticket_url' => route('pos.caja.movimientos.ticket', $movimiento),
+            ],
+        ]);
+    }
+
+    public function realizarCorteCaja(StorePosCorteCajaRequest $request): JsonResponse
+    {
+        $corte = $this->posCorteCajaService->cerrar($request, $request->user(), $request->validated());
+
+        return response()->json([
+            'message' => 'Corte de caja registrado correctamente.',
+            'data' => [
+                'pco_id' => (int) $corte->pco_id,
+                'pco_folio' => (string) $corte->pco_folio,
+                'pco_efectivo_esperado' => (float) $corte->pco_efectivo_esperado,
+                'pco_efectivo_reportado' => (float) $corte->pco_efectivo_reportado,
+                'pco_diferencia' => (float) $corte->pco_diferencia,
+                'ticket_url' => route('pos.caja.cortes.ticket', $corte),
+            ],
         ]);
     }
 
@@ -498,6 +659,172 @@ class PuntoVentaController extends Controller
         return response($pdf->Output('', 'S'), 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="ticket-' . $venta->psv_folio . '.pdf"',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+        ]);
+    }
+
+    public function ticketMovimientoCaja(CajaMovimiento $movimiento)
+    {
+        $movimiento->load([
+            'caja:caj_id,caj_nombre',
+            'cajaSesion:cse_id,cse_caj_id',
+            'cajaSesion.caja:caj_id,caj_nombre',
+            'cajero:usr_id,usr_nombre,usr_usuario',
+            'autorizadoPor:usr_id,usr_nombre,usr_usuario',
+        ]);
+
+        $ticketConfig = PosTicketConfiguracion::query()->first();
+        $copias = $movimiento->cjm_tipo === 'retiro'
+            ? ['Copia cajero', 'Copia resguardo']
+            : ['Comprobante de gasto'];
+        $alto = $movimiento->cjm_tipo === 'retiro' ? 255 : 190;
+
+        $pdf = new \TCPDF('P', 'mm', [80, $alto], true, 'UTF-8', false, false);
+        $pdf->SetCreator(config('app.name', 'La Suriana'));
+        $pdf->SetAuthor((string) ($movimiento->cjm_usr_cajero_id ?? 'POS'));
+        $pdf->SetTitle('Movimiento ' . $movimiento->cjm_folio);
+        $pdf->setPrintHeader(false);
+        $pdf->setPrintFooter(false);
+        $pdf->SetMargins(4, 4, 4);
+        $pdf->SetAutoPageBreak(true, 4);
+        $pdf->SetFont('helvetica', '', 8);
+        $pdf->AddPage();
+
+        $fmt = static fn ($v) => number_format((float) $v, 2, '.', ',');
+        $tipoLabel = $movimiento->cjm_tipo === 'retiro' ? 'Retiro de caja' : 'Gasto de caja';
+        $cajaNombre = trim((string) ($movimiento->caja?->caj_nombre ?? $movimiento->cajaSesion?->caja?->caj_nombre ?? 'Sin caja'));
+        $cajero = trim((string) ($movimiento->cajero?->usr_usuario ?: $movimiento->cajero?->usr_nombre ?: 'Sin cajero'));
+        $autorizado = trim((string) ($movimiento->autorizadoPor?->usr_usuario ?: $movimiento->autorizadoPor?->usr_nombre ?: 'Sin autorización'));
+        $fecha = optional($movimiento->cjm_fecha_movimiento)->format('d/m/Y H:i') ?? now()->format('d/m/Y H:i');
+
+        foreach ($copias as $index => $copiaLabel) {
+            if ($index > 0) {
+                $pdf->Ln(2);
+                $pdf->writeHTML('<hr/>', true, false, true, false, '');
+            }
+
+            $html = '<div style="text-align:center;font-size:12px;font-weight:bold;">Matriz Comitán</div>';
+            if ($ticketConfig?->ptc_texto_encabezado) {
+                $html .= '<div style="font-size:7px;line-height:1.4;margin-top:3px;text-align:center;">' . nl2br(e((string) $ticketConfig->ptc_texto_encabezado)) . '</div>';
+            }
+            $html .= '<div style="text-align:center;font-size:8px;font-weight:bold;margin-top:3px;">' . e($tipoLabel) . '</div>';
+            $html .= '<div style="text-align:center;font-size:7px;">' . e($copiaLabel) . '</div>';
+            $html .= '<div style="font-size:7px;margin-top:3px;">Fecha: ' . e($fecha) . '<br/>Folio: ' . e((string) $movimiento->cjm_folio) . '</div>';
+            $html .= '<hr/>';
+            $html .= '<table cellspacing="0" cellpadding="1" style="font-size:7px;width:100%;">';
+            $html .= '<tr><td width="38%"><b>Caja</b></td><td width="62%" align="right">' . e($cajaNombre) . '</td></tr>';
+            $html .= '<tr><td width="38%"><b>Cajero</b></td><td width="62%" align="right">' . e($cajero) . '</td></tr>';
+            $html .= '<tr><td width="38%"><b>Autoriza</b></td><td width="62%" align="right">' . e($autorizado) . '</td></tr>';
+            if ($movimiento->cjm_categoria) {
+                $html .= '<tr><td width="38%"><b>Categoría</b></td><td width="62%" align="right">' . e((string) $movimiento->cjm_categoria) . '</td></tr>';
+            }
+            if ($movimiento->cjm_referencia) {
+                $html .= '<tr><td width="38%"><b>Referencia</b></td><td width="62%" align="right">' . e((string) $movimiento->cjm_referencia) . '</td></tr>';
+            }
+            $html .= '<tr><td width="38%"><b>Monto</b></td><td width="62%" align="right">$' . e($fmt($movimiento->cjm_monto)) . '</td></tr>';
+            $html .= '</table>';
+            $html .= '<hr/>';
+            $html .= '<div style="font-size:7px;"><b>Motivo</b><br/>' . nl2br(e((string) ($movimiento->cjm_motivo ?? 'Sin detalle'))) . '</div>';
+            $html .= '<div style="text-align:center;font-size:7px;line-height:1.5;margin-top:6px;">'
+                . nl2br(e((string) ($ticketConfig?->ptc_texto_pie ?: 'Movimiento registrado correctamente')))
+                . '</div>';
+
+            $pdf->writeHTML($html, true, false, true, false, '');
+        }
+
+        return response($pdf->Output('', 'S'), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="movimiento-' . $movimiento->cjm_folio . '.pdf"',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+        ]);
+    }
+
+    public function ticketCorteCaja(PosCorteCaja $corte)
+    {
+        $corte->load([
+            'caja:caj_id,caj_nombre',
+            'sesion:cse_id,cse_caj_id,cse_monto_apertura,cse_abierta_at',
+            'cajero:usr_id,usr_nombre,usr_usuario',
+            'autorizadoPor:usr_id,usr_nombre,usr_usuario',
+            'aperturaUsuario:usr_id,usr_nombre,usr_usuario',
+            'denominaciones',
+        ]);
+
+        $ticketConfig = PosTicketConfiguracion::query()->first();
+        $lineasDenominaciones = max(1, $corte->denominaciones->count());
+        $alto = max(240, min(480, 220 + ($lineasDenominaciones * 10)));
+
+        $pdf = new \TCPDF('P', 'mm', [80, $alto], true, 'UTF-8', false, false);
+        $pdf->SetCreator(config('app.name', 'La Suriana'));
+        $pdf->SetAuthor((string) ($corte->pco_usr_cajero_id ?? 'POS'));
+        $pdf->SetTitle('Corte ' . $corte->pco_folio);
+        $pdf->setPrintHeader(false);
+        $pdf->setPrintFooter(false);
+        $pdf->SetMargins(4, 4, 4);
+        $pdf->SetAutoPageBreak(true, 4);
+        $pdf->SetFont('helvetica', '', 8);
+        $pdf->AddPage();
+
+        $fmt = static fn ($v) => number_format((float) $v, 2, '.', ',');
+        $cajaNombre = trim((string) ($corte->caja?->caj_nombre ?? 'Sin caja'));
+        $cajero = trim((string) ($corte->cajero?->usr_usuario ?: $corte->cajero?->usr_nombre ?: 'Sin cajero'));
+        $autorizado = trim((string) ($corte->autorizadoPor?->usr_usuario ?: $corte->autorizadoPor?->usr_nombre ?: 'Sin autorización'));
+        $apertura = optional($corte->pco_abierta_at)->format('d/m/Y H:i') ?? 'N/D';
+        $cierre = optional($corte->pco_cerrada_at)->format('d/m/Y H:i') ?? now()->format('d/m/Y H:i');
+        $metodos = collect($corte->pco_resumen_metodos_pago ?? []);
+        $resumenVentas = $corte->pco_resumen_ventas ?? [];
+
+        $html = '<div style="text-align:center;font-size:12px;font-weight:bold;">Matriz Comitán</div>';
+        if ($ticketConfig?->ptc_texto_encabezado) {
+            $html .= '<div style="font-size:7px;line-height:1.4;margin-top:3px;text-align:center;">' . nl2br(e((string) $ticketConfig->ptc_texto_encabezado)) . '</div>';
+        }
+        $html .= '<div style="text-align:center;font-size:8px;font-weight:bold;margin-top:3px;">Corte de caja</div>';
+        $html .= '<div style="font-size:7px;margin-top:3px;">Folio: ' . e((string) $corte->pco_folio) . '<br/>Cierre: ' . e($cierre) . '</div>';
+        $html .= '<hr/>';
+        $html .= '<table cellspacing="0" cellpadding="1" style="font-size:7px;width:100%;">';
+        $html .= '<tr><td width="42%"><b>Caja</b></td><td width="58%" align="right">' . e($cajaNombre) . '</td></tr>';
+        $html .= '<tr><td width="42%"><b>Cajero</b></td><td width="58%" align="right">' . e($cajero) . '</td></tr>';
+        $html .= '<tr><td width="42%"><b>Autoriza</b></td><td width="58%" align="right">' . e($autorizado) . '</td></tr>';
+        $html .= '<tr><td width="42%"><b>Apertura</b></td><td width="58%" align="right">' . e($apertura) . '</td></tr>';
+        $html .= '</table>';
+        $html .= '<hr/>';
+        $html .= '<table cellspacing="0" cellpadding="1" style="font-size:7px;width:100%;">';
+        $html .= '<tr><td>Total vendido</td><td align="right">$' . e($fmt($corte->pco_total_ventas)) . '</td></tr>';
+        $html .= '<tr><td>Ventas efectivo</td><td align="right">$' . e($fmt((float) ($resumenVentas['efectivo_ventas_neto'] ?? 0))) . '</td></tr>';
+        foreach ($metodos as $metodo) {
+            $html .= '<tr><td>' . e((string) ($metodo['label'] ?? 'Método')) . '</td><td align="right">$' . e($fmt((float) ($metodo['monto'] ?? 0))) . '</td></tr>';
+        }
+        $html .= '<tr><td>Retiros</td><td align="right">$' . e($fmt($corte->pco_total_retiros)) . '</td></tr>';
+        $html .= '<tr><td>Gastos</td><td align="right">$' . e($fmt($corte->pco_total_gastos)) . '</td></tr>';
+        $html .= '<tr><td><b>Esperado</b></td><td align="right"><b>$' . e($fmt($corte->pco_efectivo_esperado)) . '</b></td></tr>';
+        $html .= '<tr><td><b>Reportado</b></td><td align="right"><b>$' . e($fmt($corte->pco_efectivo_reportado)) . '</b></td></tr>';
+        $html .= '<tr><td><b>Diferencia</b></td><td align="right"><b>$' . e($fmt($corte->pco_diferencia)) . '</b></td></tr>';
+        $html .= '</table>';
+        $html .= '<hr/>';
+        $html .= '<div style="font-size:7px;font-weight:bold;">Denominaciones</div>';
+        $html .= '<table cellspacing="0" cellpadding="1" style="font-size:7px;width:100%;">';
+        foreach ($corte->denominaciones as $denominacion) {
+            if ($denominacion->pdn_clave === 'cambio') {
+                $html .= '<tr><td width="65%">Cambio</td><td width="35%" align="right">$' . e($fmt($denominacion->pdn_monto)) . '</td></tr>';
+                continue;
+            }
+
+            $html .= '<tr><td width="65%">' . e((string) $denominacion->pdn_etiqueta) . ' x ' . e((string) ((int) $denominacion->pdn_cantidad_piezas)) . '</td><td width="35%" align="right">$' . e($fmt($denominacion->pdn_monto)) . '</td></tr>';
+        }
+        $html .= '</table>';
+        $html .= '<div style="font-size:7px;text-align:center;margin-top:12px;">____________________________<br/>Firma de conformidad</div>';
+        if ($corte->pco_observaciones) {
+            $html .= '<div style="font-size:7px;margin-top:6px;"><b>Observaciones</b><br/>' . nl2br(e((string) $corte->pco_observaciones)) . '</div>';
+        }
+        $html .= '<div style="text-align:center;font-size:7px;line-height:1.5;margin-top:6px;">'
+            . nl2br(e((string) ($ticketConfig?->ptc_texto_pie ?: 'Corte registrado correctamente')))
+            . '</div>';
+
+        $pdf->writeHTML($html, true, false, true, false, '');
+
+        return response($pdf->Output('', 'S'), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="corte-' . $corte->pco_folio . '.pdf"',
             'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
         ]);
     }
