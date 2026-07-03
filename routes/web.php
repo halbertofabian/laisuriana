@@ -72,6 +72,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/desktop/roles', [DashboardController::class, 'desktopRoles'])->name('desktop.roles');
     Route::get('/desktop/permisos', [DashboardController::class, 'desktopPermisos'])->name('desktop.permisos');
     Route::get('/desktop/bitacora', [DashboardController::class, 'desktopBitacora'])->name('desktop.bitacora');
+    Route::get('/desktop/ventas', [DashboardController::class, 'desktopVentas'])->name('desktop.ventas');
+    Route::get('/desktop/ventas/data', [DashboardController::class, 'desktopVentasData'])->name('desktop.ventas.data');
     Route::get('/desktop/reportes', [DashboardController::class, 'desktopReportes'])->name('desktop.reportes');
     Route::get('/desktop/reportes/ventas/vendedores/data', [DashboardController::class, 'desktopReportesVentasVendedoresData'])->name('desktop.reportes.ventas.vendedores.data');
     Route::get('/desktop/reportes/ventas/vendedores/exportar/excel', [DashboardController::class, 'desktopReportesVentasVendedoresExportarExcel'])->name('desktop.reportes.ventas.vendedores.exportar.excel');

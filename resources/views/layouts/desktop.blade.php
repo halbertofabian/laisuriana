@@ -840,10 +840,10 @@
                     <span class="nav-item__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h2"/><path d="M14 15h2"/></svg></span>
                     <span class="nav-item__label">Punto de venta</span>
                 </a>
-                <span class="nav-item is-disabled">
+                <a href="{{ route('desktop.ventas') }}" class="nav-item {{ request()->routeIs('desktop.ventas') ? 'is-active' : '' }}">
                     <span class="nav-item__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 3-3 3 3 5-6"/></svg></span>
                     <span class="nav-item__label">Ventas</span>
-                </span>
+                </a>
                 <a href="{{ route('desktop.reportes') }}" class="nav-item {{ request()->routeIs('desktop.reportes') ? 'is-active' : '' }}">
                     <span class="nav-item__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg></span>
                     <span class="nav-item__label">Reportes</span>

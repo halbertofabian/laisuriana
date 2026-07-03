@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Almacen;
+use App\Models\Caja;
 use App\Models\Linea;
 use App\Models\Permiso;
 use App\Models\Rol;
@@ -79,6 +81,67 @@ class DashboardController extends Controller
                     ->get(['lna_id', 'lna_nombre']),
             ],
         ]);
+    }
+
+    public function desktopVentas()
+    {
+        return view('desktop.ventas', [
+            'opciones' => [
+                'cajas' => Caja::query()
+                    ->where('caj_deleted', false)
+                    ->whereNull('caj_deleted_at')
+                    ->orderBy('caj_nombre')
+                    ->get(['caj_id', 'caj_nombre']),
+                'almacenes' => Almacen::query()
+                    ->where('alm_deleted', false)
+                    ->whereNull('alm_deleted_at')
+                    ->where('alm_estatus', 'activo')
+                    ->orderBy('alm_nombre')
+                    ->get(['alm_id', 'alm_nombre']),
+            ],
+        ]);
+    }
+
+    public function desktopVentasData(Request $request): JsonResponse
+    {
+        $rows = DB::table('tbl_pos_ventas_psv as psv')
+            ->leftJoin('tbl_cajas_caj as caj', 'caj.caj_id', '=', 'psv.psv_caj_id')
+            ->leftJoin('tbl_almacenes_alm as alm', 'alm.alm_id', '=', 'psv.psv_alm_id')
+            ->leftJoin('tbl_usuarios_usr as usr', 'usr.usr_id', '=', 'psv.psv_usr_id')
+            ->leftJoin('tbl_clientes_cli as cli', 'cli.cli_id', '=', 'psv.psv_cli_id')
+            ->where('psv.psv_deleted', false)
+            ->whereNull('psv.psv_deleted_at')
+            ->when($request->filled('buscar'), function ($q) use ($request): void {
+                $buscar = trim((string) $request->query('buscar'));
+                $q->where(function ($sub) use ($buscar): void {
+                    $sub->where('psv.psv_folio', 'like', "%{$buscar}%")
+                        ->orWhere('usr.usr_nombre', 'like', "%{$buscar}%")
+                        ->orWhere('cli.cli_nombre', 'like', "%{$buscar}%")
+                        ->orWhere('cli.cli_apellido_paterno', 'like', "%{$buscar}%")
+                        ->orWhere('cli.cli_apellido_materno', 'like', "%{$buscar}%");
+                });
+            })
+            ->when($request->filled('caja_id'), fn ($q) => $q->where('psv.psv_caj_id', (int) $request->query('caja_id')))
+            ->when($request->filled('almacen_id'), fn ($q) => $q->where('psv.psv_alm_id', (int) $request->query('almacen_id')))
+            ->when($request->filled('fecha_desde'), fn ($q) => $q->whereDate('psv.psv_fecha_cobro', '>=', (string) $request->query('fecha_desde')))
+            ->when($request->filled('fecha_hasta'), fn ($q) => $q->whereDate('psv.psv_fecha_cobro', '<=', (string) $request->query('fecha_hasta')))
+            ->orderByDesc('psv.psv_id')
+            ->limit(500)
+            ->get([
+                'psv.psv_id',
+                'psv.psv_folio',
+                'psv.psv_fecha_cobro',
+                'psv.psv_total',
+                'psv.psv_metodo_pago',
+                'psv.psv_estatus',
+                'psv.psv_tipo_operacion',
+                'caj.caj_nombre',
+                'alm.alm_nombre',
+                'usr.usr_nombre as vendedor',
+                DB::raw("TRIM(CONCAT(COALESCE(cli.cli_nombre,''),' ',COALESCE(cli.cli_apellido_paterno,''),' ',COALESCE(cli.cli_apellido_materno,''))) as cliente"),
+            ]);
+
+        return response()->json(['data' => $rows]);
     }
 
     public function desktopReportesVentasVendedoresData(Request $request): JsonResponse
