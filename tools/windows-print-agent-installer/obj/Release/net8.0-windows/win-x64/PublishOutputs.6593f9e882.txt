@@ -1,0 +1,2 @@
+C:\xampp-8\htdocs\laisuriana\public\downloads\LAISURIANAPRINT-SOFTMOR\setup-publish\Laisuriana.PrintAgent.Setup.pdb
+C:\xampp-8\htdocs\laisuriana\public\downloads\LAISURIANAPRINT-SOFTMOR\setup-publish\Laisuriana.PrintAgent.Setup.exe

@@ -10,6 +10,7 @@ use App\Models\CajaSesionUsuario;
 use App\Models\CajaUsuario;
 use App\Models\ExistenciaAlmacen;
 use App\Models\PosCambioDetalle;
+use App\Models\PosCreditoCambio;
 use App\Models\PosCorteCaja;
 use App\Models\PosVenta;
 use App\Models\ProductoSku;
@@ -22,6 +23,7 @@ use App\Models\UsuarioSucursal;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class PosCambiosYCancelacionesTest extends TestCase
@@ -173,6 +175,309 @@ class PosCambiosYCancelacionesTest extends TestCase
             'pcd_psv_id' => $cambio->psv_id,
             'pcd_pvd_origen_id' => $detalleVenta->pvd_id,
             'pcd_condicion' => 'reventa',
+        ]);
+    }
+
+    public function test_cambio_trata_revision_como_reventa_en_backend(): void
+    {
+        [$admin, $sucursal, $almacen] = $this->prepararEscenarioPos();
+        $skuDevuelto = ProductoSku::query()->where('psk_codigo', 'SKU-POLO-CH-AZM')->firstOrFail();
+        $skuNuevo = ProductoSku::query()->where('psk_codigo', 'SKU-POLO-M-AZM')->firstOrFail();
+
+        $this->setExistencia($skuDevuelto->psk_id, $sucursal->scl_id, $almacen->alm_id, 2);
+        $this->setExistencia($skuNuevo->psk_id, $sucursal->scl_id, $almacen->alm_id, 4);
+
+        $venta = $this->crearVentaBase($admin, $sucursal->scl_id, $almacen->alm_id, $skuDevuelto->psk_id, 349.90);
+        $detalleVenta = $venta->detalle()->firstOrFail();
+
+        $response = $this->withSession(['sucursal_activa_id' => $sucursal->scl_id])
+            ->actingAs($admin)
+            ->postJson(route('pos.cambios.store'), [
+                'almacen_id' => $almacen->alm_id,
+                'venta_origen_id' => $venta->psv_id,
+                'metodo_pago' => 'sin_pago',
+                'monto_efectivo' => 0,
+                'monto_tarjeta' => 0,
+                'items' => [
+                    [
+                        'psk_id' => $skuNuevo->psk_id,
+                        'cantidad' => 1,
+                        'precio' => 349.90,
+                    ],
+                ],
+                'devoluciones' => [
+                    [
+                        'pvd_id' => $detalleVenta->pvd_id,
+                        'cantidad' => 1,
+                        'condicion' => 'revision',
+                    ],
+                ],
+            ]);
+
+        $response->assertOk();
+
+        $cambio = PosVenta::query()->where('psv_tipo_operacion', 'cambio')->latest('psv_id')->firstOrFail();
+        $this->assertDatabaseHas('tbl_pos_cambios_detalle_pcd', [
+            'pcd_psv_id' => $cambio->psv_id,
+            'pcd_pvd_origen_id' => $detalleVenta->pvd_id,
+            'pcd_condicion' => 'reventa',
+            'pcd_alm_id' => $almacen->alm_id,
+        ]);
+    }
+
+    public function test_puede_registrar_cambio_aun_si_la_devolucion_corrige_un_sku_ya_negativo(): void
+    {
+        [$admin, $sucursal, $almacen] = $this->prepararEscenarioPos();
+        $skuDevuelto = ProductoSku::query()->where('psk_codigo', 'SKU-POLO-CH-AZM')->firstOrFail();
+        $skuNuevo = ProductoSku::query()->where('psk_codigo', 'SKU-POLO-M-AZM')->firstOrFail();
+
+        $this->setExistencia($skuDevuelto->psk_id, $sucursal->scl_id, $almacen->alm_id, -2);
+        $this->setExistencia($skuNuevo->psk_id, $sucursal->scl_id, $almacen->alm_id, 4);
+
+        $venta = $this->crearVentaBase($admin, $sucursal->scl_id, $almacen->alm_id, $skuDevuelto->psk_id, 349.90);
+        $detalleVenta = $venta->detalle()->firstOrFail();
+
+        $response = $this->withSession(['sucursal_activa_id' => $sucursal->scl_id])
+            ->actingAs($admin)
+            ->postJson(route('pos.cambios.store'), [
+                'almacen_id' => $almacen->alm_id,
+                'venta_origen_id' => $venta->psv_id,
+                'metodo_pago' => 'sin_pago',
+                'monto_efectivo' => 0,
+                'monto_tarjeta' => 0,
+                'items' => [
+                    [
+                        'psk_id' => $skuNuevo->psk_id,
+                        'cantidad' => 1,
+                        'precio' => 349.90,
+                    ],
+                ],
+                'devoluciones' => [
+                    [
+                        'pvd_id' => $detalleVenta->pvd_id,
+                        'cantidad' => 1,
+                        'condicion' => 'reventa',
+                    ],
+                ],
+            ]);
+
+        $response->assertOk();
+        $this->assertSame(-2.0, $this->existencia($skuDevuelto->psk_id, $sucursal->scl_id, $almacen->alm_id));
+        $this->assertSame(3.0, $this->existencia($skuNuevo->psk_id, $sucursal->scl_id, $almacen->alm_id));
+    }
+
+    public function test_pos_resuelve_automaticamente_el_unico_almacen_configurado_del_primer_producto(): void
+    {
+        [$admin, $sucursal, $almacen] = $this->prepararEscenarioPos();
+        $sku = ProductoSku::query()->where('psk_codigo', 'SKU-POLO-CH-AZM')->firstOrFail();
+        $almacenAlterno = $this->crearAlmacenSecundario($sucursal->scl_id);
+
+        $this->asignarProductoAAlmacenes($sku->psk_prd_id, [$almacen->alm_id]);
+
+        $response = $this->withSession(['sucursal_activa_id' => $sucursal->scl_id])
+            ->actingAs($admin)
+            ->getJson(route('pos.productos.resolver_almacen', [
+                'psk_id' => $sku->psk_id,
+                'scl_id' => $sucursal->scl_id,
+            ]));
+
+        $response->assertOk();
+        $response->assertJsonPath('data.requiere_seleccion', false);
+        $response->assertJsonPath('data.almacen_id', $almacen->alm_id);
+        $response->assertJsonPath('data.almacen', $almacen->alm_nombre);
+        $this->assertNotSame($almacenAlterno->alm_id, (int) $response->json('data.almacen_id'));
+    }
+
+    public function test_pos_no_permite_cobrar_si_un_sku_no_pertenece_al_almacen_fijado_en_el_ticket(): void
+    {
+        [$admin, $sucursal, $almacen] = $this->prepararEscenarioPos();
+        $almacenAlterno = $this->crearAlmacenSecundario($sucursal->scl_id);
+        $sku = ProductoSku::query()->where('psk_codigo', 'SKU-POLO-CH-AZM')->firstOrFail();
+
+        $this->asignarProductoAAlmacenes($sku->psk_prd_id, [$almacen->alm_id]);
+        $this->setExistencia($sku->psk_id, $sucursal->scl_id, $almacen->alm_id, 3);
+        $this->setExistencia($sku->psk_id, $sucursal->scl_id, $almacenAlterno->alm_id, 3);
+
+        $response = $this->withSession(['sucursal_activa_id' => $sucursal->scl_id])
+            ->actingAs($admin)
+            ->postJson(route('pos.ventas.cobrar'), [
+                'almacen_id' => $almacenAlterno->alm_id,
+                'metodo_pago' => 'efectivo',
+                'monto_efectivo' => 349.90,
+                'items' => [
+                    [
+                        'psk_id' => $sku->psk_id,
+                        'cantidad' => 1,
+                        'precio' => 349.90,
+                    ],
+                ],
+            ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['items']);
+    }
+
+    public function test_puede_generar_un_vale_de_cambio_global_desde_una_devolucion_pos(): void
+    {
+        [$admin, $sucursal, $almacen] = $this->prepararEscenarioPos();
+        $sku = ProductoSku::query()->where('psk_codigo', 'SKU-POLO-CH-AZM')->firstOrFail();
+
+        $this->setExistencia($sku->psk_id, $sucursal->scl_id, $almacen->alm_id, 3);
+        $venta = $this->crearVentaBase($admin, $sucursal->scl_id, $almacen->alm_id, $sku->psk_id, 349.90);
+        $detalleVenta = $venta->detalle()->firstOrFail();
+
+        $response = $this->withSession(['sucursal_activa_id' => $sucursal->scl_id])
+            ->actingAs($admin)
+            ->postJson(route('pos.creditos_cambio.store'), [
+                'venta_origen_id' => $venta->psv_id,
+                'devoluciones' => [
+                    [
+                        'pvd_id' => $detalleVenta->pvd_id,
+                        'cantidad' => 1,
+                        'condicion' => 'reventa',
+                    ],
+                ],
+            ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.pcc_total_credito', 349.9);
+
+        $credito = PosCreditoCambio::query()->firstOrFail();
+        $this->assertSame('disponible', $credito->pcc_estatus);
+        $this->assertSame(349.9, (float) $credito->pcc_saldo_disponible);
+        $this->assertSame(3.0, $this->existencia($sku->psk_id, $sucursal->scl_id, $almacen->alm_id));
+        $this->assertDatabaseHas('tbl_pos_creditos_cambio_detalle_pcdv', [
+            'pcdv_pcc_id' => $credito->pcc_id,
+            'pcdv_pvd_origen_id' => $detalleVenta->pvd_id,
+            'pcdv_alm_id' => $almacen->alm_id,
+        ]);
+    }
+
+    public function test_puede_aplicar_parcialmente_un_vale_de_cambio_en_otra_venta_pos(): void
+    {
+        [$admin, $sucursal, $almacen] = $this->prepararEscenarioPos();
+        $skuDevuelto = ProductoSku::query()->where('psk_codigo', 'SKU-POLO-CH-AZM')->firstOrFail();
+        $skuNuevo = ProductoSku::query()->where('psk_codigo', 'SKU-GAB-120-AZM')->firstOrFail();
+
+        $this->setExistencia($skuDevuelto->psk_id, $sucursal->scl_id, $almacen->alm_id, 3);
+        $this->setExistencia($skuNuevo->psk_id, $sucursal->scl_id, $almacen->alm_id, 4);
+
+        $ventaOrigen = $this->crearVentaBase($admin, $sucursal->scl_id, $almacen->alm_id, $skuDevuelto->psk_id, 349.90);
+        $detalleVenta = $ventaOrigen->detalle()->firstOrFail();
+
+        $creditoResponse = $this->withSession(['sucursal_activa_id' => $sucursal->scl_id])
+            ->actingAs($admin)
+            ->postJson(route('pos.creditos_cambio.store'), [
+                'venta_origen_id' => $ventaOrigen->psv_id,
+                'devoluciones' => [
+                    [
+                        'pvd_id' => $detalleVenta->pvd_id,
+                        'cantidad' => 1,
+                        'condicion' => 'reventa',
+                    ],
+                ],
+            ]);
+
+        $creditoResponse->assertOk();
+        $folio = (string) $creditoResponse->json('data.pcc_folio');
+
+        $ventaResponse = $this->withSession(['sucursal_activa_id' => $sucursal->scl_id])
+            ->actingAs($admin)
+            ->postJson(route('pos.ventas.cobrar'), [
+                'almacen_id' => $almacen->alm_id,
+                'metodo_pago' => 'sin_pago',
+                'monto_efectivo' => 0,
+                'monto_tarjeta' => 0,
+                'credito_cambio_folio' => $folio,
+                'items' => [
+                    [
+                        'psk_id' => $skuNuevo->psk_id,
+                        'cantidad' => 1,
+                        'precio' => 129.50,
+                    ],
+                ],
+            ]);
+
+        $ventaResponse->assertOk();
+
+        $ventaAplicada = PosVenta::query()->where('psv_id', (int) $ventaResponse->json('data.psv_id'))->firstOrFail();
+        $credito = PosCreditoCambio::query()->where('pcc_folio', $folio)->firstOrFail();
+
+        $this->assertSame(0.0, (float) $ventaAplicada->psv_total);
+        $this->assertSame(129.5, (float) $ventaAplicada->psv_credito_cambio);
+        $this->assertSame(220.4, (float) $credito->pcc_saldo_disponible);
+        $this->assertSame('parcial', $credito->pcc_estatus);
+        $this->assertDatabaseHas('tbl_pos_creditos_cambio_aplicaciones_pca', [
+            'pca_pcc_id' => $credito->pcc_id,
+            'pca_psv_id' => $ventaAplicada->psv_id,
+            'pca_monto_aplicado' => 129.50,
+        ]);
+    }
+
+    public function test_cancelar_venta_con_vale_aplicado_restaura_el_saldo_del_credito(): void
+    {
+        [$admin, $sucursal, $almacen] = $this->prepararEscenarioPos();
+        $skuDevuelto = ProductoSku::query()->where('psk_codigo', 'SKU-POLO-CH-AZM')->firstOrFail();
+        $skuNuevo = ProductoSku::query()->where('psk_codigo', 'SKU-GAB-120-AZM')->firstOrFail();
+
+        $this->setExistencia($skuDevuelto->psk_id, $sucursal->scl_id, $almacen->alm_id, 3);
+        $this->setExistencia($skuNuevo->psk_id, $sucursal->scl_id, $almacen->alm_id, 4);
+
+        $ventaOrigen = $this->crearVentaBase($admin, $sucursal->scl_id, $almacen->alm_id, $skuDevuelto->psk_id, 349.90);
+        $detalleVenta = $ventaOrigen->detalle()->firstOrFail();
+
+        $creditoResponse = $this->withSession(['sucursal_activa_id' => $sucursal->scl_id])
+            ->actingAs($admin)
+            ->postJson(route('pos.creditos_cambio.store'), [
+                'venta_origen_id' => $ventaOrigen->psv_id,
+                'devoluciones' => [
+                    [
+                        'pvd_id' => $detalleVenta->pvd_id,
+                        'cantidad' => 1,
+                        'condicion' => 'reventa',
+                    ],
+                ],
+            ]);
+
+        $creditoResponse->assertOk();
+        $folio = (string) $creditoResponse->json('data.pcc_folio');
+
+        $ventaResponse = $this->withSession(['sucursal_activa_id' => $sucursal->scl_id])
+            ->actingAs($admin)
+            ->postJson(route('pos.ventas.cobrar'), [
+                'almacen_id' => $almacen->alm_id,
+                'metodo_pago' => 'sin_pago',
+                'monto_efectivo' => 0,
+                'monto_tarjeta' => 0,
+                'credito_cambio_folio' => $folio,
+                'items' => [
+                    [
+                        'psk_id' => $skuNuevo->psk_id,
+                        'cantidad' => 1,
+                        'precio' => 129.50,
+                    ],
+                ],
+            ]);
+
+        $ventaResponse->assertOk();
+        $ventaAplicada = PosVenta::query()->findOrFail((int) $ventaResponse->json('data.psv_id'));
+
+        $cancelResponse = $this->withSession(['sucursal_activa_id' => $sucursal->scl_id])
+            ->actingAs($admin)
+            ->postJson(route('pos.ventas.cancelar', $ventaAplicada), [
+                'motivo' => 'Prueba de reversa de vale.',
+            ]);
+
+        $cancelResponse->assertOk();
+
+        $credito = PosCreditoCambio::query()->where('pcc_folio', $folio)->firstOrFail();
+        $this->assertSame(349.9, (float) $credito->pcc_saldo_disponible);
+        $this->assertSame('disponible', $credito->pcc_estatus);
+        $this->assertDatabaseMissing('tbl_pos_creditos_cambio_aplicaciones_pca', [
+            'pca_pcc_id' => $credito->pcc_id,
+            'pca_psv_id' => $ventaAplicada->psv_id,
+            'pca_deleted' => false,
+            'pca_deleted_at' => null,
         ]);
     }
 
@@ -487,6 +792,37 @@ class PosCambiosYCancelacionesTest extends TestCase
             ->where('exa_scl_id', $sucursalId)
             ->where('exa_alm_id', $almacenId)
             ->value('exa_existencia');
+    }
+
+    private function asignarProductoAAlmacenes(int $productoId, array $almacenIds): void
+    {
+        DB::table('tbl_producto_almacenes_pra')
+            ->where('pra_prd_id', $productoId)
+            ->delete();
+
+        foreach ($almacenIds as $almacenId) {
+            DB::table('tbl_producto_almacenes_pra')->insert([
+                'pra_prd_id' => $productoId,
+                'pra_alm_id' => (int) $almacenId,
+                'pra_deleted' => false,
+                'pra_deleted_at' => null,
+                'pra_created_at' => now(),
+                'pra_updated_at' => now(),
+            ]);
+        }
+    }
+
+    private function crearAlmacenSecundario(int $sucursalId): Almacen
+    {
+        $tipoAlmacen = TipoAlmacen::query()->where('tal_clave', 'principal')->firstOrFail();
+
+        return Almacen::query()->create([
+            'alm_scl_id' => $sucursalId,
+            'alm_tal_id' => $tipoAlmacen->tal_id,
+            'alm_nombre' => 'Almacén POS Alterno ' . Almacen::query()->count(),
+            'alm_clave' => 'ALM-POS-ALT-' . Almacen::query()->count(),
+            'alm_estatus' => 'activo',
+        ]);
     }
 
     private function crearUsuarioAutorizadorCorte(int $sucursalId): Usuario

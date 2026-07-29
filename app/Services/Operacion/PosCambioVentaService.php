@@ -20,6 +20,7 @@ class PosCambioVentaService
         private readonly PosVentaService $posVentaService,
         private readonly InventarioBaseService $inventarioBaseService,
         private readonly AuditoriaService $auditoriaService,
+        private readonly PosCreditoCambioService $posCreditoCambioService,
     ) {
     }
 
@@ -84,6 +85,7 @@ class PosCambioVentaService
                 ]);
             }
             $this->validarAlmacenCambio($almacenId, $sucursalId);
+            $this->posVentaService->validarDetalleContraAlmacen($detalleSalida, $sucursalId, $almacenId);
 
             $venta = PosVenta::query()->create([
                 'psv_folio' => $this->posVentaService->crearFolio($almacenId),
@@ -321,20 +323,15 @@ class PosCambioVentaService
                 'cantidad' => $cantidad,
                 'precio_unitario' => $precioUnitario,
                 'importe_credito' => round($cantidad * $precioUnitario, 2),
-                'condicion' => (string) ($linea['condicion'] ?? 'reventa'),
+                // La UI conserva el selector, pero en backend toda devolución POS se trata como reventa.
+                'condicion' => 'reventa',
             ];
         })->values();
     }
 
     private function cantidadDevueltaActiva(int $detalleVentaId): float
     {
-        return round((float) PosCambioDetalle::query()
-            ->join('tbl_pos_ventas_psv as psv', 'psv.psv_id', '=', 'tbl_pos_cambios_detalle_pcd.pcd_psv_id')
-            ->where('tbl_pos_cambios_detalle_pcd.pcd_pvd_origen_id', $detalleVentaId)
-            ->where('tbl_pos_cambios_detalle_pcd.pcd_deleted', false)
-            ->whereNull('tbl_pos_cambios_detalle_pcd.pcd_deleted_at')
-            ->where('psv.psv_estatus', '!=', 'cancelada')
-            ->sum('tbl_pos_cambios_detalle_pcd.pcd_cantidad'), 2);
+        return $this->posCreditoCambioService->cantidadDevueltaActivaPorDetalle($detalleVentaId);
     }
 
     private function resolverAlmacenEntrada(int $sucursalId, int $almacenVentaId, string $condicion): int

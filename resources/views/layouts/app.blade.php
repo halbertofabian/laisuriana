@@ -1132,6 +1132,126 @@
         $(document).ajaxStop(function () {
             window.AppUI.forceHideLoader();
         });
+
+        (function () {
+            function shouldUppercaseField(field) {
+                if (!field || field.matches('[data-ls-uppercase="off"]')) return false;
+                if (field.disabled || field.readOnly) return false;
+
+                const tagName = String(field.tagName || '').toLowerCase();
+                if (tagName === 'textarea') return true;
+                if (tagName !== 'input') return false;
+
+                const type = String(field.getAttribute('type') || 'text').toLowerCase();
+                return ![
+                    'email', 'password', 'search', 'url', 'hidden', 'number', 'date',
+                    'datetime-local', 'month', 'time', 'week', 'range', 'color',
+                    'file', 'checkbox', 'radio'
+                ].includes(type);
+            }
+
+            function uppercaseFieldValue(field) {
+                if (!shouldUppercaseField(field)) return;
+                field.value = String(field.value || '')
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .toUpperCase();
+            }
+
+            function scheduleUppercaseFieldValue(field) {
+                if (!shouldUppercaseField(field)) return;
+                window.requestAnimationFrame(function () {
+                    uppercaseFieldValue(field);
+                });
+            }
+
+            function applyUppercasePresentation(root) {
+                const scope = root || document;
+                scope.querySelectorAll('input, textarea').forEach(function (field) {
+                    if (!shouldUppercaseField(field)) return;
+                    field.style.textTransform = 'uppercase';
+                });
+            }
+
+            function normalizeUppercaseInForm(form) {
+                if (!form) return;
+                form.querySelectorAll('input, textarea').forEach(uppercaseFieldValue);
+            }
+
+            function shouldSkipForm(form) {
+                if (!form) return true;
+                if (form.matches('[data-ls-autocomplete="auth"], [data-ls-autocomplete="allow"]')) return true;
+                if (form.id === 'login-form') return true;
+                const action = String(form.getAttribute('action') || '').toLowerCase();
+                return action.includes('/logout');
+            }
+
+            function applyAdminAutocompletePolicy(root) {
+                const scope = root || document;
+                const forms = scope.querySelectorAll('form[data-ls-autocomplete="admin"]');
+
+                forms.forEach(function (form) {
+                    if (shouldSkipForm(form)) return;
+
+                    form.setAttribute('autocomplete', 'off');
+
+                    form.querySelectorAll('input, textarea, select').forEach(function (field) {
+                        if (field.matches('[data-ls-autocomplete="allow"]')) return;
+                        if (field.disabled || field.readOnly) return;
+
+                        const tagName = String(field.tagName || '').toLowerCase();
+                        if (tagName === 'select') return;
+
+                        const type = String(field.getAttribute('type') || '').toLowerCase();
+                        if (type === 'hidden' || type === 'file' || type === 'checkbox' || type === 'radio') return;
+
+                        if (type === 'password') {
+                            const current = String(field.getAttribute('autocomplete') || '').toLowerCase();
+                            if (!current || current === 'off' || current === 'current-password') {
+                                field.setAttribute('autocomplete', 'new-password');
+                            }
+                            return;
+                        }
+
+                        if (!field.getAttribute('autocomplete')) {
+                            field.setAttribute('autocomplete', 'off');
+                        }
+                    });
+                });
+            }
+
+            document.addEventListener('DOMContentLoaded', function () {
+                applyAdminAutocompletePolicy(document);
+                applyUppercasePresentation(document);
+            });
+
+            document.addEventListener('focusin', function (event) {
+                applyUppercasePresentation(event.target?.form || document);
+            });
+
+            document.addEventListener('input', function (event) {
+                if (event.isComposing) return;
+                scheduleUppercaseFieldValue(event.target);
+            });
+
+            document.addEventListener('compositionend', function (event) {
+                scheduleUppercaseFieldValue(event.target);
+            });
+
+            document.addEventListener('change', function (event) {
+                scheduleUppercaseFieldValue(event.target);
+            });
+
+            document.addEventListener('focusout', function (event) {
+                scheduleUppercaseFieldValue(event.target);
+            });
+
+            document.addEventListener('submit', function (event) {
+                normalizeUppercaseInForm(event.target);
+            }, true);
+
+            window.AppUI.applyAdminAutocompletePolicy = applyAdminAutocompletePolicy;
+        })();
     </script>
     @stack('page-scripts')
 </body>

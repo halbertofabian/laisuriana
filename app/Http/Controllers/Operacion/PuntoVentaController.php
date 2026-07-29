@@ -5,12 +5,14 @@ namespace App\Http\Controllers\Operacion;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Operacion\CancelPosVentaRequest;
 use App\Http\Requests\Operacion\StorePosCajaMovimientoRequest;
+use App\Http\Requests\Operacion\StorePosCreditoCambioRequest;
 use App\Http\Requests\Operacion\StorePosCorteCajaRequest;
 use App\Http\Requests\Operacion\StorePosVentaRequest;
 use App\Http\Requests\Operacion\StorePosCambioRequest;
 use App\Models\Almacen;
 use App\Models\CajaMovimiento;
 use App\Models\Cliente;
+use App\Models\PosCreditoCambio;
 use App\Models\PosCorteCaja;
 use App\Models\PosVenta;
 use App\Models\Caja;
@@ -21,11 +23,14 @@ use App\Services\Operacion\PosCambioVentaService;
 use App\Services\Operacion\PosCajaMovimientoService;
 use App\Services\Operacion\PosCorteCajaService;
 use App\Services\Operacion\PosCajaSesionService;
+use App\Services\Operacion\PosCreditoCambioService;
+use App\Services\Operacion\ProductoAlmacenResolverService;
 use App\Services\Operacion\PosVentaCancelacionService;
 use App\Services\Operacion\PosVentaService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class PuntoVentaController extends Controller
 {
@@ -36,6 +41,8 @@ class PuntoVentaController extends Controller
         private readonly PosCambioVentaService $posCambioVentaService,
         private readonly PosCajaMovimientoService $posCajaMovimientoService,
         private readonly PosCorteCajaService $posCorteCajaService,
+        private readonly PosCreditoCambioService $posCreditoCambioService,
+        private readonly ProductoAlmacenResolverService $productoAlmacenResolverService,
     ) {
     }
 
@@ -43,6 +50,9 @@ class PuntoVentaController extends Controller
     {
         $usuario = $request->user();
         $estado = $this->posCajaSesionService->estadoUsuario($usuario);
+        $sucursalActivaId = (int) ($estado['sesion_activa']['caja_scl_id']
+            ?? $usuario->sucursales()->orderByDesc('tbl_usuario_sucursales_usc.usc_es_predeterminada')->value('tbl_sucursales_scl.scl_id')
+            ?? 0);
         $sucursal = $estado['sesion_activa']['sucursal']
             ?? $usuario->sucursales()->orderByDesc('tbl_usuario_sucursales_usc.usc_es_predeterminada')->value('scl_nombre')
             ?? 'Sin sucursal';
@@ -122,6 +132,7 @@ class PuntoVentaController extends Controller
 
         return view('operacion.punto_venta.index', compact(
             'sucursal',
+            'sucursalActivaId',
             'caja',
             'estado',
             'almacenesVenta',
@@ -135,6 +146,58 @@ class PuntoVentaController extends Controller
             'categoriasGastoSugeridas',
             'vendedores'
         ));
+    }
+
+    public function resolverProductoAlmacen(Request $request): JsonResponse
+    {
+        $datos = $request->validate([
+            'psk_id' => ['required', 'integer', 'exists:tbl_producto_skus_psk,psk_id'],
+            'scl_id' => ['required', 'integer', 'exists:tbl_sucursales_scl,scl_id'],
+        ]);
+
+        $resultado = $this->productoAlmacenResolverService->resolverSkuAlmacen(
+            (int) $datos['psk_id'],
+            (int) $datos['scl_id']
+        );
+
+        if (!$resultado['valido']) {
+            return response()->json([
+                'message' => $resultado['message'],
+                'data' => $resultado,
+            ], 422);
+        }
+
+        return response()->json([
+            'message' => $resultado['message'],
+            'data' => $resultado,
+        ]);
+    }
+
+    public function validarProductoAlmacen(Request $request): JsonResponse
+    {
+        $datos = $request->validate([
+            'psk_id' => ['required', 'integer', 'exists:tbl_producto_skus_psk,psk_id'],
+            'scl_id' => ['required', 'integer', 'exists:tbl_sucursales_scl,scl_id'],
+            'almacen_id' => ['required', 'integer', 'exists:tbl_almacenes_alm,alm_id'],
+        ]);
+
+        $resultado = $this->productoAlmacenResolverService->validarSkuParaAlmacen(
+            (int) $datos['psk_id'],
+            (int) $datos['scl_id'],
+            (int) $datos['almacen_id']
+        );
+
+        if (!$resultado['valido']) {
+            return response()->json([
+                'message' => $resultado['message'],
+                'data' => $resultado,
+            ], 422);
+        }
+
+        return response()->json([
+            'message' => $resultado['message'],
+            'data' => $resultado,
+        ]);
     }
 
     public function estadoCaja(Request $request): JsonResponse
@@ -255,6 +318,68 @@ class PuntoVentaController extends Controller
                 'psv_total' => (float) $venta->psv_total,
                 'psv_credito_cambio' => (float) $venta->psv_credito_cambio,
             ],
+        ]);
+    }
+
+    public function generarCreditoCambio(StorePosCreditoCambioRequest $request): JsonResponse
+    {
+        $credito = $this->posCreditoCambioService->generar($request, $request->user(), $request->validated());
+
+        return response()->json([
+            'message' => 'Crédito de cambio generado correctamente.',
+            'data' => [
+                'pcc_id' => (int) $credito->pcc_id,
+                'pcc_folio' => (string) $credito->pcc_folio,
+                'pcc_total_credito' => (float) $credito->pcc_total_credito,
+                'pcc_saldo_disponible' => (float) $credito->pcc_saldo_disponible,
+            ],
+        ]);
+    }
+
+    public function buscarCreditoCambioPorFolio(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'folio' => ['required', 'string', 'max:50'],
+            'total' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $estado = $this->posCajaSesionService->estadoUsuario($request->user());
+        $sesion = $estado['sesion_activa'] ?? null;
+        $sucursalId = (int) ($sesion['caja_scl_id']
+            ?? $request->user()?->sucursales()->orderByDesc('tbl_usuario_sucursales_usc.usc_es_predeterminada')->value('tbl_sucursales_scl.scl_id')
+            ?? 0);
+
+        $credito = $this->posCreditoCambioService->buscarDisponiblePorFolio(
+            (string) $data['folio'],
+            $sucursalId,
+            (float) ($data['total'] ?? 0)
+        );
+
+        if (!$credito) {
+            return response()->json([
+                'message' => 'No se encontró el crédito de cambio solicitado.',
+            ], 404);
+        }
+
+        return response()->json(['data' => $credito]);
+    }
+
+    public function listarCreditosCambio(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'folio' => ['nullable', 'string', 'max:50'],
+            'cliente' => ['nullable', 'string', 'max:150'],
+            'estatus' => ['nullable', 'string', 'in:disponible,parcial,aplicado,cancelado'],
+        ]);
+
+        $estado = $this->posCajaSesionService->estadoUsuario($request->user());
+        $sesion = $estado['sesion_activa'] ?? null;
+        $sucursalId = (int) ($sesion['caja_scl_id']
+            ?? $request->user()?->sucursales()->orderByDesc('tbl_usuario_sucursales_usc.usc_es_predeterminada')->value('tbl_sucursales_scl.scl_id')
+            ?? 0);
+
+        return response()->json([
+            'data' => $this->posCreditoCambioService->listarDisponiblesParaSucursal($sucursalId, $data),
         ]);
     }
 
@@ -663,6 +788,158 @@ class PuntoVentaController extends Controller
         ]);
     }
 
+    public function ticketCreditoCambio(PosCreditoCambio $credito)
+    {
+        $credito->load([
+            'almacen:alm_id,alm_nombre',
+            'cliente:cli_id,cli_nombre,cli_apellido_paterno,cli_apellido_materno,cli_razon_social',
+            'ventaOrigen:psv_id,psv_folio',
+            'detalle.sku:psk_id,psk_nombre',
+        ]);
+
+        $ticketConfig = PosTicketConfiguracion::query()->first();
+        $lineas = max(1, (int) $credito->detalle->count());
+        $alto = max(170, min(500, 155 + ($lineas * 10)));
+
+        $pdf = new \TCPDF('P', 'mm', [80, $alto], true, 'UTF-8', false, false);
+        $pdf->SetCreator(config('app.name', 'La Suriana'));
+        $pdf->SetAuthor((string) ($credito->pcc_usr_id ?? 'POS'));
+        $pdf->SetTitle('Crédito ' . $credito->pcc_folio);
+        $pdf->setPrintHeader(false);
+        $pdf->setPrintFooter(false);
+        $pdf->SetMargins(4, 4, 4);
+        $pdf->SetAutoPageBreak(true, 4);
+        $pdf->SetFont('helvetica', '', 8);
+        $pdf->AddPage();
+
+        $fmt = static fn ($v) => number_format((float) $v, 2, '.', ',');
+        $fecha = optional($credito->pcc_fecha_generado)->format('d/m/Y H:i') ?? now()->format('d/m/Y H:i');
+        $clienteNombre = trim((string) ($credito->cliente?->cli_razon_social
+            ?: implode(' ', array_filter([
+                $credito->cliente?->cli_nombre,
+                $credito->cliente?->cli_apellido_paterno,
+                $credito->cliente?->cli_apellido_materno,
+            ]))));
+
+        $html = '<div style="text-align:center;font-size:12px;font-weight:bold;">Vale de cambio</div>';
+        $html .= '<div style="text-align:center;font-size:8px;font-weight:bold;">' . e((string) ($credito->almacen?->alm_nombre ?? 'Sin almacén')) . '</div>';
+        if ($ticketConfig?->ptc_texto_encabezado) {
+            $html .= '<div style="font-size:7px;line-height:1.5;margin-top:3px;text-align:center;">' . nl2br(e((string) $ticketConfig->ptc_texto_encabezado)) . '</div>';
+        }
+        $html .= '<div style="font-size:7px;margin-top:4px;">Fecha: ' . e($fecha) . '</div>';
+        $html .= '<div style="font-size:7px;">Folio venta origen: ' . e((string) ($credito->ventaOrigen?->psv_folio ?? 'N/D')) . '</div>';
+        $html .= '<div style="font-size:7px;">Cliente: ' . e($clienteNombre !== '' ? $clienteNombre : 'Público general') . '</div>';
+        $html .= '<hr/>';
+        $html .= '<div style="font-size:7px;font-weight:bold;">Productos resguardados</div>';
+        $html .= '<table cellspacing="0" cellpadding="2" style="font-size:7px;width:100%;">';
+        foreach ($credito->detalle as $detalle) {
+            $html .= '<tr>';
+            $html .= '<td width="55%">' . e((string) ($detalle->sku?->psk_nombre ?? 'Producto')) . '</td>';
+            $html .= '<td width="20%" align="right">' . e($fmt($detalle->pcdv_cantidad)) . '</td>';
+            $html .= '<td width="25%" align="right">$' . e($fmt($detalle->pcdv_importe_credito)) . '</td>';
+            $html .= '</tr>';
+        }
+        $html .= '</table><hr/>';
+        $html .= '<table cellspacing="0" cellpadding="1" style="font-size:8px;width:100%;">';
+        $html .= '<tr><td>Crédito generado</td><td align="right">$' . e($fmt($credito->pcc_total_credito)) . '</td></tr>';
+        $html .= '<tr><td>Saldo disponible</td><td align="right"><b>$' . e($fmt($credito->pcc_saldo_disponible)) . '</b></td></tr>';
+        $html .= '</table>';
+        $html .= '<div style="text-align:center;font-size:7px;line-height:1.5;margin-top:5px;">Presenta este folio en caja para aplicar tu cambio.</div>';
+
+        $pdf->writeHTML($html, true, false, true, false, '');
+
+        $barcodeStyle = [
+            'position' => '',
+            'align' => 'C',
+            'stretch' => false,
+            'fitwidth' => true,
+            'cellfitalign' => '',
+            'border' => false,
+            'padding' => 0,
+            'fgcolor' => [0, 0, 0],
+            'bgcolor' => false,
+            'text' => false,
+            'font' => 'helvetica',
+            'fontsize' => 7,
+        ];
+
+        $barcodeY = $pdf->GetY() + 2;
+        $pdf->write1DBarcode(
+            (string) $credito->pcc_folio,
+            'C128',
+            8,
+            $barcodeY,
+            64,
+            10,
+            0.33,
+            $barcodeStyle,
+            'N'
+        );
+        $pdf->SetFont('helvetica', '', 7);
+        $pdf->SetXY(4, $barcodeY + 11);
+        $pdf->Cell(72, 3.5, (string) $credito->pcc_folio, 0, 1, 'C');
+
+        return response($pdf->Output('', 'S'), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="credito-cambio-' . $credito->pcc_folio . '.pdf"',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+        ]);
+    }
+
+    public function ticketEscpos(PosVenta $venta): JsonResponse
+    {
+        $venta->load([
+            'almacen:alm_id,alm_nombre',
+            'caja:caj_id,caj_nombre',
+            'cajaSesion.caja:caj_id,caj_nombre',
+            'cliente:cli_id,cli_nombre,cli_apellido_paterno,cli_apellido_materno,cli_razon_social',
+            'vendedor:usr_id,usr_nombre,usr_usuario',
+            'ventaOrigen:psv_id,psv_folio',
+            'detalle.sku:psk_id,psk_prd_id,psk_nombre',
+            'detalle.sku.valoresAtributo:vat_id,vat_valor',
+            'detalle.sku.producto:prd_id,prd_nombre,prd_mrc_id,prd_mdl_id,prd_lna_id,prd_ctg_id,prd_dsc_id',
+            'detalle.sku.producto.marca:mrc_id,mrc_nombre',
+            'detalle.sku.producto.modelo:mdl_id,mdl_nombre',
+            'detalle.sku.producto.linea:lna_id,lna_nombre',
+            'detalle.sku.producto.categoria:ctg_id,ctg_nombre',
+            'detalle.sku.producto.descripcionCatalogo:dsc_id,dsc_nombre',
+            'detalle.vendedor:usr_id,usr_nombre,usr_usuario',
+            'cambioDevoluciones.sku:psk_id,psk_nombre',
+        ]);
+
+        $payload = $this->buildVentaEscposPayload($venta);
+
+        return response()->json([
+            'data' => [
+                'source' => 'laisuriana-pos',
+                'content_type' => 'application/vnd.escpos',
+                'document_name' => 'ticket-venta-' . $venta->psv_folio . '.bin',
+                'document_base64' => base64_encode($payload),
+            ],
+        ]);
+    }
+
+    public function ticketCreditoCambioEscpos(PosCreditoCambio $credito): JsonResponse
+    {
+        $credito->load([
+            'almacen:alm_id,alm_nombre',
+            'cliente:cli_id,cli_nombre,cli_apellido_paterno,cli_apellido_materno,cli_razon_social',
+            'ventaOrigen:psv_id,psv_folio',
+            'detalle.sku:psk_id,psk_nombre',
+        ]);
+
+        $payload = $this->buildCreditoCambioEscposPayload($credito);
+
+        return response()->json([
+            'data' => [
+                'source' => 'laisuriana-pos',
+                'content_type' => 'application/vnd.escpos',
+                'document_name' => 'ticket-credito-cambio-' . $credito->pcc_folio . '.bin',
+                'document_base64' => base64_encode($payload),
+            ],
+        ]);
+    }
+
     public function ticketMovimientoCaja(CajaMovimiento $movimiento)
     {
         $movimiento->load([
@@ -829,6 +1106,28 @@ class PuntoVentaController extends Controller
         ]);
     }
 
+    public function ticketCorteCajaEscpos(PosCorteCaja $corte): JsonResponse
+    {
+        $corte->load([
+            'caja:caj_id,caj_nombre',
+            'sesion:cse_id,cse_caj_id',
+            'sesion.caja:caj_id,caj_nombre',
+            'cajero:usr_id,usr_nombre,usr_usuario',
+            'autorizadoPor:usr_id,usr_nombre,usr_usuario',
+        ]);
+
+        $payload = $this->buildCorteCajaEscposPayload($corte);
+
+        return response()->json([
+            'data' => [
+                'source' => 'laisuriana-pos',
+                'content_type' => 'application/vnd.escpos',
+                'document_name' => 'ticket-corte-caja-' . $corte->pco_folio . '.bin',
+                'document_base64' => base64_encode($payload),
+            ],
+        ]);
+    }
+
     public function ventasIndex()
     {
         $cajas = Caja::query()
@@ -934,5 +1233,411 @@ class PuntoVentaController extends Controller
         $colorType = ord($header[25]);
 
         return in_array($colorType, [4, 6], true);
+    }
+
+    private function buildVentaEscposPayload(PosVenta $venta): string
+    {
+        $ticketConfig = PosTicketConfiguracion::query()->first();
+        $width = 42;
+        $lf = "\n";
+        $init = "\x1B@\x1Ba\x00";
+        $center = "\x1Ba\x01";
+        $left = "\x1Ba\x00";
+        $boldOn = "\x1BE\x01";
+        $boldOff = "\x1BE\x00";
+        $cut = "\n\n\n\x1DV\x00";
+        $sep = str_repeat('-', $width);
+        $totalSep = str_repeat('=', $width);
+
+        $metodo = strtoupper((string) ($venta->psv_metodo_pago ?? ''));
+        $tipoOperacion = (string) ($venta->psv_tipo_operacion ?? 'venta');
+        $almacenNombre = $this->thermalAscii((string) ($venta->almacen?->alm_nombre ?? ''));
+        $cajaNombre = $this->thermalAscii((string) ($venta->caja?->caj_nombre ?? $venta->cajaSesion?->caja?->caj_nombre ?? 'Sin caja'));
+        $cajeroNombre = $this->thermalAscii((string) ($venta->vendedor?->usr_usuario ?: $venta->vendedor?->usr_nombre ?: 'Sin cajero'));
+        $fecha = optional($venta->psv_fecha_cobro)->format('d/m/Y H:i') ?? now()->format('d/m/Y H:i');
+        $clienteNombre = trim((string) ($venta->cliente?->cli_razon_social
+            ?: implode(' ', array_filter([
+                $venta->cliente?->cli_nombre,
+                $venta->cliente?->cli_apellido_paterno,
+                $venta->cliente?->cli_apellido_materno,
+            ]))));
+        $clienteNombre = $this->thermalAscii($clienteNombre !== '' ? $clienteNombre : 'Publico general');
+        $articulosVendidos = (int) round($venta->detalle->sum(fn ($d) => (float) $d->pvd_cantidad));
+
+        $p = $init;
+        $p .= $center . $boldOn . 'LA SURIANA' . $lf . $boldOff;
+        $p .= $center . 'Ticket de venta' . $lf;
+        if ($almacenNombre !== '') {
+            $p .= $center . $almacenNombre . $lf;
+        }
+        $p .= $left . $sep . $lf;
+        if ($ticketConfig?->ptc_texto_encabezado) {
+            foreach ($this->wrapEscpos((string) $ticketConfig->ptc_texto_encabezado, $width) as $line) {
+                $p .= $center . $line . $lf;
+            }
+            $p .= $left;
+        }
+        $p .= $boldOn . $this->escposTcRow('Folio: ' . $this->thermalAscii((string) $venta->psv_folio), $fecha, $width) . $lf . $boldOff;
+        $p .= $this->escposTcRow('Caja', $cajaNombre, $width) . $lf;
+        $p .= $this->escposTcRow('Cajero', $cajeroNombre, $width) . $lf;
+        $p .= $this->escposTcRow('Cliente', $clienteNombre, $width) . $lf;
+        $p .= $this->escposTcRow('Metodo', $this->thermalAscii($metodo !== '' ? $metodo : 'N/D'), $width) . $lf;
+        $p .= $this->escposTcRow('Articulos', (string) $articulosVendidos, $width) . $lf;
+        if ($tipoOperacion === 'cambio' && $venta->ventaOrigen?->psv_folio) {
+            $p .= 'Ref cambio: ' . $this->thermalAscii((string) $venta->ventaOrigen->psv_folio) . $lf;
+        }
+        if ($venta->psv_estatus === 'cancelada') {
+            $p .= $center . $boldOn . 'VENTA CANCELADA' . $lf . $boldOff . $left;
+        }
+        $p .= $sep . $lf;
+        $p .= $boldOn
+            . $this->escposColumns([
+                ['text' => 'PRODUCTO', 'width' => 18],
+                ['text' => '', 'width' => 1],
+                ['text' => 'VEND', 'width' => 7],
+                ['text' => '', 'width' => 1],
+                ['text' => 'CANT', 'width' => 6, 'align' => STR_PAD_LEFT],
+                ['text' => '', 'width' => 1],
+                ['text' => 'IMP', 'width' => 8, 'align' => STR_PAD_LEFT],
+            ])
+            . $lf
+            . $boldOff;
+        $p .= $sep . $lf;
+
+        $detalleTotal = $venta->detalle->count();
+        foreach ($venta->detalle as $index => $d) {
+            $nombre = $this->thermalAscii($this->nombreProductoTicket($d->sku));
+            $vendedorLinea = $this->thermalAscii((string) ($d->vendedor?->usr_usuario ?: $d->vendedor?->usr_nombre ?: ''));
+            $meta = trim($vendedorLinea) !== '' ? $vendedorLinea : $almacenNombre;
+            $qty = number_format((float) $d->pvd_cantidad, 2, '.', ',');
+            $importe = '$' . number_format((float) $d->pvd_importe, 2, '.', ',');
+            $nombreLines = $this->wrapEscpos($nombre, 18);
+            $metaLines = $this->wrapEscpos($meta, 7);
+            $rowCount = max(count($nombreLines), count($metaLines));
+
+            for ($i = 0; $i < $rowCount; $i++) {
+                $p .= $this->escposColumns([
+                    ['text' => $nombreLines[$i] ?? '', 'width' => 18],
+                    ['text' => '', 'width' => 1],
+                    ['text' => $metaLines[$i] ?? '', 'width' => 7],
+                    ['text' => '', 'width' => 1],
+                    ['text' => $i === 0 ? $qty : '', 'width' => 6, 'align' => STR_PAD_LEFT],
+                    ['text' => '', 'width' => 1],
+                    ['text' => $i === 0 ? $importe : '', 'width' => 8, 'align' => STR_PAD_LEFT],
+                ]) . $lf;
+            }
+            if (($index + 1) < $detalleTotal) {
+                $p .= str_repeat('-', $width) . $lf;
+            }
+        }
+
+        if ($venta->cambioDevoluciones->isNotEmpty()) {
+            $p .= $sep . $lf;
+            $p .= $boldOn . 'DEVOLUCIONES' . $lf . $boldOff;
+            foreach ($venta->cambioDevoluciones as $devolucion) {
+                $nombre = $this->thermalAscii((string) ($devolucion->sku?->psk_nombre ?? 'Producto'));
+                foreach ($this->wrapEscpos($nombre, $width) as $line) {
+                    $p .= $line . $lf;
+                }
+                $p .= $this->escposTcRow(
+                    '  Cant ' . number_format((float) $devolucion->pcd_cantidad, 2, '.', ','),
+                    '$' . number_format((float) $devolucion->pcd_importe_credito, 2, '.', ','),
+                    $width
+                ) . $lf;
+            }
+        }
+
+        $p .= $sep . $lf;
+        $p .= $this->escposTcRow('Subtotal', '$' . number_format((float) $venta->psv_subtotal, 2, '.', ','), $width) . $lf;
+        $p .= $this->escposTcRow('Descuento', '$' . number_format((float) $venta->psv_descuento, 2, '.', ','), $width) . $lf;
+        if ((float) $venta->psv_credito_cambio > 0) {
+            $p .= $this->escposTcRow('Credito cambio', '-$' . number_format((float) $venta->psv_credito_cambio, 2, '.', ','), $width) . $lf;
+        }
+        $p .= $totalSep . $lf;
+        $p .= $boldOn . $this->escposTcRow('TOTAL', '$' . number_format((float) $venta->psv_total, 2, '.', ','), $width) . $lf . $boldOff;
+        $p .= $this->escposTcRow('Pagado', '$' . number_format((float) $venta->psv_pagado, 2, '.', ','), $width) . $lf;
+        $p .= $this->escposTcRow('Cambio', '$' . number_format((float) $venta->psv_cambio, 2, '.', ','), $width) . $lf;
+        if ($venta->psv_notas) {
+            $p .= $sep . $lf;
+            foreach ($this->wrapEscpos('Notas: ' . (string) $venta->psv_notas, $width) as $line) {
+                $p .= $line . $lf;
+            }
+        }
+        $p .= $sep . $lf;
+        $p .= $center;
+        foreach ($this->wrapEscpos((string) ($ticketConfig?->ptc_texto_pie ?: 'Gracias por su compra'), $width) as $line) {
+            $p .= $line . $lf;
+        }
+        $p .= $this->escposBarcodePayload((string) $venta->psv_folio);
+        $p .= $cut;
+
+        return $p;
+    }
+
+    private function buildCorteCajaEscposPayload(PosCorteCaja $corte): string
+    {
+        $width = 42;
+        $lf = "\n";
+        $init = "\x1B@\x1Ba\x00";
+        $center = "\x1Ba\x01";
+        $left = "\x1Ba\x00";
+        $boldOn = "\x1BE\x01";
+        $boldOff = "\x1BE\x00";
+        $cut = "\n\n\n\x1DV\x00";
+        $sep = str_repeat('-', $width);
+        $totalSep = str_repeat('=', $width);
+
+        $ticketConfig = PosTicketConfiguracion::query()->first();
+        $fmt = static fn ($v) => number_format((float) $v, 2, '.', ',');
+        $cajaNombre = $this->thermalAscii((string) ($corte->caja?->caj_nombre ?? $corte->sesion?->caja?->caj_nombre ?? 'Sin caja'));
+        $cajero = $this->thermalAscii(trim((string) ($corte->cajero?->usr_usuario ?: $corte->cajero?->usr_nombre ?: 'Sin cajero')));
+        $autorizado = $this->thermalAscii(trim((string) ($corte->autorizadoPor?->usr_usuario ?: $corte->autorizadoPor?->usr_nombre ?: 'Sin autorizacion')));
+        $apertura = optional($corte->pco_abierta_at)->format('d/m/Y H:i') ?? 'N/D';
+        $cierre = optional($corte->pco_cerrada_at)->format('d/m/Y H:i') ?? now()->format('d/m/Y H:i');
+        $metodos = collect($corte->pco_resumen_metodos_pago ?? []);
+        $resumenVentas = $corte->pco_resumen_ventas ?? [];
+
+        $p = $init;
+        $p .= $center . $boldOn . 'CORTE DE CAJA' . $lf . $boldOff;
+        $p .= $center . $cajaNombre . $lf . $left;
+        $p .= $sep . $lf;
+        $p .= $boldOn . $this->escposTcRow('FOLIO: ' . $this->thermalAscii((string) $corte->pco_folio), $cierre, $width) . $lf . $boldOff;
+        $p .= $this->escposTcRow('CAJA', $cajaNombre, $width) . $lf;
+        $p .= $this->escposTcRow('CAJERO', $cajero, $width) . $lf;
+        $p .= $this->escposTcRow('AUTORIZA', $autorizado, $width) . $lf;
+        $p .= $this->escposTcRow('APERTURA', $this->thermalAscii($apertura), $width) . $lf;
+        $p .= $sep . $lf;
+        $p .= $this->escposTcRow('TOTAL VENDIDO', '$' . $fmt($corte->pco_total_ventas), $width) . $lf;
+        if (!empty($resumenVentas['ventas_contado'])) {
+            $p .= $this->escposTcRow('VENTA CONTADO', '$' . $fmt($resumenVentas['ventas_contado']), $width) . $lf;
+        }
+        if (!empty($resumenVentas['abonos_credito'])) {
+            $p .= $this->escposTcRow('ABONOS CREDITO', '$' . $fmt($resumenVentas['abonos_credito']), $width) . $lf;
+        }
+        foreach ($metodos as $metodo) {
+            $label = is_array($metodo) ? (string) ($metodo['label'] ?? $metodo['clave'] ?? 'METODO') : (string) $metodo;
+            $monto = is_array($metodo) ? (float) ($metodo['monto'] ?? 0) : 0.0;
+            $p .= $this->escposTcRow($this->thermalAscii($label), '$' . $fmt($monto), $width) . $lf;
+        }
+        $p .= $sep . $lf;
+        $p .= $this->escposTcRow('RETIROS', '$' . $fmt($corte->pco_total_retiros), $width) . $lf;
+        $p .= $this->escposTcRow('GASTOS', '$' . $fmt($corte->pco_total_gastos), $width) . $lf;
+        $p .= $totalSep . $lf;
+        $p .= $boldOn . $this->escposTcRow('ESPERADO', '$' . $fmt($corte->pco_efectivo_esperado), $width) . $lf . $boldOff;
+        $p .= $boldOn . $this->escposTcRow('REPORTADO', '$' . $fmt($corte->pco_efectivo_reportado), $width) . $lf . $boldOff;
+        $p .= $boldOn . $this->escposTcRow('DIFERENCIA', '$' . $fmt($corte->pco_diferencia), $width) . $lf . $boldOff;
+        if ($corte->pco_observaciones) {
+            $p .= $sep . $lf;
+            foreach ($this->wrapEscpos('OBS: ' . (string) $corte->pco_observaciones, $width) as $line) {
+                $p .= $line . $lf;
+            }
+        }
+        $p .= $sep . $lf;
+        $p .= $center;
+        foreach ($this->wrapEscpos((string) ($ticketConfig?->ptc_texto_pie ?: 'CORTE REGISTRADO CORRECTAMENTE'), $width) as $line) {
+            $p .= $line . $lf;
+        }
+        $p .= $this->escposBarcodePayload((string) $corte->pco_folio);
+        $p .= $cut;
+
+        return $p;
+    }
+
+    private function buildCreditoCambioEscposPayload(PosCreditoCambio $credito): string
+    {
+        $ticketConfig = PosTicketConfiguracion::query()->first();
+        $width = 42;
+        $lf = "\n";
+        $init = "\x1B@\x1Ba\x00";
+        $center = "\x1Ba\x01";
+        $left = "\x1Ba\x00";
+        $boldOn = "\x1BE\x01";
+        $boldOff = "\x1BE\x00";
+        $cut = "\n\n\n\x1DV\x00";
+        $sep = str_repeat('-', $width);
+        $totalSep = str_repeat('=', $width);
+
+        $fecha = optional($credito->pcc_fecha_generado)->format('d/m/Y H:i') ?? now()->format('d/m/Y H:i');
+        $almacen = $this->thermalAscii((string) ($credito->almacen?->alm_nombre ?? 'Sin almacen'));
+        $cliente = trim((string) ($credito->cliente?->cli_razon_social
+            ?: implode(' ', array_filter([
+                $credito->cliente?->cli_nombre,
+                $credito->cliente?->cli_apellido_paterno,
+                $credito->cliente?->cli_apellido_materno,
+            ]))));
+        $cliente = $this->thermalAscii($cliente !== '' ? $cliente : 'Publico general');
+
+        $p = $init;
+        $p .= $center . $boldOn . 'VALE DE CAMBIO' . $lf . $boldOff;
+        $p .= $center . $almacen . $lf . $left;
+        $p .= $sep . $lf;
+        $p .= $boldOn . $this->escposTcRow('Folio: ' . $this->thermalAscii((string) $credito->pcc_folio), $fecha, $width) . $lf . $boldOff;
+        $p .= $this->escposTcRow('Cliente', $cliente, $width) . $lf;
+        $p .= $this->escposTcRow('Venta origen', $this->thermalAscii((string) ($credito->ventaOrigen?->psv_folio ?? 'N/D')), $width) . $lf;
+        $p .= $sep . $lf;
+
+        foreach ($credito->detalle as $detalle) {
+            $nombre = $this->thermalAscii((string) ($detalle->sku?->psk_nombre ?? 'Producto'));
+            foreach ($this->wrapEscpos($nombre, $width) as $line) {
+                $p .= $line . $lf;
+            }
+            $p .= $this->escposTcRow(
+                '  Cant ' . number_format((float) $detalle->pcdv_cantidad, 2, '.', ','),
+                '$' . number_format((float) $detalle->pcdv_importe_credito, 2, '.', ','),
+                $width
+            ) . $lf;
+        }
+
+        $p .= $totalSep . $lf;
+        $p .= $boldOn . $this->escposTcRow('TOTAL', '$' . number_format((float) $credito->pcc_total_credito, 2, '.', ','), $width) . $lf . $boldOff;
+        $p .= $this->escposTcRow('Saldo', '$' . number_format((float) $credito->pcc_saldo_disponible, 2, '.', ','), $width) . $lf;
+        $p .= $sep . $lf;
+        $p .= $center;
+        foreach ($this->wrapEscpos((string) ($ticketConfig?->ptc_texto_pie ?: 'Conserve este vale para aplicarlo despues'), $width) as $line) {
+            $p .= $line . $lf;
+        }
+        $p .= $this->escposBarcodePayload((string) $credito->pcc_folio);
+        $p .= $cut;
+
+        return $p;
+    }
+
+    private function wrapEscpos(string $text, int $width): array
+    {
+        $clean = $this->thermalAscii($text);
+        if ($clean === '') {
+            return [''];
+        }
+
+        $lines = [];
+        foreach (preg_split('/\r\n|\r|\n/', $clean) ?: [] as $chunk) {
+            $chunk = trim($chunk);
+            if ($chunk === '') {
+                $lines[] = '';
+                continue;
+            }
+
+            while (strlen($chunk) > $width) {
+                $lines[] = rtrim(substr($chunk, 0, $width));
+                $chunk = ltrim(substr($chunk, $width));
+            }
+
+            $lines[] = $chunk;
+        }
+
+        return $lines === [] ? [''] : $lines;
+    }
+
+    private function escposTcRow(string $left, string $right, int $width): string
+    {
+        $left = $this->thermalAscii($left);
+        $right = $this->thermalAscii($right);
+        $rightLen = strlen($right);
+        $maxLeft = $width - $rightLen - 1;
+
+        if (strlen($left) > $maxLeft) {
+            $left = substr($left, 0, $maxLeft);
+        }
+
+        $spaces = $width - strlen($left) - $rightLen;
+
+        return $left . str_repeat(' ', max(1, $spaces)) . $right;
+    }
+
+    private function escposColumns(array $columns): string
+    {
+        $line = '';
+
+        foreach ($columns as $column) {
+            $text = $this->thermalAscii((string) ($column['text'] ?? ''));
+            $width = max(1, (int) ($column['width'] ?? 1));
+            $align = (int) ($column['align'] ?? STR_PAD_RIGHT);
+
+            if (strlen($text) > $width) {
+                $text = substr($text, 0, $width);
+            }
+
+            $line .= str_pad($text, $width, ' ', $align);
+        }
+
+        return $line;
+    }
+
+    private function escposBarcodePayload(string $value): string
+    {
+        $barcode = $this->thermalAscii($value);
+        if ($barcode === '') {
+            return '';
+        }
+
+        $barcode = substr($barcode, 0, 120);
+        $content = '{B' . $barcode;
+        $length = strlen($content);
+
+        return $this->escposAlign('C')
+            . "\x1DH\x02"
+            . "\x1Dw\x02"
+            . "\x1Dh\x40"
+            . "\x1DkI"
+            . chr($length)
+            . $content
+            . "\n"
+            . $this->escposAlign('L');
+    }
+
+    private function escposRasterFromImage($image): string
+    {
+        $width = imagesx($image);
+        $height = imagesy($image);
+        $widthBytes = (int) ceil($width / 8);
+        $data = '';
+
+        for ($y = 0; $y < $height; $y++) {
+            for ($xb = 0; $xb < $widthBytes; $xb++) {
+                $byte = 0;
+                for ($bit = 0; $bit < 8; $bit++) {
+                    $x = ($xb * 8) + $bit;
+                    if ($x >= $width) {
+                        continue;
+                    }
+
+                    $rgb = imagecolorat($image, $x, $y);
+                    $r = ($rgb >> 16) & 0xFF;
+                    $g = ($rgb >> 8) & 0xFF;
+                    $b = $rgb & 0xFF;
+                    $luma = (0.299 * $r) + (0.587 * $g) + (0.114 * $b);
+
+                    if ($luma < 200) {
+                        $byte |= (1 << (7 - $bit));
+                    }
+                }
+
+                $data .= chr($byte);
+            }
+        }
+
+        return "\x1D\x76\x30\x00"
+            . chr($widthBytes & 0xFF)
+            . chr(($widthBytes >> 8) & 0xFF)
+            . chr($height & 0xFF)
+            . chr(($height >> 8) & 0xFF)
+            . $data;
+    }
+
+    private function escposAlign(string $align): string
+    {
+        return match (strtoupper($align)) {
+            'C' => "\x1Ba\x01",
+            'R' => "\x1Ba\x02",
+            default => "\x1Ba\x00",
+        };
+    }
+
+    private function thermalAscii(string $value): string
+    {
+        $ascii = Str::ascii($value);
+        $clean = preg_replace('/[^\x20-\x7E]/', ' ', $ascii) ?? '';
+
+        return Str::upper($clean);
     }
 }

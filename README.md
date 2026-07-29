@@ -58,3 +58,13 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
 # laisuriana
+
+## Convención UX: autocomplete en formularios
+
+- Los formularios administrativos deben marcarse con `data-ls-autocomplete="admin"`.
+- Esa marca activa una política centralizada en los layouts para aplicar `autocomplete="off"` a campos comunes.
+- Los `type="password"` fuera de login deben usar `autocomplete="new-password"`.
+- Los formularios de autenticación deben declararse con `data-ls-autocomplete="auth"` y usar semántica explícita como `autocomplete="username"` y `autocomplete="current-password"`.
+- No cambiar `name` o `id` del backend sólo para evitar heurísticas del navegador, salvo caso excepcional y justificado.
+- La app muestra y guarda en mayúsculas los `input` de texto y `textarea`, eliminando acentos y diacríticos antes de persistir el valor.
+- Se excluyen `email`, `password`, `search`, `url`, campos numéricos/fecha y cualquier campo marcado con `data-ls-uppercase="off"`.

@@ -301,9 +301,13 @@
                 store: @json(route('operacion.pedidos_piso.store')),
                 data: @json(route('operacion.pedidos_piso.data')),
                 ticket: @json(route('operacion.pedidos_piso.ticket', ['pedido' => '__ID__'])),
+                ticketEscpos: @json(route('operacion.pedidos_piso.ticket_escpos', ['pedido' => '__ID__'])),
             };
             const csrf = @json(csrf_token());
             const usrId = @json($usuarioActual['usr_id']);
+            const storageAgenteImpresionHabilitado = 'laisuriana.pos.agente_impresion.habilitado';
+            const storageAgenteImpresionUrl = 'laisuriana.pos.agente_impresion.url';
+            const agenteImpresionUrlDefault = 'http://127.0.0.1:17890';
 
             let partidas = [];
             let sheetCtx = null;
@@ -311,6 +315,8 @@
             let clienteTimer = null;
             let clienteSeleccionado = null;
             let lineSeq = 0;
+            let agenteImpresionHabilitado = false;
+            let agenteImpresionUrl = agenteImpresionUrlDefault;
 
             function esc(t) { return $('<div>').text(t ?? '').html(); }
             function money(v) { return '$ ' + Number(v || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
@@ -318,6 +324,123 @@
             function roundMoney(v) { return Math.round((Number(v || 0) + Number.EPSILON) * 100) / 100; }
             function discountType(v) { return v === 'porcentaje' || v === 'importe' ? v : 'ninguno'; }
             function nextItemKey() { lineSeq += 1; return 'pp-line-' + lineSeq; }
+            function cargarConfiguracionAgenteImpresion() {
+                try {
+                    const habilitadoGuardado = window.localStorage.getItem(storageAgenteImpresionHabilitado);
+                    const urlGuardada = window.localStorage.getItem(storageAgenteImpresionUrl);
+                    agenteImpresionHabilitado = habilitadoGuardado === '1';
+                    agenteImpresionUrl = (urlGuardada || agenteImpresionUrlDefault).trim() || agenteImpresionUrlDefault;
+                } catch (error) {
+                    agenteImpresionHabilitado = false;
+                    agenteImpresionUrl = agenteImpresionUrlDefault;
+                }
+            }
+            function rutaTicketPedido(id) { return rutas.ticket.replace('__ID__', id); }
+            function rutaTicketPedidoEscpos(id) { return rutas.ticketEscpos.replace('__ID__', id); }
+            function blobToBase64(blob) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        const raw = String(reader.result || '');
+                        const base64 = raw.includes(',') ? raw.split(',', 2)[1] : raw;
+                        resolve(base64);
+                    };
+                    reader.onerror = () => reject(new Error('No fue posible leer el PDF del ticket.'));
+                    reader.readAsDataURL(blob);
+                });
+            }
+            async function imprimirTicketPedidoPdf(ticketUrl, nombreArchivo) {
+                const destino = String(ticketUrl || '');
+                if (!destino) return;
+
+                if (!agenteImpresionHabilitado) {
+                    window.open(destino, '_blank');
+                    return;
+                }
+
+                try {
+                    const res = await fetch(destino, {
+                        headers: {
+                            'Accept': 'application/pdf',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        credentials: 'same-origin',
+                    });
+
+                    if (!res.ok) {
+                        throw new Error('No fue posible descargar el ticket PDF.');
+                    }
+
+                    const pdfBlob = await res.blob();
+                    const pdfBase64 = await blobToBase64(pdfBlob);
+
+                    const printRes = await fetch(`${agenteImpresionUrl.replace(/\/+$/, '')}/api/print-jobs`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            source: 'laisuriana-pos',
+                            content_type: 'application/pdf',
+                            document_name: nombreArchivo,
+                            document_base64: pdfBase64,
+                        }),
+                    });
+
+                    const printJson = await printRes.json().catch(() => ({}));
+                    if (!printRes.ok) {
+                        throw new Error(printJson?.message || 'El agente local rechazo la impresion.');
+                    }
+                } catch (error) {
+                    console.error(error);
+                    window.open(destino, '_blank');
+                }
+            }
+            async function imprimirPedidoAutomatico(pedidoId, folio = '') {
+                if (!pedidoId) return;
+
+                const fallbackUrl = rutaTicketPedido(pedidoId);
+                const payloadUrl = rutaTicketPedidoEscpos(pedidoId);
+                const nombreBase = folio ? `pedido-${folio}` : `pedido-${pedidoId}`;
+
+                if (!agenteImpresionHabilitado) {
+                    window.open(fallbackUrl, '_blank');
+                    return;
+                }
+
+                try {
+                    const res = await fetch(payloadUrl, {
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        credentials: 'same-origin',
+                    });
+
+                    const json = await res.json().catch(() => ({}));
+                    if (!res.ok || !json?.data?.document_base64) {
+                        throw new Error(json?.message || 'No fue posible preparar el ticket termico.');
+                    }
+
+                    const printRes = await fetch(`${agenteImpresionUrl.replace(/\/+$/, '')}/api/print-jobs`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify(json.data),
+                    });
+
+                    const printJson = await printRes.json().catch(() => ({}));
+                    if (!printRes.ok) {
+                        throw new Error(printJson?.message || 'El agente local rechazo la impresion.');
+                    }
+                } catch (error) {
+                    console.error(error);
+                    await imprimirTicketPedidoPdf(fallbackUrl, `${nombreBase}.pdf`);
+                }
+            }
             function lineStep(item) { return item?.permite_decimal ? 0.01 : 1; }
             function lineQtyValue(item, raw) {
                 const parsed = Number(String(raw ?? '').replace(',', '.'));
@@ -895,8 +1018,26 @@
                     .fail(() => $('#pp-ped-list').html('<div class="pp-empty">No fue posible cargar los pedidos.</div>'));
             });
             $(document).on('click', '[data-pp-ped-close]', () => $('#pp-ped-sheet').prop('hidden', true).attr('aria-hidden', 'true'));
+            $('#pp-ped-list').on('click', 'a[title="Ver ticket"]', async function (event) {
+                event.preventDefault();
+                const pedidoId = Number(String($(this).attr('href') || '').match(/\/pedidos-piso\/(\d+)\/ticket$/)?.[1] || 0);
+                const folio = String($(this).closest('.pp-ped-card').find('.pp-ped-card__folio').text() || '').trim();
+                await imprimirPedidoAutomatico(pedidoId, folio);
+            });
+
+            $(document).ajaxSuccess(async function (event, xhr, settings) {
+                if ((settings?.type || settings?.method || '').toUpperCase() !== 'POST') return;
+                if (String(settings?.url || '') !== String(rutas.store)) return;
+
+                const response = xhr?.responseJSON || {};
+                const pedidoId = Number(response?.data?.pdp_id || 0);
+                if (pedidoId <= 0) return;
+
+                await imprimirPedidoAutomatico(pedidoId, String(response?.data?.pdp_folio || ''));
+            });
 
             // Init
+            cargarConfiguracionAgenteImpresion();
             actualizarCtx();
             renderCarrito();
             $('#pp-q').trigger('focus');

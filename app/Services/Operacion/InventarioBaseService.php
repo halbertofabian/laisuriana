@@ -3310,7 +3310,7 @@ class InventarioBaseService
         $despues = round($antes + ($cantidad * $signo), 2);
         $permitirNegativo = (bool) ($datos['min_permitir_negativo'] ?? false);
 
-        if ($despues < 0 && !$permitirNegativo) {
+        if ($signo < 0 && $despues < 0 && !$permitirNegativo) {
             throw ValidationException::withMessages([
                 'min_cantidad' => 'La operación deja inventario negativo y no está permitido.',
             ]);

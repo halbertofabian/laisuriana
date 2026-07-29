@@ -279,6 +279,15 @@ Route::middleware('auth')->group(function () {
         Route::patch('/clientes/{cliente}/estatus', [OperacionGestionConfiguracionesController::class, 'cambiarEstatusCliente'])
             ->name('clientes.estatus')
             ->middleware('permiso:cliente.inactivar');
+        Route::get('/impresoras', [OperacionGestionConfiguracionesController::class, 'impresoras'])
+            ->name('impresoras.index')
+            ->middleware('permiso:caja.ver');
+        Route::post('/impresoras', [OperacionGestionConfiguracionesController::class, 'storeImpresoraDispositivo'])
+            ->name('impresoras.store')
+            ->middleware('permiso:caja.editar');
+        Route::get('/impresoras/agente', [OperacionGestionConfiguracionesController::class, 'downloadAgenteImpresion'])
+            ->name('impresoras.agente.download')
+            ->middleware('permiso:caja.ver');
         Route::get('/personalizar-ticket', [OperacionGestionConfiguracionesController::class, 'personalizarTicket'])
             ->name('ticket.index')
             ->middleware('permiso:caja.ver');
@@ -291,6 +300,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/pos', [PuntoVentaController::class, 'index'])->name('pos.index');
     Route::get('/pos/caja/estado', [PuntoVentaController::class, 'estadoCaja'])->name('pos.caja.estado');
     Route::get('/pos/clientes/buscar', [PuntoVentaController::class, 'buscarClientes'])->name('pos.clientes.buscar');
+    Route::get('/pos/productos/resolver-almacen', [PuntoVentaController::class, 'resolverProductoAlmacen'])->name('pos.productos.resolver_almacen');
+    Route::get('/pos/productos/validar-almacen', [PuntoVentaController::class, 'validarProductoAlmacen'])->name('pos.productos.validar_almacen');
     Route::post('/pos/caja/abrir', [PuntoVentaController::class, 'abrirCaja'])->name('pos.caja.abrir');
     Route::post('/pos/caja/tomar', [PuntoVentaController::class, 'tomarCaja'])->name('pos.caja.tomar');
     Route::post('/pos/caja/abandonar', [PuntoVentaController::class, 'abandonarCaja'])->name('pos.caja.abandonar');
@@ -299,14 +310,21 @@ Route::middleware('auth')->group(function () {
     Route::post('/pos/caja/cortes', [PuntoVentaController::class, 'realizarCorteCaja'])->name('pos.caja.cortes.store');
     Route::get('/pos/caja/movimientos/{movimiento}/ticket', [PuntoVentaController::class, 'ticketMovimientoCaja'])->name('pos.caja.movimientos.ticket');
     Route::get('/pos/caja/cortes/{corte}/ticket', [PuntoVentaController::class, 'ticketCorteCaja'])->name('pos.caja.cortes.ticket');
+    Route::get('/pos/caja/cortes/{corte}/ticket-escpos', [PuntoVentaController::class, 'ticketCorteCajaEscpos'])->name('pos.caja.cortes.ticket_escpos');
     Route::post('/pos/ventas/cobrar', [PuntoVentaController::class, 'cobrar'])->name('pos.ventas.cobrar');
     Route::post('/pos/cambios', [PuntoVentaController::class, 'registrarCambio'])->name('pos.cambios.store')->middleware('permiso:pos.cambio_devolucion');
+    Route::post('/pos/creditos-cambio', [PuntoVentaController::class, 'generarCreditoCambio'])->name('pos.creditos_cambio.store')->middleware('permiso:pos.cambio_devolucion');
+    Route::get('/pos/creditos-cambio/buscar-por-folio', [PuntoVentaController::class, 'buscarCreditoCambioPorFolio'])->name('pos.creditos_cambio.buscar_folio');
+    Route::get('/pos/creditos-cambio', [PuntoVentaController::class, 'listarCreditosCambio'])->name('pos.creditos_cambio.index');
     Route::get('/pos/ventas/dia', [PuntoVentaController::class, 'ventasDelDia'])->name('pos.ventas.dia');
     Route::get('/pos/ventas/buscar-por-folio', [PuntoVentaController::class, 'buscarVentaPorFolio'])->name('pos.ventas.buscar_folio');
     Route::get('/pos/ventas/{venta}', [PuntoVentaController::class, 'showVenta'])->name('pos.ventas.show');
     Route::post('/pos/ventas/{venta}/cancelar', [PuntoVentaController::class, 'cancelarVenta'])->name('pos.ventas.cancelar')->middleware('permiso:pos.cancelar_venta');
     Route::get('/pos/pedidos-pendientes', [PuntoVentaController::class, 'pedidosPendientesCobro'])->name('pos.pedidos.pendientes');
     Route::get('/pos/ventas/{venta}/ticket', [PuntoVentaController::class, 'ticket'])->name('pos.ventas.ticket');
+    Route::get('/pos/ventas/{venta}/ticket-escpos', [PuntoVentaController::class, 'ticketEscpos'])->name('pos.ventas.ticket_escpos');
+    Route::get('/pos/creditos-cambio/{credito}/ticket', [PuntoVentaController::class, 'ticketCreditoCambio'])->name('pos.creditos_cambio.ticket');
+    Route::get('/pos/creditos-cambio/{credito}/ticket-escpos', [PuntoVentaController::class, 'ticketCreditoCambioEscpos'])->name('pos.creditos_cambio.ticket_escpos');
 
     Route::prefix('demo')->name('demo.')->group(function () {
         Route::get('/datatables', [DataTableDemoController::class, 'index'])->name('datatables');
@@ -510,6 +528,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/productos/resolver', [PedidoPisoController::class, 'resolverProductoAlmacen'])->name('productos.resolver')->middleware('permiso:pedido_piso.ver');
             Route::get('/productos/validar', [PedidoPisoController::class, 'validarProductoAlmacen'])->name('productos.validar')->middleware('permiso:pedido_piso.ver');
             Route::get('/buscar-por-folio', [PedidoPisoController::class, 'buscarPorFolio'])->name('folio.buscar')->middleware('permiso:pedido_piso.ver');
+            Route::get('/{pedido}/ticket-escpos', [PedidoPisoController::class, 'ticketEscpos'])->name('ticket_escpos')->middleware('permiso:pedido_piso.ver');
             Route::get('/{pedido}/ticket', [PedidoPisoController::class, 'ticket'])->name('ticket')->middleware('permiso:pedido_piso.ver');
             Route::get('/{pedido}', [PedidoPisoController::class, 'show'])->name('show')->middleware('permiso:pedido_piso.ver');
             Route::post('/', [PedidoPisoController::class, 'store'])->name('store')->middleware('permiso:pedido_piso.crear');

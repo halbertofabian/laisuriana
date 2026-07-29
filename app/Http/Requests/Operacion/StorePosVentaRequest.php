@@ -27,9 +27,10 @@ class StorePosVentaRequest extends FormRequest
             'pedido_id' => ['nullable', 'integer', 'exists:tbl_pedidos_piso_pdp,pdp_id'],
             'notas' => ['nullable', 'string', 'max:2000'],
             'descuento_global' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'metodo_pago' => ['required', Rule::in(['efectivo', 'tarjeta', 'mixto'])],
+            'metodo_pago' => ['required', Rule::in(['efectivo', 'tarjeta', 'mixto', 'sin_pago'])],
             'monto_efectivo' => ['nullable', 'numeric', 'min:0'],
             'monto_tarjeta' => ['nullable', 'numeric', 'min:0'],
+            'credito_cambio_folio' => ['nullable', 'string', 'max:50'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.psk_id' => ['required', 'integer', 'exists:tbl_producto_skus_psk,psk_id'],
             'items.*.cantidad' => ['required', 'numeric', 'gt:0'],
@@ -72,6 +73,9 @@ class StorePosVentaRequest extends FormRequest
             }
             if ($metodo === 'mixto' && ($efectivo <= 0 || $tarjeta <= 0)) {
                 $validator->errors()->add('metodo_pago', 'En pago mixto debes capturar efectivo y tarjeta.');
+            }
+            if ($metodo === 'sin_pago' && ($efectivo > 0 || $tarjeta > 0)) {
+                $validator->errors()->add('metodo_pago', 'Una venta sin pago no debe capturar montos.');
             }
         });
     }

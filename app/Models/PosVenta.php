@@ -114,6 +114,20 @@ class PosVenta extends Model
             ->whereNull('pcd_deleted_at');
     }
 
+    public function creditosCambioGenerados()
+    {
+        return $this->hasMany(PosCreditoCambio::class, 'pcc_psv_origen_id', 'psv_id')
+            ->where('pcc_deleted', false)
+            ->whereNull('pcc_deleted_at');
+    }
+
+    public function creditosCambioAplicados()
+    {
+        return $this->hasMany(PosCreditoCambioAplicacion::class, 'pca_psv_id', 'psv_id')
+            ->where('pca_deleted', false)
+            ->whereNull('pca_deleted_at');
+    }
+
     public function canceladoPor()
     {
         return $this->belongsTo(Usuario::class, 'psv_cancelado_by_usr_id', 'usr_id');

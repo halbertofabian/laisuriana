@@ -393,7 +393,7 @@
             <p class="login-card__sub">Ingresa con tu usuario y contraseña.</p>
         </div>
 
-        <form id="login-form">
+        <form id="login-form" data-ls-autocomplete="auth" autocomplete="on">
             <div class="mb-4">
                 <label for="usuario" class="form-label">Usuario</label>
                 <input
@@ -403,7 +403,7 @@
                     name="usuario"
                     list="usuarios_sugeridos"
                     placeholder="Escribe tu usuario..."
-                    autocomplete="off"
+                    autocomplete="username"
                     required
                     autofocus
                 />
@@ -418,6 +418,7 @@
                     id="password"
                     class="form-control"
                     name="password"
+                    autocomplete="current-password"
                     placeholder="••••••••"
                     required
                 />

@@ -1458,7 +1458,7 @@
 <div class="modal fade" id="modal-confirmar-recepcion" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <form id="form-confirmar-recepcion">
+            <form id="form-confirmar-recepcion" data-ls-autocomplete="admin">
                 <div class="modal-header" style="border-bottom:1px solid var(--ls-border);">
                     <div class="d-flex align-items-center gap-2">
                         <span class="d-inline-flex align-items-center justify-content-center rounded" style="width:2rem;height:2rem;background:var(--ls-warning-bg);color:var(--ls-warning);font-size:1rem;"><i class="ti tabler-lock"></i></span>
@@ -1472,7 +1472,7 @@
                         <span>¿Estás seguro de guardar la entrada de forma definitiva? Esta acción generará movimientos de inventario.</span>
                     </div>
                     <label class="form-label fw-semibold">Contraseña del usuario actual <span class="text-danger">*</span></label>
-                    <input type="password" class="form-control" id="confirmar-recepcion-password" maxlength="255" autocomplete="current-password" required>
+                    <input type="password" class="form-control" id="confirmar-recepcion-password" maxlength="255" autocomplete="new-password" required>
                     <div class="form-text">Captura tu contraseña para autorizar la recepción definitiva.</div>
                 </div>
                 <div class="modal-footer" style="border-top:1px solid var(--ls-border);">

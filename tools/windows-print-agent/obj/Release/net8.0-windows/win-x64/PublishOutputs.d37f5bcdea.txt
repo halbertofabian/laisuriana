@@ -1,0 +1,4 @@
+C:\xampp-8\htdocs\laisuriana\public\downloads\LAISURIANAPRINT-SOFTMOR\installer-staging\publish\appsettings.json
+C:\xampp-8\htdocs\laisuriana\public\downloads\LAISURIANAPRINT-SOFTMOR\installer-staging\publish\appsettings.template.json
+C:\xampp-8\htdocs\laisuriana\public\downloads\LAISURIANAPRINT-SOFTMOR\installer-staging\publish\Laisuriana.PrintAgent.pdb
+C:\xampp-8\htdocs\laisuriana\public\downloads\LAISURIANAPRINT-SOFTMOR\installer-staging\publish\Laisuriana.PrintAgent.exe

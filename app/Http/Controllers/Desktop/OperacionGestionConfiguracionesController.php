@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Desktop;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Operacion\StoreDispositivoImpresoraRequest;
 use App\Http\Requests\Operacion\StoreAlmacenRequest;
 use App\Http\Requests\Operacion\StoreCajaRequest;
 use App\Http\Requests\Operacion\StoreClienteRequest;
@@ -16,10 +17,12 @@ use App\Http\Requests\Operacion\UpdateTipoAlmacenRequest;
 use App\Services\Operacion\AlmacenService;
 use App\Services\Operacion\CajaService;
 use App\Services\Operacion\ClienteService;
+use App\Services\Operacion\DeviceIdentityService;
 use App\Services\Operacion\SucursalService;
 use App\Services\Operacion\TicketLogoService;
 use App\Services\Operacion\TipoAlmacenService;
 use App\Models\Almacen;
+use App\Models\DispositivoImpresora;
 use App\Models\PosTicketConfiguracion;
 use App\Models\Usuario;
 use Illuminate\Http\JsonResponse;
@@ -35,6 +38,7 @@ class OperacionGestionConfiguracionesController extends Controller
         private readonly CajaService $cajaService,
         private readonly ClienteService $clienteService,
         private readonly TipoAlmacenService $tipoAlmacenService,
+        private readonly DeviceIdentityService $deviceIdentityService,
     ) {
     }
 
@@ -76,6 +80,83 @@ class OperacionGestionConfiguracionesController extends Controller
                 'almacen_ver' => auth()->user()?->tienePermiso('almacen.ver') ?? false,
             ],
         ]);
+    }
+
+    public function impresoras(Request $request)
+    {
+        $deviceId = $this->deviceIdentityService->resolve($request);
+        $this->deviceIdentityService->queueCookie($deviceId, $request->isSecure());
+
+        $impresora = DispositivoImpresora::query()->firstWhere('dip_device_uid', $deviceId);
+
+        return view('desktop.operacion.gestion_configuraciones.impresoras', [
+            'submenus' => $this->submenus(),
+            'impresoraDispositivo' => [
+                'device_id' => $deviceId,
+                'nombre_dispositivo' => old('dip_nombre_dispositivo', $impresora?->dip_nombre_dispositivo ?: 'ESTE EQUIPO'),
+                'tipo_conexion' => old('dip_tipo_conexion', $impresora?->dip_tipo_conexion ?: 'usb'),
+                'nombre_impresora' => old('dip_nombre_impresora', $impresora?->dip_nombre_impresora ?: ''),
+                'host' => old('dip_host', $impresora?->dip_host ?: ''),
+                'puerto' => old('dip_puerto', $impresora?->dip_puerto ?: 9100),
+                'controlador' => old('dip_controlador', $impresora?->dip_controlador ?: 'ESC/POS'),
+                'agent_url' => old('dip_agent_url', $impresora?->dip_agent_url ?: $this->defaultAgentUrl($request)),
+            ],
+            'descargaAgenteUrl' => route('desktop.operacion.gestion_configuraciones.impresoras.agente.download'),
+            'permisosUI' => [
+                'impresora_editar' => auth()->user()?->tienePermiso('caja.editar') ?? false,
+            ],
+        ]);
+    }
+
+    public function storeImpresoraDispositivo(StoreDispositivoImpresoraRequest $request)
+    {
+        $deviceId = $this->deviceIdentityService->resolve($request);
+        $this->deviceIdentityService->queueCookie($deviceId, $request->isSecure());
+
+        $data = $request->validated();
+        $tipoConexion = (string) $data['dip_tipo_conexion'];
+
+        $payload = [
+            'dip_device_uid' => $deviceId,
+            'dip_nombre_dispositivo' => trim((string) $data['dip_nombre_dispositivo']),
+            'dip_tipo_conexion' => $tipoConexion,
+            'dip_nombre_impresora' => trim((string) $data['dip_nombre_impresora']),
+            'dip_host' => $tipoConexion === 'red' ? trim((string) ($data['dip_host'] ?? '')) : null,
+            'dip_puerto' => $tipoConexion === 'red' ? (int) ($data['dip_puerto'] ?? 0) : null,
+            'dip_controlador' => trim((string) ($data['dip_controlador'] ?? '')) ?: null,
+            'dip_agent_url' => $tipoConexion === 'usb' ? trim((string) ($data['dip_agent_url'] ?? '')) : null,
+            'dip_updated_by_usr_id' => $request->user()?->usr_id,
+        ];
+
+        $config = DispositivoImpresora::query()->firstOrNew(['dip_device_uid' => $deviceId]);
+
+        if (!$config->exists) {
+            $payload['dip_created_by_usr_id'] = $request->user()?->usr_id;
+        }
+
+        $config->fill($payload);
+        $config->save();
+
+        return redirect()
+            ->route('desktop.operacion.gestion_configuraciones.impresoras.index')
+            ->with('success', 'Configuracion de impresora del dispositivo guardada correctamente.');
+    }
+
+    public function downloadAgenteImpresion()
+    {
+        $installerPath = public_path('downloads/LAISURIANAPRINT-SOFTMOR/LAISURIANAPRINT-SOFTMOR-Setup.exe');
+
+        if (is_file($installerPath)) {
+            return response()->download($installerPath, 'LAISURIANAPRINT-SOFTMOR-Setup.exe');
+        }
+
+        $agentPath = public_path('downloads/LAISURIANAPRINT-SOFTMOR/win-x64/Laisuriana.PrintAgent.exe');
+
+        if (is_file($agentPath)) {
+            return response()->download($agentPath, 'LAISURIANAPRINT-SOFTMOR.exe');
+        }
+
+        abort(404, 'El instalador del agente no esta disponible actualmente.');
     }
 
     public function almacenes()
@@ -646,6 +727,13 @@ class OperacionGestionConfiguracionesController extends Controller
         ]);
     }
 
+    private function defaultAgentUrl(Request $request): string
+    {
+        return $request->isSecure()
+            ? 'https://127.0.0.1:17890'
+            : 'http://127.0.0.1:17890';
+    }
+
     private function submenus(): array
     {
         return [
@@ -655,6 +743,7 @@ class OperacionGestionConfiguracionesController extends Controller
             ['key' => 'cajas', 'label' => 'Cajas', 'route' => route('desktop.operacion.gestion_configuraciones.cajas.index')],
             ['key' => 'clientes', 'label' => 'Clientes', 'route' => route('desktop.operacion.gestion_configuraciones.clientes.index')],
             ['key' => 'ticket', 'label' => 'Personalizar ticket', 'route' => route('desktop.operacion.gestion_configuraciones.ticket.index')],
+            ['key' => 'impresoras', 'label' => 'Impresoras', 'route' => route('desktop.operacion.gestion_configuraciones.impresoras.index')],
         ];
     }
 }

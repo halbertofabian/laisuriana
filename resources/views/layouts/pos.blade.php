@@ -927,6 +927,82 @@
     </div>
 
     <script src="{{ $templateAssetBase }}/vendor/libs/jquery/jquery.js"></script>
+    <script>
+        (function () {
+            function shouldUppercaseField(field) {
+                if (!field || field.matches('[data-ls-uppercase="off"]')) return false;
+                if (field.disabled || field.readOnly) return false;
+
+                var tagName = String(field.tagName || '').toLowerCase();
+                if (tagName === 'textarea') return true;
+                if (tagName !== 'input') return false;
+
+                var type = String(field.getAttribute('type') || 'text').toLowerCase();
+                return [
+                    'email', 'password', 'search', 'url', 'hidden', 'number', 'date',
+                    'datetime-local', 'month', 'time', 'week', 'range', 'color',
+                    'file', 'checkbox', 'radio'
+                ].indexOf(type) === -1;
+            }
+
+            function uppercaseFieldValue(field) {
+                if (!shouldUppercaseField(field)) return;
+                field.value = String(field.value || '')
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .toUpperCase();
+            }
+
+            function scheduleUppercaseFieldValue(field) {
+                if (!shouldUppercaseField(field)) return;
+                window.requestAnimationFrame(function () {
+                    uppercaseFieldValue(field);
+                });
+            }
+
+            function applyUppercasePresentation(root) {
+                var scope = root || document;
+                scope.querySelectorAll('input, textarea').forEach(function (field) {
+                    if (!shouldUppercaseField(field)) return;
+                    field.style.textTransform = 'uppercase';
+                });
+            }
+
+            function normalizeUppercaseInForm(form) {
+                if (!form) return;
+                form.querySelectorAll('input, textarea').forEach(uppercaseFieldValue);
+            }
+
+            document.addEventListener('focusin', function (event) {
+                applyUppercasePresentation(event.target?.form || document);
+            });
+
+            document.addEventListener('change', function (event) {
+                scheduleUppercaseFieldValue(event.target);
+            });
+
+            document.addEventListener('input', function (event) {
+                if (event.isComposing) return;
+                scheduleUppercaseFieldValue(event.target);
+            });
+
+            document.addEventListener('compositionend', function (event) {
+                scheduleUppercaseFieldValue(event.target);
+            });
+
+            document.addEventListener('focusout', function (event) {
+                scheduleUppercaseFieldValue(event.target);
+            });
+
+            document.addEventListener('submit', function (event) {
+                normalizeUppercaseInForm(event.target);
+            }, true);
+
+            document.addEventListener('DOMContentLoaded', function () {
+                applyUppercasePresentation(document);
+            });
+        })();
+    </script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
     @stack('pos-scripts')

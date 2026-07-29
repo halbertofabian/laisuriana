@@ -86,7 +86,7 @@
 <div class="modal fade" id="modal-caja" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
-            <form id="form-caja">
+            <form id="form-caja" data-ls-autocomplete="admin">
                 <div class="modal-header">
                     <h5 class="modal-title" id="modal-caja-title">Nueva caja</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>

@@ -20,6 +20,8 @@ class PosVentaService
         private readonly InventarioBaseService $inventarioBaseService,
         private readonly AuditoriaService $auditoriaService,
         private readonly LineaDescuentoService $lineaDescuentoService,
+        private readonly ProductoAlmacenResolverService $productoAlmacenResolverService,
+        private readonly PosCreditoCambioService $posCreditoCambioService,
     ) {
     }
 
@@ -48,9 +50,33 @@ class PosVentaService
                 : null;
             $preparacion = $this->prepararDetalleVenta($datos);
             $detalle = $preparacion['detalle'];
+            $this->validarDetalleContraAlmacen($detalle, $sucursalId, $almacenId);
             $subtotal = $preparacion['subtotal'];
             $descuentoGlobalMonto = $this->calcularDescuentoGlobal($subtotal, (float) ($datos['descuento_global'] ?? 0));
-            $total = $this->calcularTotalVenta($subtotal, $descuentoGlobalMonto);
+            $totalAntesCredito = $this->calcularTotalVenta($subtotal, $descuentoGlobalMonto);
+            $creditoCambioFolio = trim((string) ($datos['credito_cambio_folio'] ?? ''));
+            $creditoCambioMonto = 0.0;
+            if ($creditoCambioFolio !== '') {
+                $credito = $this->posCreditoCambioService->buscarDisponiblePorFolio($creditoCambioFolio, $sucursalId, $totalAntesCredito);
+                if (!$credito) {
+                    throw ValidationException::withMessages([
+                        'credito_cambio_folio' => 'No se encontró el crédito de cambio indicado.',
+                    ]);
+                }
+                if (!$credito['pcc_sucursal_valida']) {
+                    throw ValidationException::withMessages([
+                        'credito_cambio_folio' => 'El crédito de cambio pertenece a otra sucursal.',
+                    ]);
+                }
+                if ((float) ($credito['pcc_saldo_disponible'] ?? 0) <= 0) {
+                    throw ValidationException::withMessages([
+                        'credito_cambio_folio' => 'El crédito de cambio ya no tiene saldo disponible.',
+                    ]);
+                }
+
+                $creditoCambioMonto = round(min((float) $credito['pcc_saldo_disponible'], $totalAntesCredito), 2);
+            }
+            $total = round(max(0, $totalAntesCredito - $creditoCambioMonto), 2);
             $metodoPago = (string) ($datos['metodo_pago'] ?? 'efectivo');
             $montoEfectivo = round((float) ($datos['monto_efectivo'] ?? 0), 2);
             $montoTarjeta = round((float) ($datos['monto_tarjeta'] ?? 0), 2);
@@ -75,7 +101,7 @@ class PosVentaService
                 'psv_estatus' => 'cobrada',
                 'psv_subtotal' => $subtotal,
                 'psv_descuento' => $descuentoGlobalMonto,
-                'psv_credito_cambio' => 0,
+                'psv_credito_cambio' => $creditoCambioMonto,
                 'psv_total' => $total,
                 'psv_metodo_pago' => $metodoPago,
                 'psv_pago_detalle' => [
@@ -89,6 +115,16 @@ class PosVentaService
                 'psv_created_by_usr_id' => (int) $usuario->usr_id,
                 'psv_updated_by_usr_id' => (int) $usuario->usr_id,
             ]);
+
+            if ($creditoCambioFolio !== '' && $creditoCambioMonto > 0) {
+                $this->posCreditoCambioService->aplicarEnVenta(
+                    $request,
+                    $usuario,
+                    $venta,
+                    $creditoCambioFolio,
+                    $creditoCambioMonto
+                );
+            }
 
             foreach ($detalle as $linea) {
                 PosVentaDetalle::query()->create([
@@ -140,6 +176,7 @@ class PosVentaService
                     'psv_folio' => $venta->psv_folio,
                     'psv_alm_id' => $venta->psv_alm_id,
                     'psv_total' => $venta->psv_total,
+                    'psv_credito_cambio' => $venta->psv_credito_cambio,
                     'partidas' => $detalle->count(),
                 ]
             );
@@ -194,6 +231,23 @@ class PosVentaService
     public function calcularTotalVenta(float $subtotal, float $descuentoGlobalMonto): float
     {
         return round(max(0, $subtotal - $descuentoGlobalMonto), 2);
+    }
+
+    public function validarDetalleContraAlmacen(iterable $detalle, int $sucursalId, int $almacenId): void
+    {
+        foreach ($detalle as $linea) {
+            $resultado = $this->productoAlmacenResolverService->validarSkuParaAlmacen(
+                (int) ($linea['psk_id'] ?? 0),
+                $sucursalId,
+                $almacenId
+            );
+
+            if (!$resultado['valido']) {
+                throw ValidationException::withMessages([
+                    'items' => [$resultado['message']],
+                ]);
+            }
+        }
     }
 
     public function crearFolio(int $almacenId): string

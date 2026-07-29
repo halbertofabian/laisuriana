@@ -576,7 +576,7 @@
             </div>
             <div class="desktop-modal__body">
                 <p style="margin:0 0 12px; font-size:.84rem; color:var(--text-2);">Se generarán las entradas de inventario. Captura tu contraseña para autorizar.</p>
-                <div class="desktop-field"><label for="rcb-pass">Contraseña *</label><input type="password" id="rcb-pass" autocomplete="current-password"></div>
+                <div class="desktop-field"><label for="rcb-pass">Contraseña *</label><input type="password" id="rcb-pass" autocomplete="new-password"></div>
             </div>
             <div class="desktop-modal__foot">
                 <button type="button" class="desktop-btn desktop-btn--default" data-close-rcb>Cancelar</button>
@@ -1885,3 +1885,4 @@
         })();
     </script>
 @endpush
+

@@ -105,7 +105,7 @@
                 <div class="desktop-modal__title" id="desktop-proveedor-modal-title">Nuevo proveedor</div>
                 <button type="button" class="desktop-modal__close" data-close-proveedor-modal aria-label="Cerrar">&times;</button>
             </div>
-            <form id="desktop-proveedor-form">
+            <form id="desktop-proveedor-form" data-ls-autocomplete="admin">
                 <div class="desktop-modal__body">
                     <input type="hidden" id="prv_id" name="prv_id">
                     <div class="desktop-form-grid">

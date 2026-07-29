@@ -252,6 +252,7 @@
 @endif
 
 <form id="form-cliente"
+      data-ls-autocomplete="admin"
       class="{{ $embedded ? 'cliente-embedded cli-form-wrap' : '' }}"
       @if($embedded) style="display:block;" @endif>
 

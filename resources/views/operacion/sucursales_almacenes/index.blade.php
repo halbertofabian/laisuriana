@@ -135,7 +135,7 @@
 <div class="modal fade" id="modal-sucursal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
-            <form id="form-sucursal">
+            <form id="form-sucursal" data-ls-autocomplete="admin">
                 <div class="modal-header">
                     <h5 class="modal-title" id="modal-sucursal-title">Nueva sucursal</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
@@ -168,7 +168,7 @@
 <div class="modal fade" id="modal-almacen" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
-            <form id="form-almacen">
+            <form id="form-almacen" data-ls-autocomplete="admin">
                 <div class="modal-header">
                     <h5 class="modal-title" id="modal-almacen-title">Nuevo almacén</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
@@ -219,7 +219,7 @@
 <div class="modal fade" id="modal-tipo" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
-            <form id="form-tipo">
+            <form id="form-tipo" data-ls-autocomplete="admin">
                 <div class="modal-header">
                     <h5 class="modal-title" id="modal-tipo-title">Nuevo tipo de almacén</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>

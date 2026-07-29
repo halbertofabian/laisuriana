@@ -1,0 +1,4 @@
+C:\xampp-8\htdocs\laisuriana\public\downloads\LAISURIANAPRINT-SOFTMOR\win-x64\appsettings.json
+C:\xampp-8\htdocs\laisuriana\public\downloads\LAISURIANAPRINT-SOFTMOR\win-x64\appsettings.template.json
+C:\xampp-8\htdocs\laisuriana\public\downloads\LAISURIANAPRINT-SOFTMOR\win-x64\Laisuriana.PrintAgent.pdb
+C:\xampp-8\htdocs\laisuriana\public\downloads\LAISURIANAPRINT-SOFTMOR\win-x64\Laisuriana.PrintAgent.exe

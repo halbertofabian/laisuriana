@@ -77,7 +77,7 @@
 <div class="modal fade" id="usuarioModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
-            <form id="usuario-form">
+            <form id="usuario-form" data-ls-autocomplete="admin">
                 <div class="modal-header">
                     <h5 class="modal-title" id="usuarioModalTitle">Nuevo usuario</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>

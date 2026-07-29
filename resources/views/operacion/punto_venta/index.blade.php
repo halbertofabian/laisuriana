@@ -511,6 +511,7 @@
         }
         .pay-change-summary {
             margin-top: 1rem;
+            margin-bottom: 1.1rem;
             padding: 1.15rem 1.2rem 1.05rem;
             border: 1px solid #f7d7b5;
             border-radius: 20px;
@@ -570,7 +571,8 @@
         /* ── Pay modal shell ────────────────────────────────────── */
         .pay-modal__card {
             width: min(1060px, 94vw);
-            min-height: min(600px, 88vh);
+            height: min(88vh, 760px);
+            max-height: 88vh;
             background: #fff;
             border-radius: 22px;
             border: none;
@@ -587,22 +589,38 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 1rem 1.5rem;
+            padding: .5rem 1.15rem;
             gap: 1rem;
         }
-        .pay-modal__head-left { display: flex; align-items: center; gap: .85rem; }
+        .pay-modal__head-left { display: flex; align-items: center; gap: .7rem; }
         .pay-modal__head-icon {
-            width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+            width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
             background: rgba(255,255,255,.15); border: 1.5px solid rgba(255,255,255,.25);
-            display: flex; align-items: center; justify-content: center; font-size: 1.25rem;
+            display: flex; align-items: center; justify-content: center; font-size: 1.05rem;
         }
         .pay-modal__title {
             margin: 0;
-            font-size: 1.1rem;
+            font-size: 1rem;
             font-weight: 800;
             letter-spacing: .01em;
         }
-        .pay-modal__subtitle { margin: 0; font-size: .78rem; color: rgba(255,255,255,.65); }
+        .pay-modal__subtitle { margin: 0; font-size: .74rem; color: rgba(255,255,255,.65); }
+        /* Total anclado en el header */
+        .pay-modal__head-total {
+            margin-left: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            line-height: 1;
+            gap: .1rem;
+        }
+        .pay-modal__head-total-label {
+            font-size: .6rem; font-weight: 800; text-transform: uppercase;
+            letter-spacing: .1em; color: rgba(255,255,255,.72);
+        }
+        .pay-modal__head-total-amount {
+            font-size: 1.75rem; font-weight: 900; color: #fff; letter-spacing: -.025em;
+        }
         .pay-modal__close {
             width: 38px; height: 38px;
             border-radius: 10px; border: 0;
@@ -617,12 +635,13 @@
         /* ── Body layout ─────────────────────────────────────────── */
         .pay-modal__body {
             display: grid;
-            grid-template-columns: 1fr 268px;
+            grid-template-columns: 1fr 300px;
             min-height: 0;
         }
         .pay-main {
-            padding: 1.2rem 1.4rem;
+            padding: 1rem 1.2rem;
             overflow-y: auto;
+            min-height: 0;
             background: #f8fafc;
         }
         .pay-side {
@@ -632,6 +651,8 @@
             display: flex;
             flex-direction: column;
             gap: .6rem;
+            min-height: 0;
+            overflow-y: auto;
         }
 
         /* ── Total display ───────────────────────────────────────── */
@@ -664,9 +685,9 @@
         /* ── Payment methods ─────────────────────────────────────── */
         .pay-methods {
             display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: .55rem;
-            margin-bottom: .55rem;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: .5rem;
+            margin-bottom: .85rem;
         }
         .pay-methods--single {
             grid-template-columns: minmax(0, 1fr);
@@ -678,7 +699,7 @@
             border: 1.5px solid #e2e8f0;
             border-radius: 14px;
             background: #fff;
-            min-height: 68px;
+            min-height: 60px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -736,6 +757,15 @@
             box-shadow: 0 0 0 3px rgba(10,143,148,.12);
             outline: none;
             background: #fff;
+        }
+        .pay-ref-row--vale input {
+            font-weight: 700;
+            letter-spacing: .04em;
+        }
+        .pay-ref-row--vale input.is-loading {
+            border-color: #b45309;
+            box-shadow: 0 0 0 3px rgba(180,83,9,.12);
+            background: #fffdf8;
         }
 
         /* ── Mixed payments table ────────────────────────────────── */
@@ -884,14 +914,14 @@
 
         /* ── Summary bar ─────────────────────────────────────────── */
         .pay-summary {
-            margin-top: .85rem;
+            margin-top: .2rem;
             background: #fff;
             border: 1.5px solid #e2e8f0;
             border-radius: 14px;
-            padding: .75rem 1rem;
+            padding: .5rem;
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: .5rem;
+            grid-template-columns: 1fr;
+            gap: .35rem;
             box-shadow: 0 1px 3px rgba(10,37,64,.04);
         }
         .pay-summary__item {
@@ -900,7 +930,7 @@
             align-items: center;
             font-size: .92rem;
             font-weight: 700;
-            padding: .3rem .5rem;
+            padding: .35rem .6rem;
             border-radius: 8px;
         }
         .pay-summary__item span { color: #64748b; font-weight: 600; }
@@ -970,6 +1000,14 @@
         .pay-side-card--muted .pay-side-card__icon { background: #eef0f6; color: #64748b; }
         .pay-side-card--muted .pay-side-card__k { color: #334155; }
         .pay-side-card--muted .pay-side-card__t { color: #64748b; }
+        /* Registrar vale */
+        .pay-side-card--vale {
+            background: linear-gradient(180deg, #fffdf8 0%, #fff6ea 100%);
+            border: 1.5px solid #f7d7b5;
+        }
+        .pay-side-card--vale .pay-side-card__icon { background: #fdead0; color: #b45309; }
+        .pay-side-card--vale .pay-side-card__k { color: #9a3412; }
+        .pay-side-card--vale .pay-side-card__t { color: #7c2d12; }
         /* Footer */
         .pay-side-footer {
             margin-top: auto;
@@ -987,10 +1025,16 @@
         }
 
         @media (max-width: 1100px) {
+            .pay-modal__card {
+                height: min(92vh, 860px);
+                max-height: 92vh;
+            }
             .pay-modal__body { grid-template-columns: 1fr; }
             .pay-side { border-left: 0; border-top: 1px solid #eef0f6; flex-direction: row; flex-wrap: wrap; }
             .pay-side-card { flex: 1 1 140px; }
-            .pay-methods { grid-template-columns: repeat(2, minmax(0,1fr)); }
+            .pay-summary { flex: 1 1 100%; grid-template-columns: 1fr 1fr; }
+            .pay-side-footer { flex: 1 1 100%; }
+            .pay-methods { grid-template-columns: repeat(3, minmax(0,1fr)); }
             .pay-ref-row { grid-template-columns: 1fr; }
             .pay-ref-row label { text-align: left; }
             .pay-cash__row { grid-template-columns: 1fr 52px; }
@@ -1636,6 +1680,10 @@
                 <span class="pos-pill__cat">Impresión</span>
                 <span x-text="impresionEstado"></span>
             </span>
+            <button class="pos-btn pos-btn--ghost" style="height:32px" @click="configurarAgenteImpresion()">
+                <i class="ti tabler-printer" style="font-size:.9rem"></i>
+                Agente
+            </button>
             <template x-if="pedidoCargado">
                 <span class="pos-pill">
                     <span class="pos-pill__dot pos-pill__dot--warn"></span>
@@ -1676,6 +1724,9 @@
         </button>
         <button class="pos-tab" :class="{ active: tab === 'reimprimir' }" @click="tab = 'reimprimir'">
             <span class="kbd">F6</span> Reimprimir
+        </button>
+        <button class="pos-tab" :class="{ active: tab === 'vales' }" @click="tab = 'vales'; abrirModalValesCambio()">
+            <span class="kbd">F9</span> Vales
         </button>
     </nav>
 
@@ -2266,7 +2317,6 @@
                                         <th>Disponible</th>
                                         <th>Precio</th>
                                         <th>Devolver</th>
-                                        <th>Condición</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -2305,12 +2355,6 @@
                                                     </button>
                                                 </div>
                                             </td>
-                                            <td>
-                                                <select class="pos-input" x-model="detalle.condicion" style="min-width:140px;">
-                                                    <option value="reventa">Reventa</option>
-                                                    <option value="revision">Revisión</option>
-                                                </select>
-                                            </td>
                                         </tr>
                                     </template>
                                 </tbody>
@@ -2321,7 +2365,7 @@
                                 Crédito calculado:
                                 <strong style="color:var(--ls-text);" x-text="fmt(creditoCambioPreview())"></strong>
                             </div>
-                            <button class="pos-btn pos-btn--cobrar" @click="activarCambioDesdePreview()">Usar este cambio en el carrito</button>
+                            <button class="pos-btn pos-btn--cobrar" @click="activarCambioDesdePreview()">Generar vale de cambio</button>
                         </div>
                     </div>
                 </template>
@@ -2486,6 +2530,96 @@
         </div>
     </div>
 
+    <div x-cloak x-show="mostrarModalValesCambio" class="variant-modal" @keydown.escape.window="cerrarModalValesCambio()">
+        <div class="variant-modal__card" style="max-width:1100px;">
+            <div class="variant-modal__head" style="display:flex;justify-content:space-between;align-items:center;gap:.75rem;">
+                <span>Vales de cambio</span>
+                <button class="pos-btn pos-btn--ghost pos-btn--sm" @click="cerrarModalValesCambio()">Cerrar</button>
+            </div>
+            <div style="padding:1rem;">
+                <div style="display:grid;grid-template-columns:1.2fr 1fr .8fr auto;gap:.65rem;align-items:end;margin-bottom:.9rem;">
+                    <div>
+                        <label class="pos-field__label">Folio</label>
+                        <input type="text" class="pos-input" x-model="filtrosValesCambio.folio" placeholder="CDC-001-000001">
+                    </div>
+                    <div>
+                        <label class="pos-field__label">Cliente</label>
+                        <input type="text" class="pos-input" x-model="filtrosValesCambio.cliente" placeholder="Nombre o razón social">
+                    </div>
+                    <div>
+                        <label class="pos-field__label">Estatus</label>
+                        <select class="pos-input" x-model="filtrosValesCambio.estatus">
+                            <option value="">Todos</option>
+                            <option value="disponible">Disponible</option>
+                            <option value="parcial">Parcial</option>
+                            <option value="aplicado">Aplicado</option>
+                            <option value="cancelado">Cancelado</option>
+                        </select>
+                    </div>
+                    <div style="display:flex;gap:.45rem;">
+                        <button class="pos-btn pos-btn--ghost" @click="cargarValesCambio()" :disabled="cargandoValesCambio">Buscar</button>
+                        <button class="pos-btn pos-btn--danger-outline" @click="limpiarFiltrosValesCambio()">Limpiar</button>
+                    </div>
+                </div>
+
+                <template x-if="mensajeValesCambio">
+                    <div style="font-size:.8rem;color:#b42318;margin-bottom:.7rem;" x-text="mensajeValesCambio"></div>
+                </template>
+
+                <div style="max-height:65vh;overflow:auto;border:1px solid var(--ls-border);border-radius:16px;background:#fff;">
+                    <table class="pos-ticket-table" style="min-width:920px;">
+                        <thead>
+                            <tr>
+                                <th style="padding-left:.9rem;">Folio</th>
+                                <th>Cliente</th>
+                                <th>Venta origen</th>
+                                <th>Almacén</th>
+                                <th>Estatus</th>
+                                <th>Crédito</th>
+                                <th>Saldo</th>
+                                <th>Fecha</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-if="cargandoValesCambio">
+                                <tr>
+                                    <td colspan="9">
+                                        <div class="pos-ticket__empty">Cargando vales...</div>
+                                    </td>
+                                </tr>
+                            </template>
+                            <template x-if="!cargandoValesCambio && valesCambio.length === 0">
+                                <tr>
+                                    <td colspan="9">
+                                        <div class="pos-ticket__empty">No hay vales para los filtros seleccionados.</div>
+                                    </td>
+                                </tr>
+                            </template>
+                            <template x-for="vale in valesCambio" :key="vale.pcc_id">
+                                <tr>
+                                    <td style="padding-left:.9rem;">
+                                        <div class="pos-ticket__desc" x-text="vale.pcc_folio"></div>
+                                    </td>
+                                    <td><span class="pos-ticket__sku" x-text="vale.cliente_nombre"></span></td>
+                                    <td><span class="pos-ticket__sku" x-text="vale.venta_origen_folio || '—'"></span></td>
+                                    <td><span class="pos-ticket__sku" x-text="vale.almacen || '—'"></span></td>
+                                    <td><span class="pos-ticket__sku" x-text="etiquetaEstatusVale(vale.pcc_estatus)"></span></td>
+                                    <td><span class="pos-ticket__price" x-text="fmt(vale.pcc_total_credito)"></span></td>
+                                    <td><span class="pos-ticket__price" x-text="fmt(vale.pcc_saldo_disponible)"></span></td>
+                                    <td><span class="pos-ticket__sku" x-text="vale.pcc_fecha_generado || '—'"></span></td>
+                                    <td>
+                                        <button class="pos-btn pos-btn--ghost pos-btn--sm" @click="abrirTicketCreditoCambio(vale.pcc_id)">Imprimir</button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div x-cloak x-show="mostrarModalMovimientoCaja" class="variant-modal" @keydown.escape.window="cerrarModalMovimientoCaja()">
         <div class="variant-modal__card" style="max-width:560px;">
             <div class="variant-modal__head" style="display:flex;justify-content:space-between;align-items:center;gap:.75rem;">
@@ -2576,7 +2710,7 @@
                         </div>
                         <div>
                             <label class="pos-field__label">Contraseña</label>
-                            <input type="password" class="pos-input" x-model="movimientoCajaForm.autoriza_password" placeholder="Captura la contraseña del usuario autorizado" autocomplete="off" />
+                            <input type="password" class="pos-input" x-model="movimientoCajaForm.autoriza_password" placeholder="Captura la contraseña del usuario autorizado" autocomplete="new-password" />
                             <div class="pos-field-error" x-show="movimientoCajaErrores.autoriza_password" x-text="movimientoCajaErrores.autoriza_password"></div>
                         </div>
                     </div>
@@ -2846,7 +2980,7 @@
                         class="pos-input corte-caja__input"
                         x-model="corteAutorizaForm.password"
                         placeholder="Captura la contraseña del usuario autorizado"
-                        autocomplete="off"
+                        autocomplete="new-password"
                         @keydown.enter.prevent="confirmarCorteCaja()"
                     />
                     <div class="pos-field-error" x-show="corteAutorizaErrores.autoriza_password" x-text="corteAutorizaErrores.autoriza_password"></div>
@@ -2878,6 +3012,10 @@
                         <p class="pay-modal__subtitle">Selecciona el método de pago</p>
                     </div>
                 </div>
+                <div class="pay-modal__head-total">
+                    <span class="pay-modal__head-total-label">Total a cobrar</span>
+                    <span class="pay-modal__head-total-amount" x-text="fmt(total)"></span>
+                </div>
                 <button class="pay-modal__close" @click="cerrarModalPago()">
                     <i class="ti tabler-x"></i>
                 </button>
@@ -2889,15 +3027,46 @@
                 {{-- ── LEFT: main content ─────────────────────────── --}}
                 <div class="pay-main">
 
-                    {{-- Total card --}}
-                    <div class="pay-total-card">
-                        <p class="pay-total-label">Total a cobrar</p>
-                        <div class="pay-total-amount" x-text="fmt(total)"></div>
+                    <div
+                        x-cloak
+                        style="margin-bottom:.85rem;"
+                    >
+                        <div class="pay-ref-row pay-ref-row--vale" x-cloak x-show="mostrarCapturaVale || creditoCambioSeleccionado" style="margin-bottom:.5rem;">
+                            <label>Vale de cambio:</label>
+                            <input type="text" x-ref="valeInput" style="text-align:center;" x-model="folioCreditoCambio" @input="manejarEntradaCreditoCambio($event.target.value)" @keydown.enter.prevent="buscarCreditoCambioParaCobro()" placeholder="Escanea o captura el folio" :class="{ 'is-loading': buscandoCreditoCambio }">
+                        </div>
+                        <div x-show="mensajeCreditoCambio" style="font-size:.8rem;color:#b42318;margin-top:-.15rem;" x-text="mensajeCreditoCambio"></div>
+                        <div
+                            x-cloak
+                            x-show="creditoCambioSeleccionado"
+                            style="border:1px solid var(--ls-border);border-radius:14px;padding:.8rem .9rem;background:#f8fafc;margin-top:.55rem;"
+                        >
+                            <div style="display:flex;justify-content:space-between;gap:.75rem;align-items:flex-start;">
+                                <div>
+                                    <div style="font-size:.82rem;font-weight:700;" x-text="creditoCambioSeleccionado?.folio || ''"></div>
+                                    <div style="font-size:.76rem;color:var(--ls-text-muted);">
+                                        Venta origen <strong x-text="creditoCambioSeleccionado?.venta_origen_folio || 'N/D'"></strong>
+                                    </div>
+                                    <div style="font-size:.76rem;color:var(--ls-text-muted);" x-text="creditoCambioSeleccionado?.cliente_nombre || 'Público general'"></div>
+                                </div>
+                                <button class="pos-btn pos-btn--ghost pos-btn--sm" @click="quitarCreditoCambioSeleccionado()">Quitar</button>
+                            </div>
+                            <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem;margin-top:.7rem;">
+                                <div style="padding:.65rem .75rem;border:1px dashed var(--ls-border);border-radius:12px;">
+                                    <div style="font-size:.72rem;color:var(--ls-text-muted);">Saldo disponible</div>
+                                    <strong x-text="fmt(creditoCambioSeleccionado?.saldo_disponible || 0)"></strong>
+                                </div>
+                                <div style="padding:.65rem .75rem;border:1px dashed var(--ls-border);border-radius:12px;">
+                                    <div style="font-size:.72rem;color:var(--ls-text-muted);">Se aplicará</div>
+                                    <strong x-text="fmt(creditoCambioSeleccionado?.monto_aplicado || 0)"></strong>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div
                         x-cloak
-                        x-show="cambioActivo"
+                        x-show="hayCreditoCambioAplicado"
                         class="pay-change-summary"
                     >
                         <div class="pay-change-summary__title">
@@ -2937,8 +3106,6 @@
                         <button class="pay-method" :class="{ 'is-active': tipoPagoSeleccionado === 'transferencia' }" @click="seleccionarTipoPago('transferencia')">
                             <i class="ti tabler-building-bank"></i><span>Transferencia</span>
                         </button>
-                    </div>
-                    <div class="pay-methods pay-methods--single">
                         <button class="pay-method" :class="{ 'is-active': tipoPagoSeleccionado === 'mixto' }" @click="seleccionarTipoPago('mixto')">
                             <i class="ti tabler-wallet"></i><span>Mixto</span>
                         </button>
@@ -2995,23 +3162,19 @@
                             <button class="pos-btn pos-btn--success-outline" @click="agregarLineaPago()">+ Agregar método</button>
                         </div>
                     </div>
-
-                    {{-- Summary bar --}}
-                    <div class="pay-summary">
-                        <div class="pay-summary__item pay-summary__ok">
-                            <span>Pagado</span>
-                            <strong x-text="fmt(totalPagoCapturado)"></strong>
-                        </div>
-                        <div class="pay-summary__item" :class="restantePagoModal > 0 ? 'pay-summary__danger' : 'pay-summary__ok'">
-                            <span>Restante</span>
-                            <strong x-text="fmt(restantePagoModal)"></strong>
-                        </div>
-                    </div>
                 </div>
 
                 {{-- ── RIGHT: action panel ─────────────────────────── --}}
                 <div class="pay-side">
                     <div class="pay-side-label">Acciones</div>
+
+                    <button class="pay-side-card pay-side-card--vale" @click="mostrarCapturaVale = true; $nextTick(() => $refs.valeInput?.focus())">
+                        <div class="pay-side-card__icon"><i class="ti tabler-ticket"></i></div>
+                        <div>
+                            <div class="pay-side-card__k">Vale</div>
+                            <div class="pay-side-card__t">Registrar vale</div>
+                        </div>
+                    </button>
 
                     <button class="pay-side-card pay-side-card--f1" @click="confirmarCobro(true)">
                         <div class="pay-side-card__icon"><i class="ti tabler-printer"></i></div>
@@ -3045,6 +3208,18 @@
                         </div>
                     </button>
 
+                    {{-- Summary bar (Pagado / Restante) --}}
+                    <div class="pay-summary">
+                        <div class="pay-summary__item pay-summary__ok">
+                            <span>Pagado</span>
+                            <strong x-text="fmt(totalPagoCapturado)"></strong>
+                        </div>
+                        <div class="pay-summary__item" :class="restantePagoModal > 0 ? 'pay-summary__danger' : 'pay-summary__ok'">
+                            <span>Restante</span>
+                            <strong x-text="fmt(restantePagoModal)"></strong>
+                        </div>
+                    </div>
+
                     <div class="pay-side-footer">
                         <span class="pay-side-footer__label">Artículos</span>
                         <span class="pay-side-footer__count" x-text="totalArticulos"></span>
@@ -3062,14 +3237,13 @@
     <div x-cloak x-show="mostrarModalAlmacenVenta" class="variant-modal">
         <div class="variant-modal__card" style="max-width:520px;">
             <div class="variant-modal__head">
-                Selecciona el almacén del ticket
+                <span x-text="modalAlmacenVentaTitulo"></span>
             </div>
             <div style="padding:1rem;">
-                <div style="font-size:.82rem;color:var(--ls-text-muted);margin-bottom:.55rem;">
-                    Antes de cobrar, define de qué almacén se descontará este ticket.
+                <div style="font-size:.82rem;color:var(--ls-text-muted);margin-bottom:.55rem;" x-text="modalAlmacenVentaMensaje">
                 </div>
                 <div class="almacen-radio-grid">
-                    <template x-for="alm in almacenesVenta" :key="alm.alm_id">
+                    <template x-for="alm in almacenesModalVenta" :key="alm.alm_id">
                         <label
                             class="almacen-radio"
                             :class="{ 'almacen-radio--active': Number(ventaAlmacenId) === Number(alm.alm_id) }"
@@ -3090,7 +3264,7 @@
                 </div>
             </div>
             <div style="padding:.7rem .9rem;display:flex;justify-content:flex-end;gap:.5rem;">
-                <button class="pos-btn pos-btn--ghost" @click="mostrarModalAlmacenVenta = false">Cancelar</button>
+                <button class="pos-btn pos-btn--ghost" @click="cerrarModalAlmacenVenta()">Cancelar</button>
             </div>
         </div>
     </div>
@@ -3299,15 +3473,21 @@ function posApp() {
     const usuariosAutorizadosRetiroInicial = @json($usuariosAutorizadosRetiro ?? []);
     const usuariosAutorizadosCorteInicial = @json($usuariosAutorizadosCorte ?? []);
     const categoriasGastoSugeridasInicial = @json($categoriasGastoSugeridas ?? []);
+    const sucursalActivaIdInicial = {{ (int) ($sucursalActivaId ?? 0) }};
     const usuarioActualId = {{ (int) (auth()->user()->usr_id ?? 0) }};
     const usuarioActualNombre = @json((string) (auth()->user()->usr_nombre ?? auth()->user()->usr_usuario ?? 'Sin vendedor'));
     const rutaBuscarProducto = '{{ route('operacion.escaneo_productos.buscar') }}';
+    const rutaPosResolverProductoAlmacen = '{{ route('pos.productos.resolver_almacen') }}';
+    const rutaPosValidarProductoAlmacen = '{{ route('pos.productos.validar_almacen') }}';
     const rutaBuscarPedidoFolio = '{{ route('operacion.pedidos_piso.folio.buscar') }}';
     const rutaBuscarClientes = '{{ route('pos.clientes.buscar') }}';
     const rutaCrearCliente = '{{ route('operacion.clientes.store') }}';
     const rutaCpBuscarCliente = '{{ route('operacion.clientes.cp.buscar') }}';
     const rutaCobrarVenta = '{{ route('pos.ventas.cobrar') }}';
     const rutaCambioStore = '{{ route('pos.cambios.store') }}';
+    const rutaCreditoCambioStore = '{{ route('pos.creditos_cambio.store') }}';
+    const rutaCreditosCambioIndex = '{{ route('pos.creditos_cambio.index') }}';
+    const rutaBuscarCreditoCambioFolio = '{{ route('pos.creditos_cambio.buscar_folio') }}';
     const rutaVentasDia = '{{ route('pos.ventas.dia') }}';
     const rutaRetiroCajaStore = '{{ route('pos.caja.retiros.store') }}';
     const rutaGastoCajaStore = '{{ route('pos.caja.gastos.store') }}';
@@ -3315,7 +3495,15 @@ function posApp() {
     const rutaBuscarVentaFolio = '{{ route('pos.ventas.buscar_folio') }}';
     const rutaPedidosPendientes = '{{ route('pos.pedidos.pendientes') }}';
     const rutaTicketVentaBase = '{{ url('/pos/ventas') }}';
+    const rutaTicketVentaEscposBase = '{{ url('/pos/ventas') }}';
+    const rutaTicketCreditoCambioBase = '{{ url('/pos/creditos-cambio') }}';
+    const rutaTicketCreditoCambioEscposBase = '{{ url('/pos/creditos-cambio') }}';
+    const rutaTicketCorteCajaBase = '{{ url('/pos/caja/cortes') }}';
+    const rutaTicketCorteCajaEscposBase = '{{ url('/pos/caja/cortes') }}';
     const rutaCancelarVentaBase = '{{ url('/pos/ventas') }}';
+    const agenteImpresionUrlDefault = 'http://127.0.0.1:17890';
+    const storageAgenteImpresionHabilitado = 'laisuriana.pos.agente_impresion.habilitado';
+    const storageAgenteImpresionUrl = 'laisuriana.pos.agente_impresion.url';
     const puedeCrearCliente = @json($puedeCrearCliente ?? false);
     const puedeCancelarVenta = @json($puedeCancelarVenta ?? false);
     const puedeRegistrarCambio = @json($puedeRegistrarCambio ?? false);
@@ -3328,6 +3516,8 @@ function posApp() {
         cajaNombre:      '{{ $caja ?? "Sin caja activa" }}',
         usuarioActualNombre: usuarioActualNombre,
         impresionEstado: 'Sin actividad',
+        agenteImpresionHabilitado: false,
+        agenteImpresionUrl: agenteImpresionUrlDefault,
         sesionActiva: estadoInicial.sesion_activa ?? null,
         mostrarModalCaja: false,
         cajasAsignadas: estadoInicial.cajas_asignadas ?? [],
@@ -3356,13 +3546,20 @@ function posApp() {
         categoriasGastoSugeridas: Array.isArray(categoriasGastoSugeridasInicial) ? categoriasGastoSugeridasInicial : [],
         mostrarSugerenciasCategoriaGasto: false,
         vendedorSeleccionadoId: '',
+        sucursalActivaId: Number(sucursalActivaIdInicial || 0),
         ventaAlmacenId: '',
         ventaAlmacenNombre: '',
+        almacenesModalVenta: [],
+        modalAlmacenVentaTitulo: 'Selecciona el almacén del ticket',
+        modalAlmacenVentaMensaje: 'Antes de continuar, define de qué almacén se descontará este ticket.',
+        modalAlmacenVentaContexto: 'ticket',
+        productoPendienteAlmacen: null,
         mostrarModalAlmacenVenta: false,
         mostrarModalConfirmacionPedido: false,
         mostrarModalClientes: false,
         mostrarModalPago: false,
         mostrarModalResumenCaja: false,
+        mostrarModalValesCambio: false,
         mostrarModalTickets: false,
         mostrarModalCambio: false,
         mostrarModalAviso: false,
@@ -3399,6 +3596,20 @@ function posApp() {
         ventaCambioPreview: null,
         mensajeCambio: '',
         cambioActual: null,
+        folioCreditoCambio: '',
+        mostrarCapturaVale: false,
+        timerBusquedaCreditoCambio: null,
+        buscandoCreditoCambio: false,
+        mensajeCreditoCambio: '',
+        creditoCambioSeleccionado: null,
+        valesCambio: [],
+        cargandoValesCambio: false,
+        mensajeValesCambio: '',
+        filtrosValesCambio: {
+            folio: '',
+            cliente: '',
+            estatus: '',
+        },
         modalAvisoTitulo: '',
         modalAvisoMensaje: '',
         movimientoCajaTipo: 'retiro',
@@ -3481,10 +3692,13 @@ function posApp() {
             return Math.max(0, this.pagado - this.total);
         },
         get creditoCambio() {
-            return Number(this.cambioActual?.credito_total || 0);
+            return Number(this.cambioActual?.credito_total || this.creditoCambioSeleccionado?.monto_aplicado || 0);
         },
         get cambioActivo() {
             return !!this.cambioActual?.venta_origen_id;
+        },
+        get hayCreditoCambioAplicado() {
+            return Number(this.creditoCambio || 0) > 0;
         },
         get cambioInvalidoMenorValor() {
             return this.cambioActivo && (this.subtotal - this.descuento) < this.creditoCambio;
@@ -3531,6 +3745,7 @@ function posApp() {
 
         // ── Init ─────────────────────────────────────────────────
         init() {
+            this.cargarConfiguracionAgenteImpresion();
             this.actualizarReloj();
             setInterval(() => this.actualizarReloj(), 1000);
             this.validarSesionCaja();
@@ -3607,11 +3822,146 @@ function posApp() {
 
         aplicarAlmacenPorSesion() {
             if (this.pedidoCargado) return;
-            const almId = this.sesionActiva?.caja_alm_id ? String(this.sesionActiva.caja_alm_id) : '';
-            const almNombre = this.sesionActiva?.caja_almacen || '';
-            if (!almId) return;
-            this.ventaAlmacenId = almId;
-            this.ventaAlmacenNombre = almNombre || this.obtenerNombreAlmacen(almId);
+            if (this.items.length > 0 || this.ventaAlmacenId) return;
+            this.ventaAlmacenNombre = '';
+        },
+
+        normalizarFolioEscaneado(valor) {
+            return String(valor || '')
+                .replace(/['’`´]/g, '-')
+                .replace(/\s+/g, '')
+                .toUpperCase()
+                .trim();
+        },
+
+        manejarEntradaCreditoCambio(valor) {
+            this.folioCreditoCambio = this.normalizarFolioEscaneado(valor);
+            this.mensajeCreditoCambio = '';
+
+            if (this.timerBusquedaCreditoCambio) {
+                clearTimeout(this.timerBusquedaCreditoCambio);
+            }
+
+            const folio = this.folioCreditoCambio;
+            if (!folio || !folio.startsWith('CDC-') || folio.length < 10) {
+                return;
+            }
+
+            this.timerBusquedaCreditoCambio = setTimeout(() => {
+                this.buscarCreditoCambioParaCobro();
+            }, 180);
+        },
+
+        sincronizarPagoConTotalActual() {
+            const total = this.normalizarMonto(this.total || 0);
+
+            if (this.tipoPagoSeleccionado === 'efectivo') {
+                this.pagoEfectivoRecibido = total;
+                this.aplicarPagoEfectivo();
+                return;
+            }
+
+            if (this.tipoPagoSeleccionado === 'mixto') {
+                if (!Array.isArray(this.pagoLineas) || this.pagoLineas.length === 0) {
+                    this.pagoLineas = [{ metodo: 'efectivo', monto: total, recibido: total }];
+                    return;
+                }
+
+                this.pagoLineas = this.pagoLineas.map((linea, idx) => ({
+                    ...linea,
+                    monto: idx === 0 ? total : 0,
+                    recibido: idx === 0 ? total : 0,
+                }));
+                return;
+            }
+
+            this.pagoLineas = [{ metodo: this.tipoPagoSeleccionado, monto: total, recibido: total }];
+        },
+
+        obtenerSucursalOperativaId() {
+            return Number(this.sesionActiva?.caja_scl_id || this.sucursalActivaId || 0);
+        },
+
+        abrirSelectorAlmacenVenta(opciones, titulo, mensaje, contexto = 'ticket', producto = null) {
+            this.modalAlmacenVentaTitulo = titulo || 'Selecciona el almacén del ticket';
+            this.modalAlmacenVentaMensaje = mensaje || 'Antes de continuar, define de qué almacén se descontará este ticket.';
+            this.modalAlmacenVentaContexto = contexto || 'ticket';
+            this.productoPendienteAlmacen = producto || null;
+            this.almacenesModalVenta = Array.isArray(opciones) ? opciones : [];
+            this.mostrarModalAlmacenVenta = true;
+        },
+
+        cerrarModalAlmacenVenta() {
+            this.mostrarModalAlmacenVenta = false;
+            this.modalAlmacenVentaContexto = 'ticket';
+            this.productoPendienteAlmacen = null;
+            this.almacenesModalVenta = [];
+        },
+
+        async resolverAlmacenParaProducto(item) {
+            const sucursalId = this.obtenerSucursalOperativaId();
+            if (!sucursalId) {
+                this.abrirModalAviso('Sucursal no disponible', 'No fue posible identificar la sucursal activa para asignar el almacén del producto.');
+                return false;
+            }
+
+            if (this.ventaAlmacenId) {
+                const valido = await this.validarProductoContraAlmacen(item.psk_id, this.ventaAlmacenId, sucursalId);
+                if (!valido) {
+                    return false;
+                }
+
+                return {
+                    ok: true,
+                    almacen_id: Number(this.ventaAlmacenId),
+                    almacen: this.ventaAlmacenNombre || this.obtenerNombreAlmacen(this.ventaAlmacenId),
+                };
+            }
+
+            try {
+                const res = await fetch(`${rutaPosResolverProductoAlmacen}?psk_id=${encodeURIComponent(item.psk_id)}&scl_id=${encodeURIComponent(sucursalId)}`, {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                const json = await res.json().catch(() => ({}));
+
+                if (!res.ok) {
+                    this.abrirModalAviso('Producto sin almacén válido', json?.message || 'No fue posible asignar un almacén para este producto.');
+                    return false;
+                }
+
+                return {
+                    ok: true,
+                    requiereSeleccion: !!json?.data?.requiere_seleccion,
+                    almacen_id: Number(json?.data?.almacen_id || 0),
+                    almacen: String(json?.data?.almacen || ''),
+                    almacenes: Array.isArray(json?.data?.almacenes) ? json.data.almacenes : [],
+                };
+            } catch (error) {
+                this.abrirModalAviso('Sin conexión', 'No fue posible resolver el almacén del producto en este momento.');
+                return false;
+            }
+        },
+
+        async validarProductoContraAlmacen(pskId, almacenId, sucursalId = null) {
+            const sclId = Number(sucursalId || this.obtenerSucursalOperativaId() || 0);
+            if (!sclId || !almacenId) return false;
+
+            try {
+                const res = await fetch(`${rutaPosValidarProductoAlmacen}?psk_id=${encodeURIComponent(pskId)}&scl_id=${encodeURIComponent(sclId)}&almacen_id=${encodeURIComponent(almacenId)}`, {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                const json = await res.json().catch(() => ({}));
+
+                if (res.ok) {
+                    return true;
+                }
+
+                this.abrirModalAviso('Producto no compatible con el almacén', json?.message || 'Este producto no pertenece al almacén seleccionado para el ticket.');
+                return false;
+            } catch (error) {
+                this.abrirModalAviso('Sin conexión', 'No fue posible validar el almacén de este producto.');
+                return false;
+            }
         },
 
         async abrirCajaNueva() {
@@ -3704,7 +4054,7 @@ function posApp() {
                 F6:  () => { this.tab = 'reimprimir'; },
                 F7:  () => this.enviarEspera(),
                 F8:  () => this.devolucion(),
-                F9:  () => this.buscarTicket(),
+                F9:  () => this.abrirModalValesCambio(),
                 F11: () => this.corteCaja(),
                 F12: () => { if (this.items.length > 0) this.cobrar(); },
             };
@@ -4030,7 +4380,7 @@ function posApp() {
                 }
 
                 if (resultados.length === 1) {
-                    this.agregarDesdeBusqueda(resultados[0]);
+                    await this.agregarDesdeBusqueda(resultados[0]);
                     return;
                 }
 
@@ -4083,7 +4433,8 @@ function posApp() {
         },
 
         async buscarVentaCambioPorFolio() {
-            const folio = String(this.folioCambioBuscar || '').trim();
+            const folio = this.normalizarFolioEscaneado(this.folioCambioBuscar);
+            this.folioCambioBuscar = folio;
             if (!folio) {
                 this.mensajeCambio = 'Captura un folio para buscar la venta.';
                 return;
@@ -4152,7 +4503,7 @@ function posApp() {
             this.normalizarCantidadCambio(detalle);
         },
 
-        activarCambioDesdePreview() {
+        async activarCambioDesdePreview() {
             if (!this.ventaCambioPreview) return;
             const devoluciones = (this.ventaCambioPreview.detalle || [])
                 .filter((detalle) => Number(detalle.devolver_cantidad || 0) > 0)
@@ -4161,7 +4512,7 @@ function posApp() {
                     psk_id: Number(detalle.psk_id),
                     sku_nombre: detalle.sku_nombre || '',
                     cantidad: Number(detalle.devolver_cantidad || 0),
-                    condicion: detalle.condicion || 'reventa',
+                    condicion: 'reventa',
                     importe_credito: Number((Number(detalle.devolver_cantidad || 0) * Number(detalle.precio_unitario || 0)).toFixed(2)),
                 }));
 
@@ -4170,24 +4521,50 @@ function posApp() {
                 return;
             }
 
-            if (this.items.length > 0 && !confirm('El carrito actual se reemplazará para capturar el nuevo cambio. ¿Deseas continuar?')) {
-                return;
-            }
+            try {
+                const res = await fetch(rutaCreditoCambioStore, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=\"csrf-token\"]').getAttribute('content'),
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({
+                        venta_origen_id: Number(this.ventaCambioPreview.psv_id),
+                        devoluciones: devoluciones.map((d) => ({
+                            pvd_id: Number(d.pvd_id),
+                            cantidad: Number(d.cantidad),
+                            condicion: 'reventa',
+                        })),
+                    }),
+                });
 
-            this.items = [];
-            this.pedidoCargado = null;
-            this.cambioActual = {
-                venta_origen_id: Number(this.ventaCambioPreview.psv_id),
-                psv_folio: this.ventaCambioPreview.psv_folio,
-                cliente_nombre: this.ventaCambioPreview.cliente_nombre,
-                devoluciones,
-                credito_total: Number(devoluciones.reduce((sum, item) => sum + Number(item.importe_credito || 0), 0).toFixed(2)),
-            };
-            this.mostrarModalCambio = false;
-            this.mensajeCambio = '';
-            this.ventaCambioPreview = null;
-            this.folioCambioBuscar = '';
-            this.$nextTick(() => this.$refs.productoInput?.focus());
+                const json = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    const first = Object.values(json?.errors || {})[0];
+                    this.mensajeCambio = first ? first[0] : (json?.message || 'No fue posible generar el crédito de cambio.');
+                    return;
+                }
+
+                this.mostrarModalCambio = false;
+                this.mensajeCambio = '';
+                this.ventaCambioPreview = null;
+                this.folioCambioBuscar = '';
+                const creditoId = Number(json?.data?.pcc_id || 0);
+                const creditoFolio = String(json?.data?.pcc_folio || '');
+                const creditoMonto = Number(json?.data?.pcc_total_credito || 0);
+                this.abrirModalAviso(
+                    'Vale de cambio generado',
+                    `Se generó el folio ${creditoFolio || 'N/D'} con saldo disponible de ${this.fmt(creditoMonto)}. El cliente ya puede aplicarlo en cualquier caja de esta sucursal.`
+                );
+                if (creditoId > 0) {
+                    this.abrirTicketCreditoCambio(creditoId);
+                }
+                this.$nextTick(() => this.$refs.productoInput?.focus());
+            } catch (error) {
+                this.mensajeCambio = 'Error de conexión al generar el crédito de cambio.';
+            }
         },
 
         cancelarCambioActual() {
@@ -4201,6 +4578,121 @@ function posApp() {
             this.mensajeCambio = '';
             this.ventaCambioPreview = null;
             this.folioCambioBuscar = '';
+        },
+
+        async abrirModalValesCambio() {
+            this.mostrarModalValesCambio = true;
+            await this.cargarValesCambio();
+        },
+
+        cerrarModalValesCambio() {
+            this.mostrarModalValesCambio = false;
+            this.mensajeValesCambio = '';
+        },
+
+        async cargarValesCambio() {
+            this.cargandoValesCambio = true;
+            this.mensajeValesCambio = '';
+            try {
+                const query = new URLSearchParams({
+                    folio: this.normalizarFolioEscaneado(this.filtrosValesCambio.folio || ''),
+                    cliente: String(this.filtrosValesCambio.cliente || '').trim(),
+                    estatus: String(this.filtrosValesCambio.estatus || '').trim(),
+                });
+                const res = await fetch(`${rutaCreditosCambioIndex}?${query.toString()}`, {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                const json = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    this.valesCambio = [];
+                    this.mensajeValesCambio = json?.message || 'No fue posible consultar los vales.';
+                    return;
+                }
+
+                this.valesCambio = Array.isArray(json?.data) ? json.data : [];
+            } catch (error) {
+                this.valesCambio = [];
+                this.mensajeValesCambio = 'Error de conexión al consultar los vales.';
+            } finally {
+                this.cargandoValesCambio = false;
+            }
+        },
+
+        limpiarFiltrosValesCambio() {
+            this.filtrosValesCambio = { folio: '', cliente: '', estatus: '' };
+            this.cargarValesCambio();
+        },
+
+        etiquetaEstatusVale(estatus) {
+            const valor = String(estatus || '').toLowerCase();
+            if (valor === 'disponible') return 'Disponible';
+            if (valor === 'parcial') return 'Parcial';
+            if (valor === 'aplicado') return 'Aplicado';
+            if (valor === 'cancelado') return 'Cancelado';
+            return estatus || 'N/D';
+        },
+
+        async buscarCreditoCambioParaCobro() {
+            const folio = this.normalizarFolioEscaneado(this.folioCreditoCambio);
+            this.folioCreditoCambio = folio;
+            if (!folio) {
+                this.mensajeCreditoCambio = 'Captura el folio del vale para aplicarlo.';
+                this.creditoCambioSeleccionado = null;
+                return;
+            }
+
+            this.buscandoCreditoCambio = true;
+            this.mensajeCreditoCambio = '';
+            try {
+                const totalSeleccion = Number((this.subtotal - this.descuento) || 0);
+                const res = await fetch(`${rutaBuscarCreditoCambioFolio}?folio=${encodeURIComponent(folio)}&total=${encodeURIComponent(totalSeleccion)}`, {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                });
+                const json = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    this.creditoCambioSeleccionado = null;
+                    this.mensajeCreditoCambio = json?.message || 'No fue posible consultar el vale de cambio.';
+                    return;
+                }
+
+                const credito = json?.data || null;
+                if (!credito) {
+                    this.creditoCambioSeleccionado = null;
+                    this.mensajeCreditoCambio = 'No se encontró el vale solicitado.';
+                    return;
+                }
+                if (!credito.pcc_sucursal_valida) {
+                    this.creditoCambioSeleccionado = null;
+                    this.mensajeCreditoCambio = 'Este vale pertenece a otra sucursal y no puede aplicarse aquí.';
+                    return;
+                }
+
+                this.creditoCambioSeleccionado = {
+                    id: Number(credito.pcc_id || 0),
+                    folio: String(credito.pcc_folio || folio),
+                    cliente_nombre: String(credito.cliente_nombre || ''),
+                    venta_origen_folio: String(credito.venta_origen_folio || ''),
+                    saldo_disponible: Number(credito.pcc_saldo_disponible || 0),
+                    monto_aplicado: Number(credito.pcc_monto_aplicable || 0),
+                };
+                this.folioCreditoCambio = this.creditoCambioSeleccionado.folio;
+                this.sincronizarPagoConTotalActual();
+                if (Number(this.creditoCambioSeleccionado.monto_aplicado || 0) <= 0) {
+                    this.mensajeCreditoCambio = 'El vale no tiene saldo aplicable para esta venta.';
+                }
+            } catch (error) {
+                this.creditoCambioSeleccionado = null;
+                this.mensajeCreditoCambio = 'Error de conexión al consultar el vale.';
+            } finally {
+                this.buscandoCreditoCambio = false;
+            }
+        },
+
+        quitarCreditoCambioSeleccionado() {
+            this.creditoCambioSeleccionado = null;
+            this.folioCreditoCambio = '';
+            this.mensajeCreditoCambio = '';
+            this.sincronizarPagoConTotalActual();
         },
 
         async abrirCambioDesdeVenta(ventaId) {
@@ -4479,8 +4971,17 @@ function posApp() {
                     this.resumenCaja = null;
                     this.mostrarModalCaja = true;
                 }
-                if (json?.data?.ticket_url) {
-                    window.open(json.data.ticket_url, '_blank');
+                if (json?.data?.pco_id) {
+                    await this.imprimirTrabajoAgente(
+                        `${rutaTicketCorteCajaEscposBase}/${json.data.pco_id}/ticket-escpos`,
+                        `${rutaTicketCorteCajaBase}/${json.data.pco_id}/ticket`,
+                        `corte-caja-${json?.data?.pco_id || Date.now()}`
+                    );
+                } else if (json?.data?.ticket_url) {
+                    await this.imprimirTicketDesdeUrl(
+                        json.data.ticket_url,
+                        `corte-caja-${json?.data?.pco_id || Date.now()}.pdf`
+                    );
                 }
                 alert(json?.message || 'Corte de caja registrado correctamente.');
             } finally {
@@ -4488,9 +4989,190 @@ function posApp() {
             }
         },
 
-        abrirTicketVenta(ventaId) {
+        async abrirTicketVenta(ventaId) {
             if (!ventaId) return;
-            window.open(`${rutaTicketVentaBase}/${ventaId}/ticket`, '_blank');
+            await this.imprimirTrabajoAgente(
+                `${rutaTicketVentaEscposBase}/${ventaId}/ticket-escpos`,
+                `${rutaTicketVentaBase}/${ventaId}/ticket`,
+                `ticket-venta-${ventaId}`
+            );
+        },
+
+        async abrirTicketCreditoCambio(creditoId) {
+            if (!creditoId) return;
+            await this.imprimirTrabajoAgente(
+                `${rutaTicketCreditoCambioEscposBase}/${creditoId}/ticket-escpos`,
+                `${rutaTicketCreditoCambioBase}/${creditoId}/ticket`,
+                `ticket-credito-cambio-${creditoId}`
+            );
+        },
+
+        cargarConfiguracionAgenteImpresion() {
+            const habilitadoGuardado = window.localStorage.getItem(storageAgenteImpresionHabilitado);
+            const urlGuardada = window.localStorage.getItem(storageAgenteImpresionUrl);
+            this.agenteImpresionHabilitado = habilitadoGuardado === '1';
+            this.agenteImpresionUrl = (urlGuardada || agenteImpresionUrlDefault).trim() || agenteImpresionUrlDefault;
+            this.actualizarEstadoAgenteImpresion();
+        },
+
+        guardarConfiguracionAgenteImpresion() {
+            window.localStorage.setItem(storageAgenteImpresionHabilitado, this.agenteImpresionHabilitado ? '1' : '0');
+            window.localStorage.setItem(storageAgenteImpresionUrl, this.agenteImpresionUrl || agenteImpresionUrlDefault);
+            this.actualizarEstadoAgenteImpresion();
+        },
+
+        actualizarEstadoAgenteImpresion() {
+            if (!this.agenteImpresionHabilitado) {
+                this.impresionEstado = 'Navegador';
+                return;
+            }
+
+            this.impresionEstado = `Agente local - ${this.agenteImpresionUrl}`;
+        },
+
+        configurarAgenteImpresion() {
+            const urlCapturada = window.prompt(
+                'URL del agente local de impresion en esta computadora:',
+                this.agenteImpresionUrl || agenteImpresionUrlDefault
+            );
+
+            if (urlCapturada === null) return;
+
+            const urlNormalizada = String(urlCapturada || '').trim().replace(/\/+$/, '');
+            if (!urlNormalizada) {
+                this.agenteImpresionHabilitado = false;
+                this.agenteImpresionUrl = agenteImpresionUrlDefault;
+                this.guardarConfiguracionAgenteImpresion();
+                alert('La impresion automatica quedo deshabilitada para esta computadora.');
+                return;
+            }
+
+            this.agenteImpresionUrl = urlNormalizada;
+            this.agenteImpresionHabilitado = true;
+            this.guardarConfiguracionAgenteImpresion();
+            alert('Agente de impresion configurado. Los siguientes tickets intentaran imprimirse automaticamente en esta computadora.');
+        },
+
+        async imprimirTicketDesdeUrl(ticketUrl, nombreArchivo = 'ticket.pdf') {
+            if (!ticketUrl) return;
+
+            const destino = String(ticketUrl);
+            if (!this.agenteImpresionHabilitado) {
+                window.open(destino, '_blank');
+                return;
+            }
+
+            try {
+                this.impresionEstado = 'Preparando ticket...';
+                const res = await fetch(destino, {
+                    headers: {
+                        'Accept': 'application/pdf',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin',
+                });
+
+                if (!res.ok) {
+                    throw new Error('No fue posible descargar el ticket PDF.');
+                }
+
+                const pdfBlob = await res.blob();
+                const pdfBase64 = await this.blobToBase64(pdfBlob);
+
+                this.impresionEstado = 'Enviando al agente...';
+                const printRes = await fetch(`${this.agenteImpresionUrl.replace(/\/+$/, '')}/api/print-jobs`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        source: 'laisuriana-pos',
+                        content_type: 'application/pdf',
+                        document_name: nombreArchivo,
+                        document_base64: pdfBase64,
+                    }),
+                });
+
+                const printJson = await printRes.json().catch(() => ({}));
+                if (!printRes.ok) {
+                    throw new Error(printJson?.message || 'El agente local rechazo la impresion.');
+                }
+
+                this.impresionEstado = printJson?.message || 'Impreso por agente local';
+            } catch (error) {
+                console.error(error);
+                this.impresionEstado = 'Fallback a navegador';
+                window.open(destino, '_blank');
+            }
+        },
+
+        async imprimirTrabajoAgente(payloadUrl, fallbackUrl, nombreBase = 'ticket') {
+            if (!payloadUrl) {
+                if (fallbackUrl) {
+                    await this.imprimirTicketDesdeUrl(fallbackUrl, `${nombreBase}.pdf`);
+                }
+                return;
+            }
+
+            if (!this.agenteImpresionHabilitado) {
+                if (fallbackUrl) {
+                    window.open(String(fallbackUrl), '_blank');
+                }
+                return;
+            }
+
+            try {
+                this.impresionEstado = 'Preparando ticket termico...';
+                const res = await fetch(String(payloadUrl), {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin',
+                });
+
+                const json = await res.json().catch(() => ({}));
+                if (!res.ok || !json?.data?.document_base64) {
+                    throw new Error(json?.message || 'No fue posible preparar el ticket termico.');
+                }
+
+                this.impresionEstado = 'Enviando RAW al agente...';
+                const printRes = await fetch(`${this.agenteImpresionUrl.replace(/\/+$/, '')}/api/print-jobs`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify(json.data),
+                });
+
+                const printJson = await printRes.json().catch(() => ({}));
+                if (!printRes.ok) {
+                    throw new Error(printJson?.message || 'El agente local rechazo la impresion RAW.');
+                }
+
+                this.impresionEstado = printJson?.message || 'Impreso por agente local';
+            } catch (error) {
+                console.error(error);
+                this.impresionEstado = 'Fallback a navegador';
+                if (fallbackUrl) {
+                    await this.imprimirTicketDesdeUrl(String(fallbackUrl), `${nombreBase}.pdf`);
+                }
+            }
+        },
+
+        blobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const raw = String(reader.result || '');
+                    const base64 = raw.includes(',') ? raw.split(',', 2)[1] : raw;
+                    resolve(base64);
+                };
+                reader.onerror = () => reject(new Error('No fue posible leer el PDF del ticket.'));
+                reader.readAsDataURL(blob);
+            });
         },
 
         etiquetaOperacion(tipo) {
@@ -4517,7 +5199,8 @@ function posApp() {
         },
 
         async cargarPedidoPorFolio() {
-            const folio = (this.folioPedidoBuscar || '').trim();
+            const folio = this.normalizarFolioEscaneado(this.folioPedidoBuscar);
+            this.folioPedidoBuscar = folio;
             if (!folio) {
                 this.pedidoMensaje = 'Captura un folio para continuar.';
                 return;
@@ -4653,8 +5336,27 @@ function posApp() {
             }
         },
 
-        agregarDesdeBusqueda(item) {
+        async agregarDesdeBusqueda(item) {
             if (!item?.psk_id) return;
+            const resolucion = await this.resolverAlmacenParaProducto(item);
+            if (!resolucion?.ok) return;
+
+            if (!this.ventaAlmacenId && resolucion.requiereSeleccion) {
+                this.abrirSelectorAlmacenVenta(
+                    resolucion.almacenes || [],
+                    'Selecciona el almacén del primer producto',
+                    'Este producto puede salir de varios almacenes. Elige cuál usará este ticket desde la primera marcación.',
+                    'primer_producto',
+                    item
+                );
+                return;
+            }
+
+            if (!this.ventaAlmacenId && Number(resolucion.almacen_id || 0) > 0) {
+                this.ventaAlmacenId = String(resolucion.almacen_id);
+                this.ventaAlmacenNombre = resolucion.almacen || this.obtenerNombreAlmacen(this.ventaAlmacenId);
+            }
+
             const vendedor = this.resolverVendedorManual();
             this.agregarItem({
                 pskId: item.psk_id,
@@ -4879,6 +5581,9 @@ function posApp() {
                 this.clienteSeleccionado = null;
                 this.queryCliente = '';
                 this.descuentoGlobal = 0;
+                this.folioCreditoCambio = '';
+                this.creditoCambioSeleccionado = null;
+                this.mensajeCreditoCambio = '';
                 this.aplicarAlmacenPorSesion();
                 this.$refs.productoInput?.focus();
             }
@@ -4892,6 +5597,9 @@ function posApp() {
             this.descuentoGlobal     = 0;
             this.pedidoCargado       = null;
             this.cambioActual        = null;
+            this.folioCreditoCambio  = '';
+            this.creditoCambioSeleccionado = null;
+            this.mensajeCreditoCambio = '';
             this.ventaAlmacenId      = '';
             this.ventaAlmacenNombre  = '';
             this.aplicarAlmacenPorSesion();
@@ -5012,7 +5720,12 @@ function posApp() {
                 }
                 this.cerrarModalMovimientoCaja();
                 await this.cargarVentasDia();
-                if (ticketUrl) window.open(ticketUrl, '_blank');
+                if (ticketUrl) {
+                    await this.imprimirTicketDesdeUrl(
+                        ticketUrl,
+                        `${this.movimientoCajaTipo || 'movimiento-caja'}-${Date.now()}.pdf`
+                    );
+                }
             } catch (error) {
                 this.abrirModalAviso('Sin conexión', 'No fue posible registrar el movimiento de caja en este momento.');
             } finally {
@@ -5074,7 +5787,12 @@ function posApp() {
                 return;
             }
             if (!this.ventaAlmacenId) {
-                this.mostrarModalAlmacenVenta = true;
+                this.abrirSelectorAlmacenVenta(
+                    this.almacenesVenta,
+                    'Selecciona el almacén del ticket',
+                    'Este ticket no tiene un almacén definido. Elige uno para continuar con el cobro.',
+                    'ticket'
+                );
                 return;
             }
             if (this.cambioActivo && Number(this.total || 0) === 0) {
@@ -5107,6 +5825,10 @@ function posApp() {
         inicializarPagoModal() {
             this.tipoPagoSeleccionado = 'efectivo';
             this.pagoReferencia = '';
+            this.folioCreditoCambio = '';
+            this.mostrarCapturaVale = false;
+            this.creditoCambioSeleccionado = null;
+            this.mensajeCreditoCambio = '';
             const total = this.normalizarMonto(this.total || 0);
             this.pagoEfectivoRecibido = total;
             this.pagoLineas = [{ metodo: 'efectivo', monto: total, recibido: total }];
@@ -5217,12 +5939,12 @@ function posApp() {
                 }))
                 .filter((ln) => ln.recibido > 0);
 
-            if (!this.cambioActivo && lineasValidas.length === 0) {
+            if (lineasValidas.length === 0 && Number(this.total || 0) > 0) {
                 alert('Captura al menos un método de pago.');
                 return;
             }
 
-            if (this.totalPagoCapturado < this.total && !(this.cambioActivo && Number(this.total || 0) === 0)) {
+            if (this.totalPagoCapturado < this.total && Number(this.total || 0) > 0) {
                 alert('El pago no cubre el total.');
                 return;
             }
@@ -5243,7 +5965,7 @@ function posApp() {
             const payloadBase = {
                 notas: [this.notas || '', this.pagoReferencia ? `Ref: ${this.pagoReferencia}` : ''].filter(Boolean).join(' | ') || null,
                 descuento_global: Number(this.descuentoGlobal || 0),
-                metodo_pago: (this.cambioActivo && Number(this.total || 0) === 0) ? 'sin_pago' : metodoPagoBackend,
+                metodo_pago: Number(this.total || 0) === 0 ? 'sin_pago' : metodoPagoBackend,
                 monto_efectivo: Number(montoEfectivo || 0),
                 monto_tarjeta: Number(montoTarjeta || 0),
                 items: this.items.map((i) => ({
@@ -5266,7 +5988,7 @@ function posApp() {
                     devoluciones: (this.cambioActual.devoluciones || []).map((d) => ({
                         pvd_id: Number(d.pvd_id),
                         cantidad: Number(d.cantidad),
-                        condicion: d.condicion || 'reventa',
+                        condicion: 'reventa',
                     })),
                 }
                 : {
@@ -5274,6 +5996,7 @@ function posApp() {
                     almacen_id: Number(this.ventaAlmacenId),
                     cliente_id: this.clienteSeleccionado?.cli_id ? Number(this.clienteSeleccionado.cli_id) : null,
                     pedido_id: this.pedidoCargado?.pdp_id ? Number(this.pedidoCargado.pdp_id) : null,
+                    credito_cambio_folio: this.creditoCambioSeleccionado?.folio || null,
                 };
 
             this.cobrandoVenta = true;
@@ -5300,7 +6023,7 @@ function posApp() {
                 this.mostrarModalPago = false;
                 this.nuevaVenta();
                 await this.cargarVentasDia();
-                if (ventaId > 0 && this.imprimirDespuesCobro) this.abrirTicketVenta(ventaId);
+                if (ventaId > 0 && this.imprimirDespuesCobro) await this.abrirTicketVenta(ventaId);
             } catch (error) {
                 alert('Error de conexión al cobrar la venta.');
             } finally {
@@ -5310,14 +6033,41 @@ function posApp() {
         confirmarAlmacenVenta() {
             if (!this.ventaAlmacenId) return;
             this.ventaAlmacenNombre = this.obtenerNombreAlmacen(this.ventaAlmacenId);
-            this.mostrarModalAlmacenVenta = false;
+            this.cerrarModalAlmacenVenta();
             this.cobrar();
         },
         seleccionarAlmacenYContinuar(almacen) {
             if (!almacen?.alm_id) return;
             this.ventaAlmacenId = String(almacen.alm_id);
             this.ventaAlmacenNombre = almacen.alm_nombre || this.obtenerNombreAlmacen(this.ventaAlmacenId);
-            this.mostrarModalAlmacenVenta = false;
+            const contexto = this.modalAlmacenVentaContexto;
+            const productoPendiente = this.productoPendienteAlmacen;
+            this.cerrarModalAlmacenVenta();
+
+            if (contexto === 'primer_producto' && productoPendiente?.psk_id) {
+                const vendedor = this.resolverVendedorManual();
+                this.agregarItem({
+                    pskId: productoPendiente.psk_id,
+                    origen: 'manual',
+                    pedidoDetalleId: null,
+                    usrId: vendedor.usrId,
+                    vendedor: vendedor.nombre,
+                    nombre: productoPendiente.psk_nombre || productoPendiente.producto?.prd_nombre || productoPendiente.psk_codigo,
+                    sku: productoPendiente.psk_codigo,
+                    codigoBarras: productoPendiente.psk_codigo_barras || productoPendiente.producto?.prd_codigo_barras || '',
+                    precio: parseFloat(productoPendiente.psk_precio || 0),
+                    permiteDecimal: Boolean(productoPendiente.permite_decimal),
+                    cantidad: 1,
+                    descuentoTipo: 'ninguno',
+                    descuento: 0,
+                });
+                this.queryProducto = '';
+                this.variantesPendientes = [];
+                this.mostrarSelectorVariantes = false;
+                this.$nextTick(() => this.$refs.productoInput?.focus());
+                return;
+            }
+
             this.$nextTick(() => this.cobrar());
         },
         obtenerNombreAlmacen(almacenId) {
@@ -5360,3 +6110,4 @@ function posApp() {
 }
 </script>
 @endpush
+

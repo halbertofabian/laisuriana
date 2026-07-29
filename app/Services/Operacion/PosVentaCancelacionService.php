@@ -16,6 +16,7 @@ class PosVentaCancelacionService
     public function __construct(
         private readonly InventarioBaseService $inventarioBaseService,
         private readonly AuditoriaService $auditoriaService,
+        private readonly PosCreditoCambioService $posCreditoCambioService,
     ) {
     }
 
@@ -26,6 +27,8 @@ class PosVentaCancelacionService
                 ->with([
                     'detalle',
                     'cambioDevoluciones',
+                    'creditosCambioGenerados' => fn ($q) => $q
+                        ->where('pcc_estatus', '!=', 'cancelado'),
                     'cambiosRelacionados' => fn ($q) => $q
                         ->where('psv_estatus', '!=', 'cancelada'),
                 ])
@@ -42,6 +45,8 @@ class PosVentaCancelacionService
                     trim($motivo) !== '' ? trim($motivo) : 'Cancelación de venta POS.'
                 );
             }
+
+            $this->posCreditoCambioService->revertirAplicacionesVenta($request, $usuario, $venta);
 
             $venta->update([
                 'psv_estatus' => 'cancelada',
@@ -94,6 +99,12 @@ class PosVentaCancelacionService
         if ($venta->cambiosRelacionados->isNotEmpty()) {
             throw ValidationException::withMessages([
                 'venta' => 'La venta ya tiene cambios/devoluciones asociados y no puede cancelarse.',
+            ]);
+        }
+
+        if ($venta->creditosCambioGenerados->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'venta' => 'La venta ya tiene vales de cambio asociados y no puede cancelarse.',
             ]);
         }
     }

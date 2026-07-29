@@ -73,7 +73,7 @@
                 <button type="button" class="desktop-modal__close" data-close-caja-modal aria-label="Cerrar">&times;</button>
             </div>
 
-            <form id="desktop-caja-form">
+            <form id="desktop-caja-form" data-ls-autocomplete="admin">
                 <div class="desktop-modal__body">
                     <input type="hidden" name="caj_id" id="caj_id">
                     <div class="desktop-form-grid">

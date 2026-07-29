@@ -9,6 +9,7 @@ use App\Services\Operacion\EscaneoProductoService;
 use App\Services\Operacion\PedidoPisoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class PedidoPisoController extends Controller
 {
@@ -391,5 +392,195 @@ class PedidoPisoController extends Controller
             'Content-Disposition' => 'inline; filename="pedido-' . $pedido->pdp_folio . '.pdf"',
             'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
         ]);
+    }
+
+    public function ticketEscpos(PedidoPiso $pedido): JsonResponse
+    {
+        $pedido->load([
+            'sucursal:scl_id,scl_nombre',
+            'almacen:alm_id,alm_nombre',
+            'usuario:usr_id,usr_nombre',
+            'detalle.capturista:usr_id,usr_nombre',
+            'detalle.sku:psk_id,psk_nombre,psk_codigo',
+        ]);
+
+        $payload = $this->buildPedidoEscposPayload($pedido);
+
+        return response()->json([
+            'data' => [
+                'source' => 'laisuriana-pos',
+                'content_type' => 'application/vnd.escpos',
+                'document_name' => 'ticket-pedido-piso-' . $pedido->pdp_folio . '.bin',
+                'document_base64' => base64_encode($payload),
+            ],
+        ]);
+    }
+
+    private function buildPedidoEscposPayload(PedidoPiso $pedido): string
+    {
+        $width = 32;
+        $lf = "\n";
+        $sep = str_repeat('-', $width);
+        $totalSep = str_repeat('=', $width);
+        $init = "\x1B@\x1Bt\x10";
+        $boldOn = "\x1BE\x01";
+        $boldOff = "\x1BE\x00";
+        $center = "\x1Ba\x01";
+        $left = "\x1Ba\x00";
+        $cut = "\x1DV\x00";
+
+        $vendedores = $pedido->detalle
+            ->pluck('capturista.usr_nombre')
+            ->filter(fn ($nombre) => filled($nombre))
+            ->unique()
+            ->values();
+
+        if ($vendedores->isEmpty() && filled($pedido->usuario?->usr_nombre)) {
+            $vendedores = collect([(string) $pedido->usuario->usr_nombre]);
+        }
+
+        $p = $init;
+        $p .= $center . $boldOn . $this->thermalAscii((string) ($pedido->sucursal?->scl_nombre ?? 'Sucursal')) . $lf . $boldOff;
+        $p .= 'PEDIDO DE PISO' . $lf;
+        $p .= $boldOn . $this->thermalAscii((string) ($pedido->almacen?->alm_nombre ?? 'Sin almacen')) . $lf . $boldOff;
+        if ($vendedores->isNotEmpty()) {
+            foreach ($this->wrapEscpos($vendedores->join(', '), $width) as $line) {
+                $p .= $this->thermalAscii($line) . $lf;
+            }
+        }
+        $p .= $left . $sep . $lf;
+        $p .= $boldOn . $this->escposTcRow('FOLIO: ' . $this->thermalAscii((string) $pedido->pdp_folio), now()->format('d/m/y H:i'), $width) . $lf . $boldOff;
+        $p .= $this->escposTcRow('ALMACEN', $this->thermalAscii((string) ($pedido->almacen?->alm_nombre ?? 'N/D')), $width) . $lf;
+        $p .= $sep . $lf;
+        $p .= $this->escposColumns([
+            ['text' => 'PRODUCTO', 'width' => 18],
+            ['text' => 'CANT', 'width' => 6, 'align' => STR_PAD_LEFT],
+            ['text' => 'TOTAL', 'width' => 8, 'align' => STR_PAD_LEFT],
+        ]) . $lf;
+        $p .= $sep . $lf;
+
+        foreach ($pedido->detalle as $index => $detalle) {
+            foreach ($this->wrapEscpos((string) ($detalle->sku?->psk_nombre ?? 'Producto'), 18) as $lineIndex => $line) {
+                if ($lineIndex === 0) {
+                    $p .= $this->escposColumns([
+                        ['text' => $line, 'width' => 18],
+                        ['text' => number_format((float) $detalle->ppd_cantidad, 2, '.', ','), 'width' => 6, 'align' => STR_PAD_LEFT],
+                        ['text' => '$' . number_format((float) ($detalle->ppd_total_linea ?? $detalle->ppd_importe ?? 0), 2, '.', ','), 'width' => 8, 'align' => STR_PAD_LEFT],
+                    ]) . $lf;
+                } else {
+                    $p .= $line . $lf;
+                }
+            }
+
+            $sku = $this->thermalAscii((string) ($detalle->sku?->psk_codigo ?? ''));
+            if ($sku !== '') {
+                $p .= '  SKU: ' . $sku . $lf;
+            }
+
+            if ($index < ($pedido->detalle->count() - 1)) {
+                $p .= $sep . $lf;
+            }
+        }
+
+        $p .= $lf . $totalSep . $lf;
+        $p .= $boldOn . $this->escposTcRow('TOTAL', '$' . number_format((float) $pedido->pdp_total, 2, '.', ','), $width) . $lf . $boldOff;
+        $p .= $sep . $lf;
+        $p .= $center . 'PRESENTA ESTE TICKET EN CAJA' . $lf;
+        $p .= $this->escposBarcodePayload((string) $pedido->pdp_folio);
+        $p .= $lf . $lf . $lf;
+        $p .= $cut;
+
+        return $p;
+    }
+
+    private function wrapEscpos(string $text, int $width): array
+    {
+        $clean = $this->thermalAscii($text);
+        if ($clean === '') {
+            return [''];
+        }
+
+        $lines = [];
+        foreach (preg_split('/\r\n|\r|\n/', $clean) ?: [] as $chunk) {
+            $chunk = trim($chunk);
+            if ($chunk === '') {
+                $lines[] = '';
+                continue;
+            }
+
+            while (strlen($chunk) > $width) {
+                $lines[] = rtrim(substr($chunk, 0, $width));
+                $chunk = ltrim(substr($chunk, $width));
+            }
+
+            $lines[] = $chunk;
+        }
+
+        return $lines === [] ? [''] : $lines;
+    }
+
+    private function escposTcRow(string $left, string $right, int $width): string
+    {
+        $left = $this->thermalAscii($left);
+        $right = $this->thermalAscii($right);
+        $rightLen = strlen($right);
+        $maxLeft = $width - $rightLen - 1;
+
+        if (strlen($left) > $maxLeft) {
+            $left = substr($left, 0, $maxLeft);
+        }
+
+        $spaces = $width - strlen($left) - $rightLen;
+
+        return $left . str_repeat(' ', max(1, $spaces)) . $right;
+    }
+
+    private function escposColumns(array $columns): string
+    {
+        $line = '';
+
+        foreach ($columns as $column) {
+            $text = $this->thermalAscii((string) ($column['text'] ?? ''));
+            $width = max(1, (int) ($column['width'] ?? 1));
+            $align = (int) ($column['align'] ?? STR_PAD_RIGHT);
+
+            if (strlen($text) > $width) {
+                $text = substr($text, 0, $width);
+            }
+
+            $line .= str_pad($text, $width, ' ', $align);
+        }
+
+        return $line;
+    }
+
+    private function escposBarcodePayload(string $value): string
+    {
+        $barcode = $this->thermalAscii($value);
+        if ($barcode === '') {
+            return '';
+        }
+
+        $barcode = substr($barcode, 0, 120);
+        $content = '{B' . $barcode;
+        $length = strlen($content);
+
+        return "\x1Ba\x01"
+            . "\x1DH\x02"
+            . "\x1Dw\x02"
+            . "\x1Dh\x40"
+            . "\x1DkI"
+            . chr($length)
+            . $content
+            . "\n"
+            . "\x1Ba\x00";
+    }
+
+    private function thermalAscii(string $value): string
+    {
+        $ascii = Str::ascii($value);
+        $clean = preg_replace('/[^\x20-\x7E]/', ' ', $ascii) ?? '';
+
+        return Str::upper($clean);
     }
 }

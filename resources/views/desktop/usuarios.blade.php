@@ -66,7 +66,7 @@
                 <button type="button" class="desktop-modal__close" data-close-modal aria-label="Cerrar">&times;</button>
             </div>
 
-            <form id="desktop-usuario-form">
+            <form id="desktop-usuario-form" data-ls-autocomplete="admin">
                 <div class="desktop-modal__body">
                     <input type="hidden" name="usr_id" id="usr_id">
                     <div class="desktop-form-grid">
