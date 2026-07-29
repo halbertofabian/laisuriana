@@ -25,3 +25,5 @@ Thumbs.db
 .claude/worktrees/
 /public/downloads/LAISURIANAPRINT-SOFTMOR/
 /tools/windows-print-agent-installer/bin/
+/tools/windows-print-agent-installer/obj/
+/tools/windows-print-agent-installer/Payload/
