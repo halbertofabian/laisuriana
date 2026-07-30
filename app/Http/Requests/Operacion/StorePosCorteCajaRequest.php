@@ -14,7 +14,7 @@ class StorePosCorteCajaRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $denominaciones = (array) $this->input('denominaciones', []);
-        $claves = ['1000', '500', '200', '100', '50', '20'];
+        $claves = ['1000', '500', '200', '100', '50', '20', '10', '5', '2', '1', '0_50'];
 
         foreach ($claves as $clave) {
             $valor = $denominaciones[$clave] ?? 0;
@@ -25,9 +25,6 @@ class StorePosCorteCajaRequest extends FormRequest
             'denominaciones' => $denominaciones,
             'autoriza_usr_id' => (int) $this->input('autoriza_usr_id', 0),
             'autoriza_usuario' => trim((string) $this->input('autoriza_usuario', '')),
-            'cambio' => ($this->input('cambio') === '' || $this->input('cambio') === null)
-                ? 0
-                : $this->input('cambio'),
             'observaciones' => trim((string) $this->input('observaciones', '')) ?: null,
         ]);
     }
@@ -42,7 +39,11 @@ class StorePosCorteCajaRequest extends FormRequest
             'denominaciones.100' => ['required', 'integer', 'min:0'],
             'denominaciones.50' => ['required', 'integer', 'min:0'],
             'denominaciones.20' => ['required', 'integer', 'min:0'],
-            'cambio' => ['nullable', 'numeric', 'min:0'],
+            'denominaciones.10' => ['required', 'integer', 'min:0'],
+            'denominaciones.5' => ['required', 'integer', 'min:0'],
+            'denominaciones.2' => ['required', 'integer', 'min:0'],
+            'denominaciones.1' => ['required', 'integer', 'min:0'],
+            'denominaciones.0_50' => ['required', 'integer', 'min:0'],
             'autoriza_usr_id' => ['required', 'integer', 'min:1', 'exists:tbl_usuarios_usr,usr_id'],
             'autoriza_password' => ['required', 'string', 'max:255'],
             'observaciones' => ['nullable', 'string', 'max:2000'],
@@ -54,10 +55,8 @@ class StorePosCorteCajaRequest extends FormRequest
         return [
             'denominaciones.required' => 'Debes capturar el conteo de denominaciones.',
             'denominaciones.array' => 'Las denominaciones enviadas no son válidas.',
-            'denominaciones.*.integer' => 'La cantidad de billetes debe ser un número entero.',
-            'denominaciones.*.min' => 'La cantidad de billetes no puede ser negativa.',
-            'cambio.numeric' => 'El cambio debe ser un monto válido.',
-            'cambio.min' => 'El cambio no puede ser negativo.',
+            'denominaciones.*.integer' => 'La cantidad de piezas debe ser un número entero.',
+            'denominaciones.*.min' => 'La cantidad de piezas no puede ser negativa.',
             'autoriza_usr_id.required' => 'Selecciona el usuario autorizado.',
             'autoriza_usr_id.integer' => 'El usuario autorizado no es válido.',
             'autoriza_usr_id.min' => 'Selecciona el usuario autorizado.',

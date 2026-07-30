@@ -168,6 +168,7 @@ class PosCambiosYCancelacionesTest extends TestCase
 
         $cambio = PosVenta::query()->where('psv_tipo_operacion', 'cambio')->firstOrFail();
         $this->assertSame((int) $venta->psv_id, (int) $cambio->psv_venta_origen_id);
+        $this->assertSame('monedero_electronico', $cambio->psv_metodo_pago);
         $this->assertSame(2.0, $this->existencia($skuDevuelto->psk_id, $sucursal->scl_id, $almacen->alm_id));
         $this->assertSame(3.0, $this->existencia($skuNuevo->psk_id, $sucursal->scl_id, $almacen->alm_id));
         $this->assertSame(1, PosCambioDetalle::query()->count());
@@ -176,6 +177,23 @@ class PosCambiosYCancelacionesTest extends TestCase
             'pcd_pvd_origen_id' => $detalleVenta->pvd_id,
             'pcd_condicion' => 'reventa',
         ]);
+
+        // Los cambios históricos se guardaron como sin_pago; el resumen debe identificarlos.
+        $cambio->update(['psv_metodo_pago' => 'sin_pago']);
+        $resumen = $this->withSession(['sucursal_activa_id' => $sucursal->scl_id])
+            ->actingAs($admin)
+            ->getJson(route('pos.ventas.dia'));
+
+        $resumen->assertOk()
+            ->assertJsonPath('data.0.psv_id', $cambio->psv_id)
+            ->assertJsonPath('data.0.psv_metodo_pago', 'monedero_electronico')
+            ->assertJsonPath('data.0.pagos.0.clave', 'monedero_electronico')
+            ->assertJsonPath('data.0.pagos.0.monto', 349.9)
+            ->assertJsonFragment([
+                'clave' => 'monedero_electronico',
+                'label' => 'Monedero electrónico',
+                'monto' => 349.9,
+            ]);
     }
 
     public function test_cambio_trata_revision_como_reventa_en_backend(): void
@@ -405,6 +423,7 @@ class PosCambiosYCancelacionesTest extends TestCase
 
         $this->assertSame(0.0, (float) $ventaAplicada->psv_total);
         $this->assertSame(129.5, (float) $ventaAplicada->psv_credito_cambio);
+        $this->assertSame('monedero_electronico', $ventaAplicada->psv_metodo_pago);
         $this->assertSame(220.4, (float) $credito->pcc_saldo_disponible);
         $this->assertSame('parcial', $credito->pcc_estatus);
         $this->assertDatabaseHas('tbl_pos_creditos_cambio_aplicaciones_pca', [
@@ -559,7 +578,7 @@ class PosCambiosYCancelacionesTest extends TestCase
 
     public function test_puede_realizar_corte_de_caja_y_cierra_la_sesion(): void
     {
-        [$admin, $sucursal, $almacen] = $this->prepararEscenarioPos(150);
+        [$admin, $sucursal, $almacen] = $this->prepararEscenarioPos(150.60);
         $autorizador = $this->crearUsuarioAutorizadorCorte($sucursal->scl_id);
         $sku = ProductoSku::query()->where('psk_codigo', 'SKU-POLO-CH-AZM')->firstOrFail();
 
@@ -586,16 +605,20 @@ class PosCambiosYCancelacionesTest extends TestCase
                     '100' => 0,
                     '50' => 1,
                     '20' => 1,
+                    '10' => 1,
+                    '5' => 0,
+                    '2' => 0,
+                    '1' => 0,
+                    '0_50' => 1,
                 ],
-                'cambio' => 9.90,
                 'observaciones' => 'Cierre sin incidencias.',
                 'autoriza_usr_id' => $autorizador->usr_id,
                 'autoriza_password' => 'Corte12345',
             ]);
 
         $response->assertOk();
-        $response->assertJsonPath('data.pco_efectivo_esperado', 479.9);
-        $response->assertJsonPath('data.pco_efectivo_reportado', 479.9);
+        $response->assertJsonPath('data.pco_efectivo_esperado', 480.5);
+        $response->assertJsonPath('data.pco_efectivo_reportado', 480.5);
         $this->assertEquals(0.0, (float) $response->json('data.pco_diferencia'));
 
         $corte = PosCorteCaja::query()->firstOrFail();
@@ -608,8 +631,10 @@ class PosCambiosYCancelacionesTest extends TestCase
         ]);
         $this->assertDatabaseHas('tbl_pos_corte_denominaciones_pdn', [
             'pdn_pco_id' => $corte->pco_id,
-            'pdn_clave' => 'cambio',
-            'pdn_monto' => 9.90,
+            'pdn_clave' => '0.5',
+            'pdn_tipo' => 'moneda',
+            'pdn_cantidad_piezas' => 1,
+            'pdn_monto' => 0.50,
         ]);
         $this->assertDatabaseHas('tbl_caja_sesiones_cse', [
             'cse_id' => $corte->pco_cse_id,

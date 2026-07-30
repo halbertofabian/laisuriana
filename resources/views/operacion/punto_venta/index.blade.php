@@ -364,6 +364,9 @@
         }
         .cash-summary__table td:last-child,
         .cash-summary__table th:last-child { text-align: right; }
+        .cash-summary__payment-list { display: grid; gap: .18rem; min-width: 145px; }
+        .cash-summary__payment { display: flex; justify-content: space-between; gap: .7rem; white-space: nowrap; }
+        .cash-summary__payment strong { font-weight: 700; }
         .cash-summary__layout {
             display: grid;
             grid-template-columns: minmax(0, 1.3fr) minmax(300px, .9fr);
@@ -2408,7 +2411,7 @@
                                     <tr>
                                         <th>Folio</th>
                                         <th>Tipo</th>
-                                        <th>Método</th>
+                                        <th>Desglose de pago</th>
                                         <th>Hora</th>
                                         <th>Crédito cambio</th>
                                         <th>Total</th>
@@ -2422,7 +2425,16 @@
                                         <tr>
                                             <td x-text="v.psv_folio"></td>
                                             <td x-text="etiquetaOperacion(v.psv_tipo_operacion)"></td>
-                                            <td x-text="etiquetaMetodoPago(v.psv_metodo_pago)"></td>
+                                            <td>
+                                                <div class="cash-summary__payment-list">
+                                                    <template x-for="pago in (v.pagos || [])" :key="`${pago.clave}-${pago.monto}`">
+                                                        <div class="cash-summary__payment">
+                                                            <span x-text="etiquetaMetodoPago(pago.clave)"></span>
+                                                            <strong x-text="fmt(pago.monto)"></strong>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            </td>
                                             <td x-text="horaCorta(v.psv_fecha_cobro)"></td>
                                             <td x-text="Number(v.psv_credito_cambio || 0) > 0 ? fmt(v.psv_credito_cambio) : '—'"></td>
                                             <td x-text="fmt(v.psv_total)"></td>
@@ -2845,23 +2857,28 @@
                     <div class="corte-conteo__col corte-conteo__col--divider">
                         <div class="corte-conteo__section-label">Monedas</div>
                         <div class="corte-conteo__rows">
-                            <div class="corte-cambio">
-                                <div>
-                                    <div class="corte-cambio__label">Monedas</div>
+                            <template x-for="moneda in monedasCorte" :key="`moneda-${moneda.clave}`">
+                                <div class="corte-row">
+                                    <div class="corte-row__denom" x-text="moneda.etiqueta"></div>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="1"
+                                        inputmode="numeric"
+                                        class="corte-row__input corte-caja__input"
+                                        x-model="corteCajaForm.denominaciones[moneda.clave]"
+                                        @keydown.enter.prevent="focusSiguienteCorteInput($event)"
+                                        @focus="$event.target.select()"
+                                        placeholder="0"
+                                        :aria-label="`Cantidad de monedas de ${moneda.etiqueta}`"
+                                    />
+                                    <div
+                                        class="corte-row__subtotal"
+                                        :class="{ 'corte-row__subtotal--active': corteSubtotal(moneda.valor, moneda.clave) > 0 }"
+                                        x-text="fmt(corteSubtotal(moneda.valor, moneda.clave))"
+                                    ></div>
                                 </div>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    inputmode="decimal"
-                                    class="corte-row__input corte-caja__input"
-                                    x-model="corteCajaForm.cambio"
-                                    @keydown.enter.prevent="focusSiguienteCorteInput($event)"
-                                    @focus="$event.target.select()"
-                                    placeholder="0.00"
-                                    aria-label="Monto de monedas"
-                                />
-                            </div>
+                            </template>
                             <div>
                                 <label class="pos-field__label">Observaciones</label>
                                 <textarea
@@ -3568,10 +3585,15 @@ function posApp() {
         mostrarCorteCaja: false,
         mostrarModalCorteAutorizacion: false,
         billetesCorte: [1000, 500, 200, 100, 50, 20],
-        monedasCorte: [],
+        monedasCorte: [
+            { clave: '10', valor: 10, etiqueta: '$10.00' },
+            { clave: '5', valor: 5, etiqueta: '$5.00' },
+            { clave: '2', valor: 2, etiqueta: '$2.00' },
+            { clave: '1', valor: 1, etiqueta: '$1.00' },
+            { clave: '0_50', valor: 0.5, etiqueta: '$0.50' },
+        ],
         corteCajaForm: {
-            denominaciones: { 1000: '', 500: '', 200: '', 100: '', 50: '', 20: '' },
-            cambio: '',
+            denominaciones: { 1000: '', 500: '', 200: '', 100: '', 50: '', 20: '', 10: '', 5: '', 2: '', 1: '', '0_50': '' },
             observaciones: '',
         },
         corteAutorizaForm: { usr_id: '', password: '' },
@@ -4838,8 +4860,7 @@ function posApp() {
             }
             await this.cargarVentasDia();
             this.corteCajaForm = {
-                denominaciones: { 1000: '', 500: '', 200: '', 100: '', 50: '', 20: '' },
-                cambio: '',
+                denominaciones: { 1000: '', 500: '', 200: '', 100: '', 50: '', 20: '', 10: '', 5: '', 2: '', 1: '', '0_50': '' },
                 observaciones: '',
             };
             this.mostrarCorteCaja = true;
@@ -4851,15 +4872,19 @@ function posApp() {
         cerrarCorteCaja() {
             this.mostrarCorteCaja = false;
         },
-        corteSubtotal(denominacion) {
-            return Number(this.corteCajaForm.denominaciones[denominacion] || 0) * Number(denominacion);
+        corteSubtotal(denominacion, clave = denominacion) {
+            return Number(this.corteCajaForm.denominaciones[clave] || 0) * Number(denominacion);
         },
         corteTotalBilletesYMonedas() {
-            return [...this.billetesCorte]
+            const totalBilletes = this.billetesCorte
                 .reduce((suma, denom) => suma + this.corteSubtotal(denom), 0);
+            const totalMonedas = this.monedasCorte
+                .reduce((suma, moneda) => suma + this.corteSubtotal(moneda.valor, moneda.clave), 0);
+
+            return totalBilletes + totalMonedas;
         },
         corteCajeroReporta() {
-            return this.corteTotalBilletesYMonedas() + Number(this.corteCajaForm.cambio || 0);
+            return this.corteTotalBilletesYMonedas();
         },
         corteEfectivoEsperado() {
             return Number(this.resumenCaja?.efectivo_disponible ?? 0);
@@ -4925,7 +4950,6 @@ function posApp() {
             try {
                 const payload = {
                     denominaciones: { ...this.corteCajaForm.denominaciones },
-                    cambio: Number(this.corteCajaForm.cambio || 0),
                     observaciones: this.corteCajaForm.observaciones || '',
                     autoriza_usr_id: Number(this.corteAutorizaForm.usr_id || 0),
                     autoriza_password: this.corteAutorizaForm.password || '',
@@ -5183,6 +5207,7 @@ function posApp() {
             if (key === 'efectivo') return 'Efectivo';
             if (key === 'tarjeta') return 'Tarjeta';
             if (key === 'mixto') return 'Mixto';
+            if (key === 'monedero_electronico') return 'Monedero electrónico';
             if (key === 'sin_pago') return 'Sin pago';
             return key ? key.replace(/_/g, ' ') : 'N/A';
         },

@@ -6,6 +6,30 @@
     <link rel="stylesheet" href="{{ asset('vendor-template/assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}" />
 @endpush
 
+@push('desktop-styles')
+    <style>
+        /* El formulario debe participar en el layout flexible del diálogo para que el cuerpo tenga una altura limitada y pueda desplazarse. */
+        #desktop-cliente-modal { padding: 32px 20px; overflow-y: auto; }
+        #desktop-cliente-modal .desktop-modal__dialog { max-height: calc(100vh - 64px); }
+        #desktop-cliente-form { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; }
+        #desktop-cliente-modal .desktop-modal__body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-bottom: 16px; }
+
+        .desktop-cliente-tabs {
+            display: flex; gap: 4px; padding: 0 18px; border-bottom: 1px solid var(--divider);
+            overflow-x: auto; flex: none;
+        }
+        .desktop-cliente-tab {
+            appearance: none; border: 0; border-bottom: 2px solid transparent; background: transparent;
+            color: var(--text-2); cursor: pointer; font: inherit; font-size: .84rem; font-weight: 600;
+            padding: 10px 12px 9px; white-space: nowrap;
+        }
+        .desktop-cliente-tab:hover { color: var(--text); }
+        .desktop-cliente-tab.is-active { color: var(--brand); border-bottom-color: var(--brand); }
+        .desktop-cliente-panel { display: none; }
+        .desktop-cliente-panel.is-active { display: block; }
+    </style>
+@endpush
+
 @section('desktop-toolbar')
     <div class="desktop-toolbar__group">
         @php($activeSubmenu = 'clientes')
@@ -67,6 +91,13 @@
                 <button type="button" class="desktop-modal__close" data-close-cliente-modal aria-label="Cerrar">&times;</button>
             </div>
 
+            <div class="desktop-cliente-tabs" role="tablist" aria-label="Secciones del cliente">
+                <button type="button" class="desktop-cliente-tab is-active" role="tab" aria-selected="true" aria-controls="cliente-tab-persona" id="cliente-tab-persona-button" data-cliente-tab="cliente-tab-persona">Datos generales</button>
+                <button type="button" class="desktop-cliente-tab" role="tab" aria-selected="false" aria-controls="cliente-tab-contacto" id="cliente-tab-contacto-button" data-cliente-tab="cliente-tab-contacto">Contacto</button>
+                <button type="button" class="desktop-cliente-tab" role="tab" aria-selected="false" aria-controls="cliente-tab-documentos" id="cliente-tab-documentos-button" data-cliente-tab="cliente-tab-documentos">Documentos</button>
+                <button type="button" class="desktop-cliente-tab" role="tab" aria-selected="false" aria-controls="cliente-tab-direccion" id="cliente-tab-direccion-button" data-cliente-tab="cliente-tab-direccion">Dirección</button>
+            </div>
+
             <form id="desktop-cliente-form" data-ls-autocomplete="admin">
                 <div class="desktop-modal__body">
                     <input type="hidden" name="cli_id" id="cli_id">
@@ -74,6 +105,7 @@
                     <input type="hidden" name="cli_curp" id="cli_curp">
                     <input type="hidden" name="cli_ine" id="cli_ine">
 
+                    <section class="desktop-cliente-panel is-active" id="cliente-tab-persona" role="tabpanel" aria-labelledby="cliente-tab-persona-button">
                     <div class="desktop-form-grid">
                         <div class="desktop-field">
                             <label>Nombre</label>
@@ -98,11 +130,22 @@
                             <label>Razón social</label>
                             <input type="text" name="cli_razon_social" id="cli_razon_social" maxlength="180">
                         </div>
+                        <div class="desktop-field">
+                            <label>Fecha de nacimiento</label>
+                            <input type="date" name="cli_fecha_nacimiento" id="cli_fecha_nacimiento">
+                        </div>
+                        <div class="desktop-field">
+                            <label>Descuento %</label>
+                            <input type="number" name="cli_descuento_default" id="cli_descuento_default" min="1" max="100" step="1" placeholder="1 a 100">
+                            <small>Porcentaje predeterminado para las ventas de este cliente.</small>
+                        </div>
                     </div>
+                    </section>
 
-                    <div class="desktop-field-section">
-                        <div class="desktop-field-section__title">Contacto y documentos</div>
-                        <div class="desktop-field-section__hint">Información de contacto y documento principal del cliente.</div>
+                    <section class="desktop-cliente-panel" id="cliente-tab-contacto" role="tabpanel" aria-labelledby="cliente-tab-contacto-button">
+                    <div class="desktop-field-section" style="margin-top:0; padding-top:0; border-top:0;">
+                        <div class="desktop-field-section__title">Contacto</div>
+                        <div class="desktop-field-section__hint">Información para comunicarse con el cliente.</div>
                     </div>
 
                     <div class="desktop-form-grid" style="margin-top:14px;">
@@ -118,10 +161,16 @@
                             <label>Correo electrónico</label>
                             <input type="email" name="cli_email" id="cli_email" maxlength="140">
                         </div>
-                        <div class="desktop-field">
-                            <label>Fecha de nacimiento</label>
-                            <input type="date" name="cli_fecha_nacimiento" id="cli_fecha_nacimiento">
-                        </div>
+                    </div>
+                    </section>
+
+                    <section class="desktop-cliente-panel" id="cliente-tab-documentos" role="tabpanel" aria-labelledby="cliente-tab-documentos-button">
+                    <div class="desktop-field-section" style="margin-top:0; padding-top:0; border-top:0;">
+                        <div class="desktop-field-section__title">Documentos</div>
+                        <div class="desktop-field-section__hint">Registra el documento principal del cliente.</div>
+                    </div>
+
+                    <div class="desktop-form-grid" style="margin-top:14px;">
                         <div class="desktop-field">
                             <label>Tipo de documento</label>
                             <select id="doc_tipo">
@@ -135,13 +184,11 @@
                             <label>Documento</label>
                             <input type="text" id="doc_valor" maxlength="30">
                         </div>
-                        <div class="desktop-field">
-                            <label>Descuento predeterminado</label>
-                            <input type="number" name="cli_descuento_default" id="cli_descuento_default" min="1" max="100">
-                        </div>
                     </div>
+                    </section>
 
-                    <div class="desktop-field-section">
+                    <section class="desktop-cliente-panel" id="cliente-tab-direccion" role="tabpanel" aria-labelledby="cliente-tab-direccion-button">
+                    <div class="desktop-field-section" style="margin-top:0; padding-top:0; border-top:0;">
                         <div class="desktop-field-section__title">Dirección</div>
                         <div class="desktop-field-section__hint">Consulta el código postal y completa la dirección fiscal o de contacto.</div>
                     </div>
@@ -190,6 +237,7 @@
                             <textarea name="cli_referencias" id="cli_referencias" rows="3"></textarea>
                         </div>
                     </div>
+                    </section>
                 </div>
 
                 <div class="desktop-modal__foot">
@@ -288,6 +336,17 @@
                 const className = value === 'activo' ? 'desktop-status--active' : 'desktop-status--inactive';
                 const label = value === 'activo' ? 'Activo' : 'Inactivo';
                 return '<span class="desktop-status ' + className + '">' + label + '</span>';
+            }
+
+            function activarTabCliente(tabId) {
+                $('.desktop-cliente-tab').each(function () {
+                    const active = $(this).data('cliente-tab') === tabId;
+                    $(this).toggleClass('is-active', active).attr('aria-selected', active ? 'true' : 'false');
+                });
+                $('.desktop-cliente-panel').each(function () {
+                    $(this).toggleClass('is-active', this.id === tabId);
+                });
+                $('#desktop-cliente-modal .desktop-modal__body').scrollTop(0);
             }
 
             function renderActions(row) {
@@ -405,6 +464,7 @@
                 $('#cli_colonia').html('<option value="">Selecciona</option>');
                 $('#desktop-cliente-modal-title').text('Nuevo cliente');
                 $('#btn-guardar-cliente').text('Guardar cliente');
+                activarTabCliente('cliente-tab-persona');
             }
 
             function initTable() {
@@ -598,6 +658,10 @@
                     if (!ok) return;
                     cambiarEstatus(id, estatus);
                 });
+            });
+
+            $('.desktop-cliente-tab').on('click', function () {
+                activarTabCliente($(this).data('cliente-tab'));
             });
 
             $form.on('submit', function (event) {

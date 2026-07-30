@@ -2739,6 +2739,12 @@ class InventarioBaseService
         // para minimizar la diferencia de posición de las columnas finales.
         $p2  = '2px 3px';   // padding compacto celdas de datos
         $p2h = '2px 4px';   // padding encabezados
+        // TCPDF ignora vertical-align y el padding CSS por celda en tablas HTML:
+        // siempre dibuja el texto en la parte superior de la celda. El sub-encabezado
+        // de cada producto mide 2 líneas de alto (nombre + metadatos), así que el
+        // centrado vertical de las tallas se emula anteponiendo un salto de línea
+        // de media altura (el <br> hereda el font-size reducido del span).
+        $lineaFantasmaTalla = '<span style="font-size:4px;">&nbsp;<br></span>';
         $stProducto  = 'width:' . $mmProducto  . 'mm;border:1px solid ' . $colorBorderTbl . ';padding:' . $p2 . ';vertical-align:middle;';
         // border-left marcado para separar visualmente la zona de tallas de la zona monetaria
         $stTotalArt  = 'width:' . $mmTotalArt  . 'mm;border:1px solid ' . $colorBorderTbl . ';border-left:2px solid ' . $colorPrimario . ';padding:' . $p2 . ';text-align:center;vertical-align:middle;';
@@ -2817,7 +2823,7 @@ class InventarioBaseService
                 $html .= '<tr>';
                 $html .= '<td style="' . $stProducto . 'background-color:' . $colorHeaderBg . ';color:#ffffff;font-weight:bold;">' . (string) $firstRow['producto'] . '</td>';
                 foreach ($colsProducto as $colLabel) {
-                    $html .= '<th style="' . $stColProd . 'background-color:' . $colorHeaderBg . ';color:' . $colorHeaderTxt . ';font-weight:bold;padding:' . $p2h . ';">' . $this->esc((string) $colLabel) . '</th>';
+                    $html .= '<th style="' . $stColProd . 'background-color:' . $colorHeaderBg . ';color:' . $colorHeaderTxt . ';font-weight:bold;padding:' . $p2h . ';">' . $lineaFantasmaTalla . $this->esc((string) $colLabel) . '</th>';
                 }
                 $html .= '<td style="width:' . $mmTotalArt . 'mm;border-left:2px solid ' . $colorPrimario . ';' . $stMoneyGhost . '"></td>';
                 $html .= '<td style="width:' . $mmCosto . 'mm;' . $stMoneyGhost . '"></td>';

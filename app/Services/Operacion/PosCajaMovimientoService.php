@@ -133,6 +133,7 @@ class PosCajaMovimientoService
             'efectivo' => 0.0,
             'tarjeta' => 0.0,
             'mixto' => 0.0,
+            'monedero_electronico' => 0.0,
             'sin_pago' => 0.0,
         ];
 
@@ -140,10 +141,18 @@ class PosCajaMovimientoService
             $detallePago = is_array($venta->psv_pago_detalle) ? $venta->psv_pago_detalle : [];
             $efectivoRecibido = (float) ($detallePago['efectivo'] ?? 0);
             $metodo = (string) ($venta->psv_metodo_pago ?? '');
+            $creditoCambio = round((float) ($venta->psv_credito_cambio ?? 0), 2);
+            // Los cambios creados antes de este ajuste se guardaron como sin_pago.
+            if ($metodo === 'sin_pago' && $creditoCambio > 0) {
+                $metodo = 'monedero_electronico';
+            }
             $montoVenta = round((float) ($venta->psv_total ?? 0), 2);
 
             $totalVendido += $montoVenta;
-            if (array_key_exists($metodo, $ventasPorMetodo)) {
+            if ($creditoCambio > 0) {
+                $ventasPorMetodo['monedero_electronico'] += $creditoCambio;
+            }
+            if ($metodo !== 'monedero_electronico' && array_key_exists($metodo, $ventasPorMetodo)) {
                 $ventasPorMetodo[$metodo] += $montoVenta;
             }
 
@@ -155,7 +164,7 @@ class PosCajaMovimientoService
 
             if ((string) ($venta->psv_tipo_operacion ?? 'venta') === 'cambio') {
                 $cantidadCambios++;
-                $creditoCambios += round((float) ($venta->psv_credito_cambio ?? 0), 2);
+                $creditoCambios += $creditoCambio;
                 $importeCobradoCambios += round((float) ($venta->psv_total ?? 0), 2);
             }
         }
@@ -179,6 +188,7 @@ class PosCajaMovimientoService
                 ['clave' => 'efectivo', 'label' => 'Efectivo', 'monto' => round($ventasPorMetodo['efectivo'], 2)],
                 ['clave' => 'tarjeta', 'label' => 'Tarjeta', 'monto' => round($ventasPorMetodo['tarjeta'], 2)],
                 ['clave' => 'mixto', 'label' => 'Mixto', 'monto' => round($ventasPorMetodo['mixto'], 2)],
+                ['clave' => 'monedero_electronico', 'label' => 'Monedero electrónico', 'monto' => round($ventasPorMetodo['monedero_electronico'], 2)],
                 ['clave' => 'sin_pago', 'label' => 'Sin pago', 'monto' => round($ventasPorMetodo['sin_pago'], 2)],
             ],
             'credito_cambios' => round($creditoCambios, 2),

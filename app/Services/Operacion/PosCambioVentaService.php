@@ -102,7 +102,7 @@ class PosCambioVentaService
                 'psv_descuento' => $descuentoGlobalMonto,
                 'psv_credito_cambio' => $creditoCambio,
                 'psv_total' => $totalDiferencia,
-                'psv_metodo_pago' => $totalDiferencia > 0 ? (string) $datos['metodo_pago'] : 'sin_pago',
+                'psv_metodo_pago' => $totalDiferencia > 0 ? (string) $datos['metodo_pago'] : 'monedero_electronico',
                 'psv_pago_detalle' => [
                     'efectivo' => $montoEfectivo,
                     'tarjeta' => $montoTarjeta,

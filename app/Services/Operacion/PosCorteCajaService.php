@@ -16,6 +16,13 @@ use Illuminate\Validation\ValidationException;
 class PosCorteCajaService
 {
     private const DENOMINACIONES_BILLETES = [1000, 500, 200, 100, 50, 20];
+    private const DENOMINACIONES_MONEDAS = [
+        ['clave' => '10', 'valor' => 10.0],
+        ['clave' => '5', 'valor' => 5.0],
+        ['clave' => '2', 'valor' => 2.0],
+        ['clave' => '1', 'valor' => 1.0],
+        ['clave' => '0_50', 'valor' => 0.5],
+    ];
 
     public function __construct(
         private readonly PosCajaSesionService $posCajaSesionService,
@@ -248,14 +255,20 @@ class PosCorteCajaService
             ];
         }
 
-        $desglose[] = [
-            'clave' => 'cambio',
-            'etiqueta' => 'Cambio',
-            'tipo' => 'cambio',
-            'cantidad_piezas' => null,
-            'monto_unitario' => null,
-            'monto' => round((float) ($datos['cambio'] ?? 0), 2),
-        ];
+        foreach (self::DENOMINACIONES_MONEDAS as $denominacion) {
+            $clave = $denominacion['clave'];
+            $valor = (float) $denominacion['valor'];
+            $cantidad = (int) ($capturadas[$clave] ?? 0);
+
+            $desglose[] = [
+                'clave' => (string) $valor,
+                'etiqueta' => '$' . number_format($valor, 2),
+                'tipo' => 'moneda',
+                'cantidad_piezas' => $cantidad,
+                'monto_unitario' => $valor,
+                'monto' => round($cantidad * $valor, 2),
+            ];
+        }
 
         return $desglose;
     }

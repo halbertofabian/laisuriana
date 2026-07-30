@@ -77,7 +77,9 @@ class PosVentaService
                 $creditoCambioMonto = round(min((float) $credito['pcc_saldo_disponible'], $totalAntesCredito), 2);
             }
             $total = round(max(0, $totalAntesCredito - $creditoCambioMonto), 2);
-            $metodoPago = (string) ($datos['metodo_pago'] ?? 'efectivo');
+            $metodoPago = $creditoCambioMonto > 0 && $total === 0.0
+                ? 'monedero_electronico'
+                : (string) ($datos['metodo_pago'] ?? 'efectivo');
             $montoEfectivo = round((float) ($datos['monto_efectivo'] ?? 0), 2);
             $montoTarjeta = round((float) ($datos['monto_tarjeta'] ?? 0), 2);
             $pagado = round($montoEfectivo + $montoTarjeta, 2);

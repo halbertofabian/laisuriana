@@ -485,7 +485,8 @@ class PuntoVentaController extends Controller
                 'psv_folio' => (string) $v->psv_folio,
                 'psv_total' => (float) $v->psv_total,
                 'psv_fecha_cobro' => optional($v->psv_fecha_cobro)->format('Y-m-d H:i:s'),
-                'psv_metodo_pago' => (string) ($v->psv_metodo_pago ?? ''),
+                'psv_metodo_pago' => $this->resolverMetodoPago($v),
+                'pagos' => $this->desglosePagos($v),
                 'psv_estatus' => (string) ($v->psv_estatus ?? ''),
                 'psv_tipo_operacion' => (string) ($v->psv_tipo_operacion ?? 'venta'),
                 'psv_credito_cambio' => (float) ($v->psv_credito_cambio ?? 0),
@@ -509,6 +510,49 @@ class PuntoVentaController extends Controller
                 'retiros' => round((float) ($resumenCaja['retiros'] ?? 0), 2),
             ],
         ]);
+    }
+
+    private function resolverMetodoPago(PosVenta $venta): string
+    {
+        $metodo = (string) ($venta->psv_metodo_pago ?? '');
+
+        // Compatibilidad visual con cambios registrados antes de identificar el monedero.
+        if ($metodo === 'sin_pago' && (float) ($venta->psv_credito_cambio ?? 0) > 0) {
+            return 'monedero_electronico';
+        }
+
+        return $metodo;
+    }
+
+    private function desglosePagos(PosVenta $venta): array
+    {
+        $detalle = is_array($venta->psv_pago_detalle) ? $venta->psv_pago_detalle : [];
+        $metodo = $this->resolverMetodoPago($venta);
+        $creditoCambio = round((float) ($venta->psv_credito_cambio ?? 0), 2);
+        $efectivoRecibido = round((float) ($detalle['efectivo'] ?? 0), 2);
+        $tarjeta = round((float) ($detalle['tarjeta'] ?? 0), 2);
+
+        if ($efectivoRecibido <= 0 && $metodo === 'efectivo') {
+            $efectivoRecibido = round((float) ($venta->psv_pagado ?? 0), 2);
+        }
+
+        $pagos = [];
+        if ($creditoCambio > 0) {
+            $pagos[] = ['clave' => 'monedero_electronico', 'monto' => $creditoCambio];
+        }
+
+        $efectivo = round(max(0, $efectivoRecibido - (float) ($venta->psv_cambio ?? 0)), 2);
+        if ($efectivo > 0) {
+            $pagos[] = ['clave' => 'efectivo', 'monto' => $efectivo];
+        }
+        if ($tarjeta > 0) {
+            $pagos[] = ['clave' => 'tarjeta', 'monto' => $tarjeta];
+        }
+
+        return $pagos ?: [[
+            'clave' => $metodo ?: 'sin_pago',
+            'monto' => round((float) ($venta->psv_total ?? 0), 2),
+        ]];
     }
 
     public function registrarRetiroCaja(StorePosCajaMovimientoRequest $request): JsonResponse
