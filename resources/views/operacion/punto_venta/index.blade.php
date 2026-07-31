@@ -156,6 +156,285 @@
         .variant-modal--front {
             z-index: 1305;
         }
+        /* ── MODAL DE MOVIMIENTOS DE CAJA (retiro / gasto) ─────────
+           Cascarón con cabecera fija, cuerpo con scroll y barra de
+           acciones fija. Comparte la hoja de conteo con el corte. ── */
+        .cash-modal__card {
+            width: min(860px, 100%);
+            max-width: 860px !important;
+            max-height: calc(100vh - 2rem);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            padding: 0;
+        }
+
+        .cash-modal__card--narrow {
+            width: min(640px, 100%);
+            max-width: 640px !important;
+        }
+
+        .cash-modal__head {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: .75rem 1rem;
+            border-bottom: 1px solid var(--ls-border);
+            background: linear-gradient(180deg, var(--ls-surface) 0%, var(--ls-surface-2) 100%);
+        }
+
+        .cash-modal__head-left { display: flex; align-items: center; gap: .65rem; min-width: 0; }
+
+        .cash-modal__icon {
+            width: 36px; height: 36px;
+            flex-shrink: 0;
+            border-radius: var(--ls-radius);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.02rem;
+            background: var(--ls-warning-bg);
+            color: var(--ls-warning);
+            border: 1px solid var(--ls-warning-mid);
+        }
+
+        .cash-modal__icon--gasto {
+            background: var(--ls-accent-light);
+            color: var(--ls-accent);
+            border-color: var(--ls-accent-mid);
+        }
+
+        .cash-modal__title { font-size: .92rem; font-weight: 800; color: var(--ls-text-primary); line-height: 1.2; }
+        .cash-modal__sub { font-size: .72rem; color: var(--ls-text-muted); margin-top: 2px; }
+
+        .cash-modal__head-right { display: flex; align-items: center; gap: .8rem; flex-shrink: 0; }
+
+        .cash-modal__close {
+            width: 30px; height: 30px;
+            display: inline-flex; align-items: center; justify-content: center;
+            border-radius: var(--ls-radius);
+            border: 1px solid var(--ls-border);
+            background: var(--ls-surface);
+            color: var(--ls-text-muted);
+            cursor: pointer;
+            transition: background .15s, color .15s, border-color .15s;
+        }
+
+        .cash-modal__close:hover { background: var(--ls-surface-3); color: var(--ls-text-primary); border-color: var(--ls-border-strong); }
+
+        .cash-modal__body {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            padding: .9rem 1rem 1rem;
+            display: grid;
+            align-content: start;
+            gap: .8rem;
+        }
+
+        .cash-modal__foot {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: .7rem 1rem;
+            border-top: 1px solid var(--ls-border);
+            background: var(--ls-surface);
+            box-shadow: 0 -2px 10px rgba(10,37,64,.05);
+        }
+
+        .cash-modal__foot-read { min-width: 0; }
+        .cash-modal__foot-label { font-size: .67rem; font-weight: 700; color: var(--ls-text-muted); line-height: 1.1; }
+        .cash-modal__foot-value {
+            font-size: 1.15rem;
+            font-weight: 900;
+            letter-spacing: -.02em;
+            color: var(--ls-text-primary);
+            font-variant-numeric: tabular-nums;
+        }
+        .cash-modal__foot-meta { font-size: .69rem; color: var(--ls-text-muted); font-weight: 600; }
+        .cash-modal__foot-actions { display: flex; align-items: center; gap: .6rem; flex-shrink: 0; }
+
+        /* Pasos */
+        .cash-steps { display: flex; align-items: center; gap: .45rem; }
+
+        .cash-step {
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+            font-size: .72rem;
+            font-weight: 700;
+            color: var(--ls-text-muted);
+            white-space: nowrap;
+        }
+
+        .cash-step__num {
+            width: 20px; height: 20px;
+            display: inline-flex; align-items: center; justify-content: center;
+            border-radius: 50%;
+            border: 1px solid var(--ls-border-strong);
+            background: var(--ls-surface);
+            font-size: .66rem;
+            font-weight: 800;
+        }
+
+        .cash-step--active { color: var(--ls-text-primary); }
+        .cash-step--active .cash-step__num { border-color: var(--ls-accent); background: var(--ls-accent); color: #fff; }
+        .cash-step--done .cash-step__num { border-color: var(--ls-success); background: var(--ls-success); color: #fff; }
+        .cash-step__line { width: 26px; height: 1px; background: var(--ls-border-strong); }
+
+        /* Indicadores */
+        .cash-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: .6rem;
+        }
+
+        .cash-stat {
+            border: 1px solid var(--ls-border);
+            border-radius: var(--ls-radius-lg);
+            background: var(--ls-surface-2);
+            padding: .55rem .75rem;
+            min-width: 0;
+        }
+
+        .cash-stat__label { font-size: .68rem; font-weight: 700; color: var(--ls-text-muted); }
+        .cash-stat__value {
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--ls-text-primary);
+            font-variant-numeric: tabular-nums;
+            margin-top: .1rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .cash-stat--warning { border-color: var(--ls-warning-mid); background: var(--ls-warning-bg); }
+        .cash-stat--warning .cash-stat__value { color: #a35c05; }
+
+        .cash-note {
+            display: flex;
+            align-items: flex-start;
+            gap: .5rem;
+            padding: .55rem .7rem;
+            border-radius: var(--ls-radius);
+            border: 1px solid var(--ls-warning-mid);
+            background: var(--ls-warning-bg);
+            font-size: .75rem;
+            line-height: 1.35;
+            color: #8a5200;
+        }
+
+        .cash-note i { font-size: .95rem; color: var(--ls-warning); flex-shrink: 0; margin-top: 1px; }
+
+        .cash-note--danger { border-color: var(--ls-danger-mid); background: var(--ls-danger-bg); color: var(--ls-danger); }
+        .cash-note--danger i { color: var(--ls-danger); }
+
+        /* Bloques */
+        .cash-block {
+            border: 1px solid var(--ls-border);
+            border-radius: var(--ls-radius-xl);
+            background: var(--ls-surface);
+            overflow: hidden;
+        }
+
+        .cash-block__head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .75rem;
+            padding: .6rem .8rem;
+            border-bottom: 1px solid var(--ls-border);
+            background: var(--ls-surface-2);
+        }
+
+        .cash-block__title {
+            display: flex; align-items: center; gap: .4rem;
+            font-size: .8rem; font-weight: 800; color: var(--ls-text-primary);
+        }
+
+        .cash-block__hint { font-size: .7rem; color: var(--ls-text-muted); margin-top: 1px; font-weight: 500; }
+        .cash-block__body { padding: .75rem .8rem; display: grid; gap: .75rem; }
+        .cash-block__error { padding: 0 .8rem .7rem; }
+
+        /* Resumen del retiro (paso 2) */
+        .cash-review {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: .8rem .85rem .7rem;
+        }
+
+        .cash-review__label { font-size: .68rem; font-weight: 700; color: var(--ls-text-muted); }
+        .cash-review__amount {
+            font-size: 1.65rem;
+            font-weight: 900;
+            letter-spacing: -.03em;
+            line-height: 1.05;
+            color: var(--ls-text-primary);
+            font-variant-numeric: tabular-nums;
+        }
+        .cash-review__meta { font-size: .72rem; color: var(--ls-text-muted); font-weight: 600; margin-top: .15rem; }
+
+        .cash-chips { display: flex; flex-wrap: wrap; gap: .35rem; padding: 0 .85rem .75rem; }
+
+        .cash-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: .3rem;
+            padding: .22rem .6rem;
+            border-radius: 999px;
+            border: 1px solid var(--ls-border);
+            background: var(--ls-surface-2);
+            font-size: .72rem;
+            font-weight: 600;
+            color: var(--ls-text-secondary);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .cash-chip strong { font-weight: 800; color: var(--ls-text-primary); }
+
+        .cash-impact {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .6rem;
+            padding: .55rem .85rem;
+            border-top: 1px dashed var(--ls-border);
+            background: var(--ls-surface-2);
+            font-size: .76rem;
+            color: var(--ls-text-secondary);
+        }
+
+        .cash-impact__value { font-weight: 800; color: var(--ls-text-primary); font-variant-numeric: tabular-nums; }
+
+        .cash-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+        .cash-field--full { grid-column: 1 / -1; }
+
+        .cash-modal__body .pos-notes-textarea { min-height: 74px; }
+        .cash-modal__body .pos-notes-textarea::placeholder { text-transform: none; }
+        .cash-modal__body .pos-input::placeholder { text-transform: none; }
+
+        /* Etiquetas en formato oración dentro del modal */
+        .cash-modal__body .pos-field__label {
+            text-transform: none;
+            letter-spacing: normal;
+            font-size: .74rem;
+            font-weight: 700;
+            color: var(--ls-text-secondary);
+        }
+
+        @media (max-width: 760px) {
+            .cash-stats { grid-template-columns: minmax(0, 1fr); }
+            .cash-fields { grid-template-columns: minmax(0, 1fr); }
+            .cash-modal__head { flex-wrap: wrap; }
+            .cash-modal__foot { flex-direction: column; align-items: stretch; }
+            .cash-modal__foot-actions .pos-btn { flex: 1 1 auto; }
+            .cash-review { flex-direction: column; align-items: flex-start; gap: .6rem; }
+        }
         .pos-field-error {
             margin-top: .35rem;
             font-size: .78rem;
@@ -1354,8 +1633,9 @@
         }
 
         /* ── CORTE DE CAJA ─────────────────────────────────────────
-           Pantalla completa: resumen de sesión, conteo de efectivo
-           por denominación y resultado final. ────────────────────── */
+           Cierre de sesión a pantalla completa: barra de contexto,
+           hoja de conteo por denominación, columna de control con
+           arqueo y resultado, y barra de acciones fija. ──────────── */
         .corte-caja {
             position: fixed;
             inset: 0;
@@ -1371,284 +1651,485 @@
             to   { opacity: 1; }
         }
 
+        /* ── Barra superior ──────────────────────────────────────── */
         .corte-caja__head {
+            flex-shrink: 0;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: .75rem;
-            padding: .55rem 1.2rem;
+            gap: 1rem;
+            padding: .6rem 1.5rem;
             background: var(--ls-surface);
             border-bottom: 1px solid var(--ls-border);
             box-shadow: var(--ls-shadow-sm);
-            flex-shrink: 0;
         }
 
-        .corte-caja__head-left { display: flex; align-items: center; gap: .65rem; min-width: 0; }
+        .corte-caja__head-left { display: flex; align-items: center; gap: .7rem; min-width: 0; }
 
         .corte-caja__head-icon {
-            width: 32px; height: 32px;
+            width: 34px; height: 34px;
             border-radius: var(--ls-radius);
             background: linear-gradient(135deg, var(--ls-success) 0%, #0d8a5e 100%);
             display: flex; align-items: center; justify-content: center;
-            color: #fff; font-size: .92rem;
-            box-shadow: 0 2px 6px rgba(26,158,109,.3);
+            color: #fff; font-size: 1rem;
+            box-shadow: 0 2px 6px rgba(26,158,109,.28);
             flex-shrink: 0;
         }
 
-        .corte-caja__title { font-size: .9rem; font-weight: 800; color: var(--ls-text-primary); line-height: 1.2; }
-        .corte-caja__sub { font-size: .69rem; color: var(--ls-text-muted); margin-top: 1px; }
+        .corte-caja__title {
+            font-size: .95rem;
+            font-weight: 800;
+            color: var(--ls-text-primary);
+            line-height: 1.15;
+            letter-spacing: -.01em;
+        }
 
-        .corte-caja__head-right { display: flex; align-items: center; gap: .5rem; }
+        .corte-caja__sub { font-size: .72rem; color: var(--ls-text-muted); margin-top: 2px; }
 
+        .corte-caja__head-right { display: flex; align-items: center; gap: .5rem; flex-shrink: 0; }
+
+        .corte-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+            height: 28px;
+            padding: 0 .65rem;
+            border-radius: 999px;
+            border: 1px solid var(--ls-border);
+            background: var(--ls-surface-2);
+            font-size: .72rem;
+            font-weight: 700;
+            color: var(--ls-text-secondary);
+            max-width: 220px;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        .corte-chip i { font-size: .8rem; color: var(--ls-text-muted); }
+        .corte-chip--live { border-color: var(--ls-success-mid); background: var(--ls-success-bg); color: var(--ls-success-hover); }
+        .corte-chip--live i { color: var(--ls-success); }
+
+        /* ── Lienzo ──────────────────────────────────────────────── */
         .corte-caja__body {
             flex: 1;
+            min-height: 0;
             overflow-y: auto;
-            padding: .8rem 1.3rem .9rem;
-            display: grid;
-            grid-auto-rows: min-content;
-            align-content: center;
-            gap: .7rem;
-            max-width: 1180px;
+            overflow-x: hidden;
+        }
+
+        .corte-caja__grid {
+            max-width: 1420px;
             width: 100%;
             margin: 0 auto;
-        }
-
-        /* Zona 1 — resumen de sesión */
-        .corte-summary {
+            padding: 1rem 1.5rem 1.4rem;
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: .45rem;
+            grid-template-columns: minmax(0, 1fr) 358px;
+            align-items: start;
+            gap: 1rem;
         }
 
-        .corte-summary__item {
-            background: var(--ls-surface);
-            border: 1px solid var(--ls-border);
-            border-radius: var(--ls-radius);
-            padding: .55rem .8rem;
-            box-shadow: var(--ls-shadow-sm);
-        }
-
-        .corte-summary__label {
-            font-size: .63rem;
-            font-weight: 700;
-            letter-spacing: .05em;
-            text-transform: uppercase;
-            color: var(--ls-text-muted);
-            margin-bottom: .2rem;
-        }
-
-        .corte-summary__value { font-size: 1.02rem; font-weight: 800; color: var(--ls-text-primary); }
-        .corte-summary__value--sm { font-size: .88rem; font-weight: 700; color: var(--ls-text-secondary); }
-        .corte-summary__value--danger { color: var(--ls-danger); }
-
-        /* Zona 2 — conteo de efectivo */
-        .corte-conteo {
+        /* ── Tarjeta base ────────────────────────────────────────── */
+        .corte-card {
             background: var(--ls-surface);
             border: 1px solid var(--ls-border);
             border-radius: var(--ls-radius-xl);
-            box-shadow: var(--ls-shadow);
+            box-shadow: var(--ls-shadow-sm);
             overflow: hidden;
-            /* Un grid item con overflow != visible recibe min-height:0 implícito,
-               lo que deja que la fila del grid se colapse por debajo del contenido
-               real. Forzamos min-height para que la tarjeta mida su contenido. */
-            min-height: min-content;
         }
 
-        .corte-conteo__head {
-            padding: .5rem .9rem;
+        .corte-card__head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .85rem;
+            padding: .7rem .95rem;
             border-bottom: 1px solid var(--ls-border);
-            display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+            background: linear-gradient(180deg, var(--ls-surface) 0%, var(--ls-surface-2) 100%);
         }
 
-        .corte-conteo__title {
-            font-size: .82rem; font-weight: 800; color: var(--ls-text-primary);
-            display: flex; align-items: center; gap: .4rem;
+        .corte-card__head-left { display: flex; align-items: center; gap: .6rem; min-width: 0; }
+
+        .corte-card__icon {
+            width: 28px; height: 28px;
+            border-radius: var(--ls-radius-sm);
+            display: flex; align-items: center; justify-content: center;
+            background: var(--ls-surface-3);
+            color: var(--ls-text-secondary);
+            font-size: .88rem;
+            flex-shrink: 0;
         }
 
-        .corte-conteo__total {
-            font-size: .88rem; font-weight: 800; color: var(--ls-success);
-            font-variant-numeric: tabular-nums;
-            transition: color .15s;
+        .corte-card__icon--success { background: var(--ls-success-bg); color: var(--ls-success); }
+        .corte-card__icon--accent  { background: var(--ls-accent-light); color: var(--ls-accent); }
+
+        .corte-card__title { font-size: .82rem; font-weight: 800; color: var(--ls-text-primary); line-height: 1.2; }
+        .corte-card__hint  { font-size: .7rem; color: var(--ls-text-muted); margin-top: 1px; font-weight: 500; }
+        .corte-card__hint .corte-kbd { margin: 0 .1rem; vertical-align: -2px; }
+
+        .corte-card__actions { display: flex; align-items: center; gap: .5rem; flex-shrink: 0; }
+
+        .corte-total {
+            display: inline-flex;
+            align-items: baseline;
+            gap: .4rem;
+            padding: .3rem .7rem;
+            border-radius: 999px;
+            border: 1px solid var(--ls-success-mid);
+            background: var(--ls-success-bg);
+            white-space: nowrap;
         }
 
-        .corte-conteo__columns {
+        .corte-total__label { font-size: .66rem; font-weight: 700; color: var(--ls-success-hover); letter-spacing: .01em; }
+        .corte-total__value { font-size: .88rem; font-weight: 800; color: var(--ls-success-hover); font-variant-numeric: tabular-nums; }
+
+        /* ── Hoja de conteo (compartida: corte de caja y retiros) ── */
+        .count-sheet__columns {
             display: grid;
             grid-template-columns: 1fr 1fr;
         }
 
-        .corte-conteo__col { min-width: 0; padding-bottom: .3rem; }
-        .corte-conteo__col--divider { border-left: 1px solid var(--ls-border); }
+        .count-sheet__col { min-width: 0; display: flex; flex-direction: column; }
+        .count-sheet__col--divider { border-left: 1px solid var(--ls-border); }
 
-        .corte-conteo__section-label {
-            padding: .5rem .9rem .25rem;
-            font-size: .65rem;
-            font-weight: 800;
-            letter-spacing: .07em;
-            text-transform: uppercase;
-            color: var(--ls-text-muted);
+        .count-sheet__colhead {
+            display: grid;
+            grid-template-columns: 88px minmax(0, 1fr) 108px;
+            align-items: center;
+            gap: .55rem;
+            padding: .55rem .95rem .4rem;
+            border-bottom: 1px solid var(--ls-border);
         }
 
-        .corte-conteo__rows { padding: 0 .9rem; display: grid; gap: .4rem; }
+        .count-sheet__coltitle {
+            display: flex; align-items: center; gap: .35rem;
+            font-size: .75rem; font-weight: 800; color: var(--ls-text-primary);
+            grid-column: 1 / 2;
+            white-space: nowrap;
+        }
 
-        .corte-row {
+        .count-sheet__colmeta {
+            font-size: .66rem;
+            font-weight: 700;
+            color: var(--ls-text-muted);
+            letter-spacing: .02em;
+        }
+
+        .count-sheet__colmeta--center { text-align: center; }
+        .count-sheet__colmeta--right  { text-align: right; }
+
+        .count-sheet__rows { padding: .35rem 0; display: flex; flex-direction: column; flex: 1; }
+
+        .count-row {
             display: grid;
-            grid-template-columns: 80px 1fr 110px;
+            grid-template-columns: 88px minmax(0, 1fr) 108px;
             align-items: center;
-            gap: .6rem;
-            padding: .22rem .4rem;
-            border-radius: var(--ls-radius);
+            gap: .55rem;
+            padding: .2rem .95rem;
             transition: background .12s;
         }
 
-        .corte-row:focus-within { background: var(--ls-surface-2); }
+        .count-row:hover,
+        .count-row:focus-within { background: var(--ls-surface-2); }
 
-        .corte-row__denom {
+        .count-row__denom {
             display: flex; align-items: center; justify-content: center;
-            height: 40px;
+            height: 38px;
             border-radius: var(--ls-radius);
-            background: var(--ls-surface-3);
-            color: var(--ls-text-primary);
+            border: 1px solid var(--ls-border);
+            background: var(--ls-surface-2);
+            color: var(--ls-text-secondary);
             font-weight: 800;
-            font-size: .88rem;
+            font-size: .84rem;
             font-variant-numeric: tabular-nums;
+            transition: border-color .15s, background .15s, color .15s;
         }
 
-        .corte-row__input {
+        .count-row.is-filled .count-row__denom {
+            border-color: var(--ls-success-mid);
+            background: var(--ls-success-bg);
+            color: var(--ls-success-hover);
+        }
+
+        .count-row__input {
             width: 100%;
-            height: 40px;
+            height: 38px;
             text-align: center;
             border: 1.5px solid var(--ls-border);
             border-radius: var(--ls-radius);
-            font-size: 1.02rem;
+            font-size: .95rem;
             font-weight: 700;
             font-family: inherit;
             color: var(--ls-text-primary);
             background: var(--ls-surface);
+            font-variant-numeric: tabular-nums;
             outline: none;
             transition: border-color .15s, box-shadow .15s;
+            -moz-appearance: textfield;
         }
 
-        .corte-row__input:focus {
+        .count-row__input::-webkit-outer-spin-button,
+        .count-row__input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .count-row__input::placeholder { color: var(--ls-border-strong); font-weight: 600; }
+
+        .count-row__input:focus {
             border-color: var(--ls-success);
             box-shadow: 0 0 0 3px rgba(26,158,109,.13);
         }
 
-        .corte-row__subtotal {
+        .count-row__amount {
             text-align: right;
-            font-size: .9rem;
-            font-weight: 800;
-            color: var(--ls-text-muted);
+            font-size: .86rem;
+            font-weight: 700;
+            color: var(--ls-border-strong);
             font-variant-numeric: tabular-nums;
             transition: color .15s;
         }
 
-        .corte-row__subtotal--active { color: var(--ls-success); }
+        .count-row.is-filled .count-row__amount { color: var(--ls-text-primary); }
 
-        .corte-cambio {
-            margin: .5rem .9rem .1rem;
-            padding: .55rem .75rem;
-            border: 1.5px dashed var(--ls-border-strong);
-            border-radius: var(--ls-radius-lg);
-            display: grid;
-            grid-template-columns: 1fr 110px;
+        .count-sheet__colfoot {
+            margin-top: auto;
+            display: flex;
             align-items: center;
+            justify-content: space-between;
             gap: .6rem;
+            padding: .5rem .95rem;
+            border-top: 1px solid var(--ls-border);
             background: var(--ls-surface-2);
         }
 
-        .corte-cambio__label { font-size: .85rem; font-weight: 700; color: var(--ls-text-primary); }
-        .corte-cambio__hint { font-size: .69rem; color: var(--ls-text-muted); margin-top: .05rem; }
+        .count-sheet__colfoot-label { font-size: .72rem; font-weight: 700; color: var(--ls-text-secondary); }
+        .count-sheet__colfoot-value { font-size: .86rem; font-weight: 800; color: var(--ls-text-primary); font-variant-numeric: tabular-nums; }
 
-        /* Zona 3 — resultado final */
-        .corte-resultado {
+        /* Variante compacta: la misma hoja dentro de un modal */
+        .count-sheet--compact .count-sheet__colhead,
+        .count-sheet--compact .count-row { grid-template-columns: 76px minmax(0, 1fr) 92px; gap: .45rem; padding-left: .8rem; padding-right: .8rem; }
+        .count-sheet--compact .count-sheet__rows { padding: .3rem 0; }
+        .count-sheet--compact .count-sheet__colfoot { padding: .45rem .8rem; }
+        .count-sheet--compact .count-row__denom,
+        .count-sheet--compact .count-row__input { height: 34px; font-size: .82rem; }
+        .count-sheet--compact .count-row__amount { font-size: .8rem; }
+
+        /* Observaciones */
+        .corte-notas { padding: .75rem .95rem .85rem; border-top: 1px solid var(--ls-border); }
+        .corte-notas__label { font-size: .72rem; font-weight: 700; color: var(--ls-text-secondary); margin-bottom: .3rem; display: block; }
+        .corte-notas__input {
+            width: 100%;
+            min-height: 72px;
+            resize: vertical;
+            padding: .55rem .7rem;
+            border: 1.5px solid var(--ls-border);
+            border-radius: var(--ls-radius);
             background: var(--ls-surface);
-            border: 1px solid var(--ls-border);
-            border-radius: var(--ls-radius-xl);
-            box-shadow: var(--ls-shadow);
-            padding: .85rem 1.2rem;
+            color: var(--ls-text-primary);
+            font-family: inherit;
+            font-size: .82rem;
+            line-height: 1.45;
+            outline: none;
+            transition: border-color .15s, box-shadow .15s;
+        }
+        .corte-notas__input:focus { border-color: var(--ls-success); box-shadow: 0 0 0 3px rgba(26,158,109,.13); }
+        .corte-notas__input::placeholder { color: var(--ls-text-muted); text-transform: none; font-weight: 500; }
+
+        /* ── Columna de control ──────────────────────────────────── */
+        .corte-side {
             display: grid;
-            grid-template-columns: 1fr auto 1fr auto 1fr;
-            gap: .75rem;
+            gap: .8rem;
+            position: sticky;
+            top: 0;
+            align-content: start;
+        }
+
+        .corte-list { padding: .25rem .95rem .5rem; }
+
+        .corte-list__row {
+            display: flex;
             align-items: center;
+            justify-content: space-between;
+            gap: .75rem;
+            padding: .42rem 0;
+            border-bottom: 1px solid var(--ls-border);
         }
 
-        .corte-resultado__block { text-align: center; min-width: 0; }
+        .corte-list__row:last-child { border-bottom: 0; }
 
-        .corte-resultado__label {
-            font-size: .66rem; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
-            color: var(--ls-text-muted); margin-bottom: .25rem;
-        }
+        .corte-list__label { font-size: .76rem; color: var(--ls-text-secondary); min-width: 0; }
+        .corte-list__label span { display: block; font-size: .66rem; color: var(--ls-text-muted); margin-top: 1px; }
 
-        .corte-resultado__value {
-            font-size: 1.35rem; font-weight: 800; color: var(--ls-text-primary);
+        .corte-list__value {
+            font-size: .82rem;
+            font-weight: 700;
+            color: var(--ls-text-primary);
             font-variant-numeric: tabular-nums;
+            text-align: right;
+            white-space: nowrap;
         }
 
-        .corte-resultado__value--big {
-            font-size: 2.35rem;
+        .corte-list__value--muted { color: var(--ls-text-muted); font-weight: 600; }
+        .corte-list__value--neg   { color: var(--ls-danger); }
+
+        .corte-list__row--total {
+            margin-top: .35rem;
+            padding-top: .6rem;
+            border-top: 1.5px solid var(--ls-border-strong);
+            border-bottom: 0;
+        }
+
+        .corte-list__row--total .corte-list__label { font-size: .8rem; font-weight: 800; color: var(--ls-text-primary); }
+        .corte-list__row--total .corte-list__value { font-size: 1.18rem; font-weight: 900; letter-spacing: -.02em; }
+
+        .corte-list__group {
+            margin-top: .55rem;
+            padding-top: .5rem;
+            border-top: 1px dashed var(--ls-border);
+        }
+
+        .corte-list__group-label {
+            font-size: .68rem;
+            font-weight: 700;
+            color: var(--ls-text-muted);
+            margin-bottom: .1rem;
+        }
+
+        /* ── Barra de acciones con el resultado ──────────────────── */
+        .corte-verdict__diff--ok    { color: var(--ls-success); }
+        .corte-verdict__diff--sobra { color: #1d6fd8; }
+        .corte-verdict__diff--falta { color: var(--ls-danger); }
+
+        .corte-caja__footer {
+            flex-shrink: 0;
+            background: var(--ls-surface);
+            border-top: 1px solid var(--ls-border);
+            box-shadow: 0 -2px 10px rgba(10,37,64,.05);
+        }
+
+        .corte-caja__footer-inner {
+            max-width: 1420px;
+            width: 100%;
+            margin: 0 auto;
+            padding: .7rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .corte-foot-read {
+            display: flex;
+            align-items: center;
+            gap: 1.15rem;
+            min-width: 0;
+            flex-wrap: wrap;
+        }
+
+        .corte-foot-read__item { min-width: 0; }
+
+        .corte-foot-read__label {
+            font-size: .67rem;
+            font-weight: 700;
+            color: var(--ls-text-muted);
+            line-height: 1.1;
+        }
+
+        .corte-foot-read__value {
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--ls-text-primary);
+            font-variant-numeric: tabular-nums;
+            line-height: 1.25;
+        }
+
+        .corte-foot-read__arrow { color: var(--ls-border-strong); font-size: 1rem; display: flex; align-items: center; }
+
+        .corte-foot-read__item--diff {
+            display: flex;
+            align-items: center;
+            gap: .55rem;
+            padding-left: 1.15rem;
+            border-left: 1px solid var(--ls-border);
+        }
+
+        .corte-foot-read__diff {
+            font-size: 1.5rem;
             font-weight: 900;
             letter-spacing: -.03em;
+            line-height: 1.05;
             color: var(--ls-text-primary);
-            line-height: 1;
             font-variant-numeric: tabular-nums;
             transition: color .15s;
         }
 
-        .corte-resultado__arrow { display: flex; align-items: center; justify-content: center; color: var(--ls-border-strong); font-size: 1.2rem; }
-
-        .corte-resultado__diff--ok    { color: var(--ls-success); }
-        .corte-resultado__diff--sobra { color: #1d6fd8; }
-        .corte-resultado__diff--falta { color: var(--ls-danger); }
-
-        .corte-resultado__tag {
-            display: inline-flex; align-items: center; gap: .3rem;
-            margin-top: .3rem;
-            font-size: .7rem; font-weight: 700;
-            padding: .18rem .6rem;
+        .corte-foot-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: .3rem;
+            font-size: .72rem;
+            font-weight: 700;
+            padding: .28rem .7rem;
             border-radius: 999px;
+            white-space: nowrap;
         }
 
-        .corte-resultado__tag--ok    { background: var(--ls-success-bg); color: var(--ls-success); }
-        .corte-resultado__tag--sobra { background: rgba(29,111,216,.09); color: #1d6fd8; }
-        .corte-resultado__tag--falta { background: var(--ls-danger-bg); color: var(--ls-danger); }
+        .corte-foot-tag--ok    { background: var(--ls-success-bg); color: var(--ls-success-hover); }
+        .corte-foot-tag--sobra { background: rgba(29,111,216,.09); color: #1d6fd8; }
+        .corte-foot-tag--falta { background: var(--ls-danger-bg); color: var(--ls-danger); }
 
-        .corte-caja__footer {
-            padding: .7rem 1.3rem .9rem;
-            max-width: 1180px;
-            width: 100%;
-            margin: 0 auto;
-            display: flex;
-            justify-content: flex-end;
-            flex-shrink: 0;
+        .corte-kbd {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            height: 19px;
+            min-width: 26px;
+            padding: 0 .3rem;
+            border-radius: var(--ls-radius-sm);
+            border: 1px solid var(--ls-border-strong);
+            border-bottom-width: 2px;
+            background: var(--ls-surface-2);
+            font-size: .66rem;
+            font-weight: 700;
+            color: var(--ls-text-secondary);
         }
 
-        .corte-caja__submit { height: 46px; padding: 0 2rem; font-size: .9rem; }
+        .corte-caja__actions { display: flex; align-items: center; gap: .6rem; flex-shrink: 0; }
+        .corte-caja__submit { height: 44px; padding: 0 1.9rem; font-size: .88rem; }
+
+        /* ── Responsive ──────────────────────────────────────────── */
+        @media (max-width: 1180px) {
+            .corte-caja__grid { grid-template-columns: minmax(0, 1fr); }
+            .corte-side { position: static; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
 
         @media (max-width: 1080px) {
-            .corte-resultado { grid-template-columns: 1fr; }
-            .corte-resultado__arrow { transform: rotate(90deg); }
+            .corte-foot-read { gap: .8rem; }
+            .corte-foot-read__arrow { display: none; }
+            .corte-foot-read__item--diff { padding-left: .8rem; }
+            .corte-foot-tag { display: none; }
         }
 
         @media (max-width: 900px) {
-            .corte-summary { grid-template-columns: repeat(2, minmax(0,1fr)); }
+            .corte-caja__grid { padding: .8rem 1rem 1.1rem; }
+            .corte-side { grid-template-columns: minmax(0, 1fr); }
+            .corte-caja__head { padding: .55rem 1rem; }
+            .corte-caja__footer-inner { padding: .65rem 1rem; }
         }
 
-        @media (max-width: 760px) {
-            .corte-conteo__columns { grid-template-columns: 1fr; }
-            .corte-conteo__col--divider { border-left: 0; border-top: 1px solid var(--ls-border); margin-top: .2rem; padding-top: .2rem; }
+        @media (max-width: 780px) {
+            .count-sheet__columns { grid-template-columns: minmax(0, 1fr); }
+            .count-sheet__col--divider { border-left: 0; border-top: 1px solid var(--ls-border); }
         }
 
         @media (max-width: 680px) {
-            .corte-row { grid-template-columns: 64px 1fr 90px; gap: .45rem; }
-            .corte-row__input { font-size: .92rem; }
-            .corte-cambio { grid-template-columns: 1fr; }
-            .corte-caja__body { padding: .6rem .8rem .8rem; }
-            .corte-caja__footer { padding: .6rem .8rem .9rem; }
-            .corte-caja__submit { width: 100%; }
-            .corte-summary { grid-template-columns: 1fr 1fr; }
             .corte-caja__head { flex-wrap: wrap; }
             .corte-caja__head-right { width: 100%; }
             .corte-caja__head-right .pos-btn { flex: 1 1 auto; }
+            .corte-chip { display: none; }
+            .count-row,
+            .count-sheet__colhead { grid-template-columns: 72px minmax(0, 1fr) 92px; gap: .45rem; }
+            .corte-caja__footer-inner { flex-direction: column; align-items: stretch; gap: .7rem; }
+            .corte-foot-read { justify-content: space-between; }
+            .corte-caja__actions { width: 100%; }
+            .corte-caja__actions .pos-btn { flex: 1 1 auto; }
         }
     </style>
     {{-- ═══════════════════════════════════════════════════
@@ -2633,112 +3114,394 @@
     </div>
 
     <div x-cloak x-show="mostrarModalMovimientoCaja" class="variant-modal" @keydown.escape.window="cerrarModalMovimientoCaja()">
-        <div class="variant-modal__card" style="max-width:560px;">
-            <div class="variant-modal__head" style="display:flex;justify-content:space-between;align-items:center;gap:.75rem;">
-                <span x-text="movimientoCajaTipo === 'retiro' ? 'Registrar retiro de caja' : 'Registrar gasto de caja'"></span>
-                <button class="pos-btn pos-btn--ghost pos-btn--sm" @click="cerrarModalMovimientoCaja()">Cerrar</button>
+        <div
+            class="variant-modal__card cash-modal__card"
+            :class="{ 'cash-modal__card--narrow': movimientoCajaTipo !== 'retiro' || movimientoCajaPaso === 2 }"
+        >
+            {{-- Cabecera --}}
+            <div class="cash-modal__head">
+                <div class="cash-modal__head-left">
+                    <div class="cash-modal__icon" :class="{ 'cash-modal__icon--gasto': movimientoCajaTipo === 'gasto' }">
+                        <i class="ti" :class="movimientoCajaTipo === 'retiro' ? 'tabler-cash-banknote-off' : 'tabler-receipt-2'"></i>
+                    </div>
+                    <div>
+                        <div class="cash-modal__title" x-text="movimientoCajaTipo === 'retiro' ? 'Registrar retiro de caja' : 'Registrar gasto de caja'"></div>
+                        <div class="cash-modal__sub">
+                            <span x-text="cajaNombre || 'Sin caja'"></span>
+                            ·
+                            <span x-text="usuarioActualNombre || 'Usuario actual'"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="cash-modal__head-right">
+                    <div x-show="movimientoCajaTipo === 'retiro'" class="cash-steps" aria-label="Progreso del retiro">
+                        <span class="cash-step" :class="movimientoCajaPaso === 1 ? 'cash-step--active' : 'cash-step--done'">
+                            <span class="cash-step__num" x-text="movimientoCajaPaso > 1 ? '✓' : '1'"></span>
+                            Efectivo
+                        </span>
+                        <span class="cash-step__line"></span>
+                        <span class="cash-step" :class="{ 'cash-step--active': movimientoCajaPaso === 2 }">
+                            <span class="cash-step__num">2</span>
+                            Autorización
+                        </span>
+                    </div>
+                    <button type="button" class="cash-modal__close" @click="cerrarModalMovimientoCaja()" aria-label="Cerrar">
+                        <i class="ti tabler-x"></i>
+                    </button>
+                </div>
             </div>
-            <div style="padding:1rem;display:grid;gap:.9rem;">
+
+            {{-- Cuerpo --}}
+            <div class="cash-modal__body">
                 <template x-if="movimientoCajaErrores.general">
-                    <div class="cash-change-banner" style="margin:0;">
-                        <div class="cash-change-banner__title">No fue posible continuar</div>
-                        <div class="cash-change-banner__text" x-text="movimientoCajaErrores.general"></div>
+                    <div class="cash-note cash-note--danger">
+                        <i class="ti tabler-alert-triangle"></i>
+                        <div>
+                            <strong>No fue posible continuar.</strong>
+                            <span x-text="movimientoCajaErrores.general"></span>
+                        </div>
                     </div>
                 </template>
-                <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem;">
-                    <div class="cash-summary__item">
-                        <div class="cash-summary__label">Efectivo disponible</div>
-                        <div class="cash-summary__value" x-text="fmt(resumenCaja?.efectivo_disponible ?? 0)"></div>
+
+                {{-- Indicadores de la caja --}}
+                <div x-show="movimientoCajaTipo !== 'retiro' || movimientoCajaPaso === 1" class="cash-stats">
+                    <div class="cash-stat">
+                        <div class="cash-stat__label">Efectivo disponible</div>
+                        <div class="cash-stat__value" x-text="fmt(resumenCaja?.efectivo_disponible ?? 0)"></div>
                     </div>
-                    <div class="cash-summary__item">
-                        <div class="cash-summary__label" x-text="movimientoCajaTipo === 'retiro' ? 'Umbral de retiro' : 'Caja activa'"></div>
-                        <div class="cash-summary__value" x-text="movimientoCajaTipo === 'retiro' ? fmt(resumenCaja?.umbral_retiro ?? 0) : (cajaNombre || 'Sin caja')"></div>
+                    <template x-if="movimientoCajaTipo === 'retiro'">
+                        <div class="cash-stat">
+                            <div class="cash-stat__label">Umbral de retiro</div>
+                            <div class="cash-stat__value" x-text="(resumenCaja?.umbral_retiro ?? 0) > 0 ? fmt(resumenCaja.umbral_retiro) : 'Sin umbral'"></div>
+                        </div>
+                    </template>
+                    <template x-if="movimientoCajaTipo === 'retiro'">
+                        <div class="cash-stat" :class="{ 'cash-stat--warning': (resumenCaja?.excedente_umbral ?? 0) > 0 }">
+                            <div class="cash-stat__label">Excedente sobre el umbral</div>
+                            <div class="cash-stat__value" x-text="fmt(resumenCaja?.excedente_umbral ?? 0)"></div>
+                        </div>
+                    </template>
+                    <template x-if="movimientoCajaTipo === 'gasto'">
+                        <div class="cash-stat">
+                            <div class="cash-stat__label">Caja activa</div>
+                            <div class="cash-stat__value" x-text="cajaNombre || 'Sin caja'"></div>
+                        </div>
+                    </template>
+                    <template x-if="movimientoCajaTipo === 'gasto'">
+                        <div class="cash-stat">
+                            <div class="cash-stat__label">Gastos de la sesión</div>
+                            <div class="cash-stat__value" x-text="fmt(resumenCaja?.gastos ?? 0)"></div>
+                        </div>
+                    </template>
+                </div>
+
+                <div
+                    x-show="movimientoCajaTipo === 'retiro' && movimientoCajaPaso === 1 && (resumenCaja?.retiro_recomendado ?? false)"
+                    class="cash-note"
+                >
+                    <i class="ti tabler-alert-circle"></i>
+                    <div>
+                        La caja superó el umbral configurado. Se recomienda retirar al menos
+                        <strong x-text="fmt(resumenCaja?.excedente_umbral ?? 0)"></strong>
+                        para mantener el efectivo bajo control.
                     </div>
                 </div>
 
-                <div>
-                    <label class="pos-field__label">Monto</label>
-                    <input type="number" min="0" step="0.01" class="pos-input" x-model="movimientoCajaForm.monto" placeholder="0.00" />
-                    <div class="pos-field-error" x-show="movimientoCajaErrores.monto" x-text="movimientoCajaErrores.monto"></div>
-                </div>
-
-                <div x-show="movimientoCajaTipo === 'retiro'">
-                    <label class="pos-field__label">Referencia opcional</label>
-                    <input type="text" maxlength="180" class="pos-input" x-model="movimientoCajaForm.referencia" placeholder="Ej. Resguardo nocturno, bóveda, traslado" />
-                    <div class="pos-field-error" x-show="movimientoCajaErrores.referencia" x-text="movimientoCajaErrores.referencia"></div>
-                </div>
-
-                <div x-show="movimientoCajaTipo === 'gasto'">
-                    <label class="pos-field__label">Categoría o concepto</label>
-                    <div style="position:relative;">
-                        <input
-                            type="text"
-                            maxlength="120"
-                            class="pos-input"
-                            x-model="movimientoCajaForm.categoria"
-                            placeholder="Ej. Papelería, limpieza, insumo operativo"
-                            @focus="mostrarSugerenciasCategoriaGasto = String(movimientoCajaForm.categoria || '').trim().length > 0 && categoriasGastoFiltradas.length > 0"
-                            @input="mostrarSugerenciasCategoriaGasto = String(movimientoCajaForm.categoria || '').trim().length > 0 && categoriasGastoFiltradas.length > 0"
-                            @keydown.escape.stop="mostrarSugerenciasCategoriaGasto = false"
-                            @click.outside="mostrarSugerenciasCategoriaGasto = false"
-                        />
-                        <div
-                            x-cloak
-                            x-show="mostrarSugerenciasCategoriaGasto && categoriasGastoFiltradas.length > 0"
-                            class="pos-search-suggest pos-search-suggest--compact"
+                {{-- Paso 1 · desglose del retiro --}}
+                <div x-show="movimientoCajaTipo === 'retiro' && movimientoCajaPaso === 1" class="cash-block count-sheet count-sheet--compact">
+                    <div class="cash-block__head">
+                        <div>
+                            <div class="cash-block__title">
+                                <i class="ti tabler-cash-banknote" style="color:var(--ls-success)"></i>
+                                Desglose del retiro
+                            </div>
+                            <div class="cash-block__hint">Captura cuántas piezas saldrán físicamente de la caja.</div>
+                        </div>
+                        <button
+                            type="button"
+                            class="pos-btn pos-btn--ghost pos-btn--sm"
+                            @click="Object.keys(movimientoCajaForm.denominaciones).forEach(k => movimientoCajaForm.denominaciones[k] = ''); sincronizarMontoRetiro()"
                         >
-                            <template x-for="categoria in categoriasGastoFiltradas" :key="`categoria-gasto-${categoria}`">
-                                <button
-                                    type="button"
-                                    class="pos-search-suggest__item"
-                                    @mousedown.prevent="seleccionarCategoriaGasto(categoria)"
-                                >
-                                    <span class="pos-search-suggest__name" x-text="categoria"></span>
-                                </button>
-                            </template>
-                        </div>
+                            <i class="ti tabler-eraser" style="font-size:.85rem"></i>
+                            Limpiar
+                        </button>
                     </div>
-                    <div class="pos-field-error" x-show="movimientoCajaErrores.categoria" x-text="movimientoCajaErrores.categoria"></div>
-                </div>
 
-                <div>
-                    <label class="pos-field__label" x-text="movimientoCajaTipo === 'retiro' ? 'Motivo opcional' : 'Descripción opcional'"></label>
-                    <textarea class="pos-notes-textarea" style="min-height:110px;" x-model="movimientoCajaForm.motivo" :placeholder="movimientoCajaTipo === 'retiro' ? 'Si lo deseas, agrega una nota sobre el retiro' : 'Si lo deseas, agrega una descripción del gasto'"></textarea>
-                    <div class="pos-field-error" x-show="movimientoCajaErrores.motivo" x-text="movimientoCajaErrores.motivo"></div>
-                </div>
-
-                <div class="cash-summary__item" x-show="movimientoCajaTipo === 'retiro'" style="background:#f8fafc;">
-                    <div class="cash-summary__label">Autorización del retiro</div>
-                    <div style="display:grid;gap:.85rem;margin-top:.6rem;">
-                        <div>
-                            <label class="pos-field__label">Usuario autorizado</label>
-                            <select class="pos-input" x-model="movimientoCajaForm.autoriza_usr_id">
-                                <option value="">Selecciona un usuario...</option>
-                                <template x-for="usuario in usuariosAutorizadosRetiro" :key="usuario.usr_id">
-                                    <option :value="String(usuario.usr_id)" x-text="usuario.usr_nombre"></option>
+                    <div class="count-sheet__columns">
+                        <div class="count-sheet__col">
+                            <div class="count-sheet__colhead">
+                                <div class="count-sheet__coltitle">
+                                    <i class="ti tabler-cash" style="color:var(--ls-text-muted)"></i>
+                                    Billetes
+                                </div>
+                                <div class="count-sheet__colmeta count-sheet__colmeta--center">Piezas</div>
+                                <div class="count-sheet__colmeta count-sheet__colmeta--right">Importe</div>
+                            </div>
+                            <div class="count-sheet__rows">
+                                <template x-for="denom in billetesCorte" :key="`retiro-billete-${denom}`">
+                                    <div class="count-row" :class="{ 'is-filled': subtotalDenominacionRetiro(denom) > 0 }">
+                                        <div class="count-row__denom" x-text="fmt(denom)"></div>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            step="1"
+                                            inputmode="numeric"
+                                            class="count-row__input cash-withdrawal-row__input"
+                                            x-model="movimientoCajaForm.denominaciones[denom]"
+                                            @input="sincronizarMontoRetiro()"
+                                            @keydown.enter.prevent="focusSiguienteRetiroInput($event)"
+                                            @focus="$event.target.select()"
+                                            placeholder="0"
+                                            :aria-label="`Cantidad de billetes de ${fmt(denom)} para retirar`"
+                                        />
+                                        <div class="count-row__amount" x-text="fmt(subtotalDenominacionRetiro(denom))"></div>
+                                    </div>
                                 </template>
-                            </select>
-                            <div class="pos-field-error" x-show="movimientoCajaErrores.autoriza_usr_id" x-text="movimientoCajaErrores.autoriza_usr_id"></div>
+                            </div>
+                            <div class="count-sheet__colfoot">
+                                <span class="count-sheet__colfoot-label">Subtotal billetes</span>
+                                <span
+                                    class="count-sheet__colfoot-value"
+                                    x-text="fmt(billetesCorte.reduce((suma, d) => suma + subtotalDenominacionRetiro(d), 0))"
+                                ></span>
+                            </div>
                         </div>
+
+                        <div class="count-sheet__col count-sheet__col--divider">
+                            <div class="count-sheet__colhead">
+                                <div class="count-sheet__coltitle">
+                                    <i class="ti tabler-coins" style="color:var(--ls-text-muted)"></i>
+                                    Monedas
+                                </div>
+                                <div class="count-sheet__colmeta count-sheet__colmeta--center">Piezas</div>
+                                <div class="count-sheet__colmeta count-sheet__colmeta--right">Importe</div>
+                            </div>
+                            <div class="count-sheet__rows">
+                                <template x-for="moneda in monedasCorte" :key="`retiro-moneda-${moneda.clave}`">
+                                    <div class="count-row" :class="{ 'is-filled': subtotalDenominacionRetiro(moneda.valor, moneda.clave) > 0 }">
+                                        <div class="count-row__denom" x-text="moneda.etiqueta"></div>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            step="1"
+                                            inputmode="numeric"
+                                            class="count-row__input cash-withdrawal-row__input"
+                                            x-model="movimientoCajaForm.denominaciones[moneda.clave]"
+                                            @input="sincronizarMontoRetiro()"
+                                            @keydown.enter.prevent="focusSiguienteRetiroInput($event)"
+                                            @focus="$event.target.select()"
+                                            placeholder="0"
+                                            :aria-label="`Cantidad de monedas de ${moneda.etiqueta} para retirar`"
+                                        />
+                                        <div class="count-row__amount" x-text="fmt(subtotalDenominacionRetiro(moneda.valor, moneda.clave))"></div>
+                                    </div>
+                                </template>
+                            </div>
+                            <div class="count-sheet__colfoot">
+                                <span class="count-sheet__colfoot-label">Subtotal monedas</span>
+                                <span
+                                    class="count-sheet__colfoot-value"
+                                    x-text="fmt(monedasCorte.reduce((suma, m) => suma + subtotalDenominacionRetiro(m.valor, m.clave), 0))"
+                                ></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="cash-block__error" x-show="movimientoCajaErrores.denominaciones || movimientoCajaErrores.monto">
+                        <div class="pos-field-error" x-show="movimientoCajaErrores.denominaciones" x-text="movimientoCajaErrores.denominaciones"></div>
+                        <div class="pos-field-error" x-show="movimientoCajaErrores.monto" x-text="movimientoCajaErrores.monto"></div>
+                    </div>
+                </div>
+
+                {{-- Paso 2 · resumen de lo que sale de la caja --}}
+                <div x-show="movimientoCajaTipo === 'retiro' && movimientoCajaPaso === 2" class="cash-block">
+                    <div class="cash-review">
                         <div>
-                            <label class="pos-field__label">Contraseña</label>
-                            <input type="password" class="pos-input" x-model="movimientoCajaForm.autoriza_password" placeholder="Captura la contraseña del usuario autorizado" autocomplete="new-password" />
-                            <div class="pos-field-error" x-show="movimientoCajaErrores.autoriza_password" x-text="movimientoCajaErrores.autoriza_password"></div>
+                            <div class="cash-review__label">Efectivo que saldrá de la caja</div>
+                            <div class="cash-review__amount" x-text="fmt(totalDenominacionesRetiro())"></div>
+                            <div class="cash-review__meta">
+                                <span x-text="piezasTotalesRetiro()"></span>
+                                <span x-text="piezasTotalesRetiro() === 1 ? 'pieza contada' : 'piezas contadas'"></span>
+                            </div>
+                        </div>
+                        <button type="button" class="pos-btn pos-btn--ghost pos-btn--sm" @click="movimientoCajaPaso = 1">
+                            <i class="ti tabler-pencil" style="font-size:.85rem"></i>
+                            Editar efectivo
+                        </button>
+                    </div>
+                    <div class="cash-chips">
+                        <template x-for="detalle in denominacionesConPiezasRetiro()" :key="`retiro-chip-${detalle.etiqueta}`">
+                            <span class="cash-chip">
+                                <strong x-text="`${detalle.piezas} ×`"></strong>
+                                <span x-text="detalle.etiqueta"></span>
+                                <span style="color:var(--ls-text-muted)" x-text="`= ${fmt(detalle.importe)}`"></span>
+                            </span>
+                        </template>
+                    </div>
+                    <div class="cash-impact">
+                        <span>Efectivo en caja después del retiro</span>
+                        <span class="cash-impact__value" x-text="fmt(efectivoRestanteRetiro())"></span>
+                    </div>
+                </div>
+
+                {{-- Datos del movimiento --}}
+                <div x-show="movimientoCajaTipo !== 'retiro' || movimientoCajaPaso === 2" class="cash-block">
+                    <div class="cash-block__head">
+                        <div>
+                            <div class="cash-block__title">
+                                <i class="ti tabler-file-description" style="color:var(--ls-text-secondary)"></i>
+                                <span x-text="movimientoCajaTipo === 'retiro' ? 'Detalles del retiro' : 'Datos del gasto'"></span>
+                            </div>
+                            <div
+                                class="cash-block__hint"
+                                x-text="movimientoCajaTipo === 'retiro' ? 'Información que acompañará al movimiento en la bitácora.' : 'Captura el importe y el concepto del gasto.'"
+                            ></div>
+                        </div>
+                    </div>
+                    <div class="cash-block__body">
+                        <div class="cash-fields">
+                            <div x-show="movimientoCajaTipo === 'gasto'">
+                                <label class="pos-field__label">Monto</label>
+                                <input type="number" min="0" step="0.01" class="pos-input" x-model="movimientoCajaForm.monto" placeholder="0.00" />
+                                <div class="pos-field-error" x-show="movimientoCajaErrores.monto" x-text="movimientoCajaErrores.monto"></div>
+                            </div>
+                            <div x-show="movimientoCajaTipo === 'gasto'">
+                                <label class="pos-field__label">Categoría o concepto</label>
+                                <div style="position:relative;">
+                                    <input
+                                        type="text"
+                                        maxlength="120"
+                                        class="pos-input"
+                                        x-model="movimientoCajaForm.categoria"
+                                        placeholder="Ej. Papelería, limpieza, insumo operativo"
+                                        @focus="mostrarSugerenciasCategoriaGasto = String(movimientoCajaForm.categoria || '').trim().length > 0 && categoriasGastoFiltradas.length > 0"
+                                        @input="mostrarSugerenciasCategoriaGasto = String(movimientoCajaForm.categoria || '').trim().length > 0 && categoriasGastoFiltradas.length > 0"
+                                        @keydown.escape.stop="mostrarSugerenciasCategoriaGasto = false"
+                                        @click.outside="mostrarSugerenciasCategoriaGasto = false"
+                                    />
+                                    <div
+                                        x-cloak
+                                        x-show="mostrarSugerenciasCategoriaGasto && categoriasGastoFiltradas.length > 0"
+                                        class="pos-search-suggest pos-search-suggest--compact"
+                                    >
+                                        <template x-for="categoria in categoriasGastoFiltradas" :key="`categoria-gasto-${categoria}`">
+                                            <button
+                                                type="button"
+                                                class="pos-search-suggest__item"
+                                                @mousedown.prevent="seleccionarCategoriaGasto(categoria)"
+                                            >
+                                                <span class="pos-search-suggest__name" x-text="categoria"></span>
+                                            </button>
+                                        </template>
+                                    </div>
+                                </div>
+                                <div class="pos-field-error" x-show="movimientoCajaErrores.categoria" x-text="movimientoCajaErrores.categoria"></div>
+                            </div>
+
+                            <div class="cash-field--full" x-show="movimientoCajaTipo === 'retiro'">
+                                <label class="pos-field__label">Referencia opcional</label>
+                                <input x-ref="retiroReferencia" type="text" maxlength="180" class="pos-input" x-model="movimientoCajaForm.referencia" placeholder="Ej. Resguardo nocturno, bóveda, traslado" />
+                                <div class="pos-field-error" x-show="movimientoCajaErrores.referencia" x-text="movimientoCajaErrores.referencia"></div>
+                            </div>
+
+                            <div class="cash-field--full">
+                                <label class="pos-field__label" x-text="movimientoCajaTipo === 'retiro' ? 'Motivo opcional' : 'Descripción opcional'"></label>
+                                <textarea
+                                    class="pos-notes-textarea"
+                                    x-model="movimientoCajaForm.motivo"
+                                    :placeholder="movimientoCajaTipo === 'retiro' ? 'Si lo deseas, agrega una nota sobre el retiro' : 'Si lo deseas, agrega una descripción del gasto'"
+                                ></textarea>
+                                <div class="pos-field-error" x-show="movimientoCajaErrores.motivo" x-text="movimientoCajaErrores.motivo"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="cash-summary__item" x-show="movimientoCajaTipo === 'gasto'" style="background:#f8fafc;">
-                    <div class="cash-summary__label">Registra</div>
-                    <div class="cash-summary__value">{{ auth()->user()->usr_nombre ?? auth()->user()->usr_usuario ?? 'Usuario actual' }}</div>
-                    <div class="cash-summary__muted-note" style="margin-top:.35rem;">
-                        El gasto quedará ligado a tu usuario y a la sesión de caja activa.
+                {{-- Autorización del retiro --}}
+                <div x-show="movimientoCajaTipo === 'retiro' && movimientoCajaPaso === 2" class="cash-block">
+                    <div class="cash-block__head">
+                        <div>
+                            <div class="cash-block__title">
+                                <i class="ti tabler-lock" style="color:var(--ls-text-secondary)"></i>
+                                Autorización del retiro
+                            </div>
+                            <div class="cash-block__hint">Queda registrado en la bitácora junto con tu usuario.</div>
+                        </div>
+                    </div>
+                    <div class="cash-block__body">
+                        <div class="cash-fields">
+                            <div>
+                                <label class="pos-field__label">Usuario autorizado</label>
+                                <select class="pos-input" x-model="movimientoCajaForm.autoriza_usr_id">
+                                    <option value="">Selecciona un usuario...</option>
+                                    <template x-for="usuario in usuariosAutorizadosRetiro" :key="usuario.usr_id">
+                                        <option :value="String(usuario.usr_id)" x-text="usuario.usr_nombre"></option>
+                                    </template>
+                                </select>
+                                <div class="pos-field-error" x-show="movimientoCajaErrores.autoriza_usr_id" x-text="movimientoCajaErrores.autoriza_usr_id"></div>
+                            </div>
+                            <div>
+                                <label class="pos-field__label">Contraseña</label>
+                                <input
+                                    type="password"
+                                    class="pos-input"
+                                    x-model="movimientoCajaForm.autoriza_password"
+                                    placeholder="Contraseña del usuario autorizado"
+                                    autocomplete="new-password"
+                                    @keydown.enter.prevent="guardarMovimientoCaja()"
+                                />
+                                <div class="pos-field-error" x-show="movimientoCajaErrores.autoriza_password" x-text="movimientoCajaErrores.autoriza_password"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div style="display:flex;justify-content:flex-end;gap:.6rem;">
-                    <button type="button" class="pos-btn pos-btn--ghost" @click="cerrarModalMovimientoCaja()">Cancelar</button>
+                {{-- Quién registra el gasto --}}
+                <div x-show="movimientoCajaTipo === 'gasto'" class="cash-note" style="border-color:var(--ls-border);background:var(--ls-surface-2);color:var(--ls-text-secondary);">
+                    <i class="ti tabler-user-check" style="color:var(--ls-text-muted)"></i>
+                    <div>
+                        El gasto quedará ligado a
+                        <strong>{{ auth()->user()->usr_nombre ?? auth()->user()->usr_usuario ?? 'tu usuario' }}</strong>
+                        y a la sesión de caja activa.
+                    </div>
+                </div>
+            </div>
+
+            {{-- Barra de acciones --}}
+            <div class="cash-modal__foot">
+                <div class="cash-modal__foot-read">
+                    <div class="cash-modal__foot-label" x-text="movimientoCajaTipo === 'retiro' ? 'Monto del retiro' : 'Monto del gasto'"></div>
+                    <div
+                        class="cash-modal__foot-value"
+                        x-text="movimientoCajaTipo === 'retiro' ? fmt(totalDenominacionesRetiro()) : fmt(Number(movimientoCajaForm.monto || 0))"
+                    ></div>
+                    <div class="cash-modal__foot-meta" x-show="movimientoCajaTipo === 'retiro'">
+                        <span x-text="piezasTotalesRetiro()"></span>
+                        <span x-text="piezasTotalesRetiro() === 1 ? 'pieza' : 'piezas'"></span>
+                        ·
+                        <span>Quedan</span>
+                        <span x-text="fmt(efectivoRestanteRetiro())"></span>
+                        <span>en caja</span>
+                    </div>
+                </div>
+                <div class="cash-modal__foot-actions">
                     <button
+                        type="button"
+                        class="pos-btn pos-btn--ghost"
+                        @click="movimientoCajaTipo === 'retiro' && movimientoCajaPaso === 2 ? movimientoCajaPaso = 1 : cerrarModalMovimientoCaja()"
+                        x-text="movimientoCajaTipo === 'retiro' && movimientoCajaPaso === 2 ? 'Atrás' : 'Cancelar'"
+                    ></button>
+                    <button
+                        x-show="movimientoCajaTipo === 'retiro' && movimientoCajaPaso === 1"
+                        type="button"
+                        class="pos-btn pos-btn--cobrar"
+                        @click="avanzarRetiroAConfirmacion()"
+                    >
+                        Continuar
+                        <i class="ti tabler-arrow-right"></i>
+                    </button>
+                    <button
+                        x-show="movimientoCajaTipo !== 'retiro' || movimientoCajaPaso === 2"
                         type="button"
                         class="pos-btn pos-btn--cobrar"
                         :disabled="guardandoMovimientoCaja"
@@ -2754,15 +3517,24 @@
          CORTE DE CAJA
     ═══════════════════════════════════════════════════ --}}
     <div x-cloak x-show="mostrarCorteCaja" class="corte-caja" @keydown.escape.window="mostrarCorteCaja && cerrarCorteCaja()">
+        {{-- Barra de contexto --}}
         <div class="corte-caja__head">
             <div class="corte-caja__head-left">
                 <div class="corte-caja__head-icon"><i class="ti tabler-clipboard-check"></i></div>
                 <div>
-                    <div class="corte-caja__title" x-text="`Corte de caja · ${cajaNombre || 'Sin caja'}`"></div>
-                    <div class="corte-caja__sub">Cuenta el efectivo físico y confirma el corte de la sesión.</div>
+                    <div class="corte-caja__title">Corte de caja</div>
+                    <div class="corte-caja__sub">Cuenta el efectivo físico y confirma el cierre de la sesión.</div>
                 </div>
             </div>
             <div class="corte-caja__head-right">
+                <span class="corte-chip corte-chip--live">
+                    <i class="ti tabler-cash-register"></i>
+                    <span x-text="cajaNombre || 'Sin caja'"></span>
+                </span>
+                <span class="corte-chip">
+                    <i class="ti tabler-user"></i>
+                    <span x-text="usuarioActualNombre || sesionActiva?.usuario_apertura || '—'"></span>
+                </span>
                 <button class="pos-btn pos-btn--ghost pos-btn--sm" @click="mostrarModalResumenCaja = true">
                     <i class="ti tabler-list-details" style="font-size:.85rem"></i>
                     Ver movimientos
@@ -2775,175 +3547,287 @@
         </div>
 
         <div class="corte-caja__body">
-            {{-- Zona 1 — Resumen de la sesión --}}
-            <div class="corte-summary">
-                <div class="corte-summary__item">
-                    <div class="corte-summary__label">Caja</div>
-                    <div class="corte-summary__value" x-text="cajaNombre || '—'"></div>
-                </div>
-                <div class="corte-summary__item">
-                    <div class="corte-summary__label">Cajero</div>
-                    <div class="corte-summary__value--sm" x-text="usuarioActualNombre || sesionActiva?.usuario_apertura || '—'"></div>
-                </div>
-                <div class="corte-summary__item">
-                    <div class="corte-summary__label">Hora de apertura</div>
-                    <div class="corte-summary__value--sm" x-text="horaCorta(sesionActiva?.abierta_at)"></div>
-                </div>
-                <div class="corte-summary__item">
-                    <div class="corte-summary__label">Tiempo de sesión</div>
-                    <div class="corte-summary__value--sm" x-text="tiempoSesionTexto()"></div>
-                </div>
-                <div class="corte-summary__item">
-                    <div class="corte-summary__label">Ventas efectivo</div>
-                    <div class="corte-summary__value" x-text="fmt(metodoMonto('efectivo'))"></div>
-                </div>
-                <div class="corte-summary__item">
-                    <div class="corte-summary__label">Ventas tarjeta</div>
-                    <div class="corte-summary__value" x-text="fmt(metodoMonto('tarjeta'))"></div>
-                </div>
-                <div class="corte-summary__item">
-                    <div class="corte-summary__label">Retiros de caja</div>
-                    <div class="corte-summary__value" x-text="fmt(resumenCaja?.retiros ?? 0)"></div>
-                </div>
-                <div class="corte-summary__item">
-                    <div class="corte-summary__label">Gastos de caja</div>
-                    <div class="corte-summary__value" x-text="fmt(resumenCaja?.gastos ?? 0)"></div>
-                </div>
-                <div class="corte-summary__item">
-                    <div class="corte-summary__label">Efectivo esperado</div>
-                    <div class="corte-summary__value" x-text="fmt(corteEfectivoEsperado())"></div>
-                </div>
-            </div>
+            <div class="corte-caja__grid">
 
-            {{-- Zona 2 — Conteo de efectivo --}}
-            <div class="corte-conteo">
-                <div class="corte-conteo__head">
-                    <div class="corte-conteo__title">
-                        <i class="ti tabler-coin" style="color:var(--ls-success)"></i>
-                        Conteo de efectivo
-                    </div>
-                    <div class="corte-conteo__total" x-text="`Total contado: ${fmt(corteCajeroReporta())}`"></div>
-                </div>
-
-                <div class="corte-conteo__columns">
-                    <div class="corte-conteo__col">
-                        <div class="corte-conteo__section-label">Billetes</div>
-                        <div class="corte-conteo__rows">
-                            <template x-for="(denom, idx) in billetesCorte" :key="`billete-${denom}`">
-                                <div class="corte-row">
-                                    <div class="corte-row__denom" x-text="`$${denom}`"></div>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        step="1"
-                                        inputmode="numeric"
-                                        class="corte-row__input corte-caja__input"
-                                        x-model="corteCajaForm.denominaciones[denom]"
-                                        @keydown.enter.prevent="focusSiguienteCorteInput($event)"
-                                        @focus="$event.target.select()"
-                                        placeholder="0"
-                                        :aria-label="`Cantidad de billetes de $${denom}`"
-                                    />
-                                    <div
-                                        class="corte-row__subtotal"
-                                        :class="{ 'corte-row__subtotal--active': corteSubtotal(denom) > 0 }"
-                                        x-text="fmt(corteSubtotal(denom))"
-                                    ></div>
+                {{-- ── Hoja de conteo ──────────────────────────── --}}
+                <div class="corte-card">
+                    <div class="corte-card__head">
+                        <div class="corte-card__head-left">
+                            <div class="corte-card__icon corte-card__icon--success"><i class="ti tabler-coin"></i></div>
+                            <div>
+                                <div class="corte-card__title">Conteo de efectivo</div>
+                                <div class="corte-card__hint">
+                                    Captura las piezas que hay en el cajón por cada denominación.
+                                    <span class="corte-kbd">Enter</span> avanza al siguiente campo.
                                 </div>
-                            </template>
+                            </div>
+                        </div>
+                        <div class="corte-card__actions">
+                            <div class="corte-total">
+                                <span class="corte-total__label">Total contado</span>
+                                <span class="corte-total__value" x-text="fmt(corteCajeroReporta())"></span>
+                            </div>
+                            <button
+                                type="button"
+                                class="pos-btn pos-btn--ghost pos-btn--sm"
+                                @click="Object.keys(corteCajaForm.denominaciones).forEach(k => corteCajaForm.denominaciones[k] = '')"
+                            >
+                                <i class="ti tabler-eraser" style="font-size:.85rem"></i>
+                                Limpiar
+                            </button>
                         </div>
                     </div>
 
-                    <div class="corte-conteo__col corte-conteo__col--divider">
-                        <div class="corte-conteo__section-label">Monedas</div>
-                        <div class="corte-conteo__rows">
-                            <template x-for="moneda in monedasCorte" :key="`moneda-${moneda.clave}`">
-                                <div class="corte-row">
-                                    <div class="corte-row__denom" x-text="moneda.etiqueta"></div>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        step="1"
-                                        inputmode="numeric"
-                                        class="corte-row__input corte-caja__input"
-                                        x-model="corteCajaForm.denominaciones[moneda.clave]"
-                                        @keydown.enter.prevent="focusSiguienteCorteInput($event)"
-                                        @focus="$event.target.select()"
-                                        placeholder="0"
-                                        :aria-label="`Cantidad de monedas de ${moneda.etiqueta}`"
-                                    />
-                                    <div
-                                        class="corte-row__subtotal"
-                                        :class="{ 'corte-row__subtotal--active': corteSubtotal(moneda.valor, moneda.clave) > 0 }"
-                                        x-text="fmt(corteSubtotal(moneda.valor, moneda.clave))"
-                                    ></div>
+                    <div class="count-sheet__columns">
+                        {{-- Billetes --}}
+                        <div class="count-sheet__col">
+                            <div class="count-sheet__colhead">
+                                <div class="count-sheet__coltitle">
+                                    <i class="ti tabler-cash" style="color:var(--ls-text-muted)"></i>
+                                    Billetes
                                 </div>
-                            </template>
-                            <div>
-                                <label class="pos-field__label">Observaciones</label>
-                                <textarea
-                                    class="pos-notes-textarea corte-caja__input"
-                                    style="min-height:96px;"
-                                    x-model="corteCajaForm.observaciones"
-                                    placeholder="Opcional: agrega observaciones para el corte"
-                                ></textarea>
+                                <div class="count-sheet__colmeta count-sheet__colmeta--center">Piezas</div>
+                                <div class="count-sheet__colmeta count-sheet__colmeta--right">Importe</div>
+                            </div>
+                            <div class="count-sheet__rows">
+                                <template x-for="denom in billetesCorte" :key="`billete-${denom}`">
+                                    <div class="count-row" :class="{ 'is-filled': corteSubtotal(denom) > 0 }">
+                                        <div class="count-row__denom" x-text="fmt(denom)"></div>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            step="1"
+                                            inputmode="numeric"
+                                            class="count-row__input corte-caja__input"
+                                            x-model="corteCajaForm.denominaciones[denom]"
+                                            @keydown.enter.prevent="focusSiguienteCorteInput($event)"
+                                            @focus="$event.target.select()"
+                                            placeholder="0"
+                                            :aria-label="`Cantidad de billetes de ${fmt(denom)}`"
+                                        />
+                                        <div class="count-row__amount" x-text="fmt(corteSubtotal(denom))"></div>
+                                    </div>
+                                </template>
+                            </div>
+                            <div class="count-sheet__colfoot">
+                                <span class="count-sheet__colfoot-label">Subtotal billetes</span>
+                                <span
+                                    class="count-sheet__colfoot-value"
+                                    x-text="fmt(billetesCorte.reduce((suma, d) => suma + corteSubtotal(d), 0))"
+                                ></span>
+                            </div>
+                        </div>
+
+                        {{-- Monedas --}}
+                        <div class="count-sheet__col count-sheet__col--divider">
+                            <div class="count-sheet__colhead">
+                                <div class="count-sheet__coltitle">
+                                    <i class="ti tabler-coins" style="color:var(--ls-text-muted)"></i>
+                                    Monedas
+                                </div>
+                                <div class="count-sheet__colmeta count-sheet__colmeta--center">Piezas</div>
+                                <div class="count-sheet__colmeta count-sheet__colmeta--right">Importe</div>
+                            </div>
+                            <div class="count-sheet__rows">
+                                <template x-for="moneda in monedasCorte" :key="`moneda-${moneda.clave}`">
+                                    <div class="count-row" :class="{ 'is-filled': corteSubtotal(moneda.valor, moneda.clave) > 0 }">
+                                        <div class="count-row__denom" x-text="moneda.etiqueta"></div>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            step="1"
+                                            inputmode="numeric"
+                                            class="count-row__input corte-caja__input"
+                                            x-model="corteCajaForm.denominaciones[moneda.clave]"
+                                            @keydown.enter.prevent="focusSiguienteCorteInput($event)"
+                                            @focus="$event.target.select()"
+                                            placeholder="0"
+                                            :aria-label="`Cantidad de monedas de ${moneda.etiqueta}`"
+                                        />
+                                        <div class="count-row__amount" x-text="fmt(corteSubtotal(moneda.valor, moneda.clave))"></div>
+                                    </div>
+                                </template>
+                            </div>
+                            <div class="count-sheet__colfoot">
+                                <span class="count-sheet__colfoot-label">Subtotal monedas</span>
+                                <span
+                                    class="count-sheet__colfoot-value"
+                                    x-text="fmt(monedasCorte.reduce((suma, m) => suma + corteSubtotal(m.valor, m.clave), 0))"
+                                ></span>
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            {{-- Zona 3 — Resultado final --}}
-            <div class="corte-resultado">
-                <div class="corte-resultado__block">
-                    <div class="corte-resultado__label">Efectivo esperado</div>
-                    <div class="corte-resultado__value" x-text="fmt(corteEfectivoEsperado())"></div>
+                    <div class="corte-notas">
+                        <label class="corte-notas__label" for="corte-observaciones">Observaciones del corte <span style="font-weight:500;color:var(--ls-text-muted)">(opcional)</span></label>
+                        <textarea
+                            id="corte-observaciones"
+                            class="corte-notas__input"
+                            x-model="corteCajaForm.observaciones"
+                            placeholder="Anota cualquier incidencia relevante para la auditoría de esta sesión"
+                        ></textarea>
+                    </div>
                 </div>
-                <div class="corte-resultado__arrow"><i class="ti tabler-arrow-right"></i></div>
-                <div class="corte-resultado__block">
-                    <div class="corte-resultado__label">Cajero reporta</div>
-                    <div class="corte-resultado__value--big" x-text="fmt(corteCajeroReporta())"></div>
-                </div>
-                <div class="corte-resultado__arrow"><i class="ti tabler-arrow-right"></i></div>
-                <div class="corte-resultado__block">
-                    <div class="corte-resultado__label">Diferencia</div>
-                    <div
-                        class="corte-resultado__value--big"
-                        :class="{
-                            'corte-resultado__diff--ok': corteDiferenciaEstado() === 'ok',
-                            'corte-resultado__diff--sobra': corteDiferenciaEstado() === 'sobra',
-                            'corte-resultado__diff--falta': corteDiferenciaEstado() === 'falta',
-                        }"
-                        x-text="fmt(Math.abs(corteDiferencia()))"
-                    ></div>
-                    <span
-                        class="corte-resultado__tag"
-                        :class="{
-                            'corte-resultado__tag--ok': corteDiferenciaEstado() === 'ok',
-                            'corte-resultado__tag--sobra': corteDiferenciaEstado() === 'sobra',
-                            'corte-resultado__tag--falta': corteDiferenciaEstado() === 'falta',
-                        }"
-                    >
-                        <i class="ti" :class="{
-                            'tabler-circle-check': corteDiferenciaEstado() === 'ok',
-                            'tabler-trending-up': corteDiferenciaEstado() === 'sobra',
-                            'tabler-alert-triangle': corteDiferenciaEstado() === 'falta',
-                        }"></i>
-                        <span x-text="corteDiferenciaEstado() === 'ok' ? 'Sin diferencias' : (corteDiferenciaEstado() === 'sobra' ? 'Sobrante' : 'Faltante')"></span>
-                    </span>
-                </div>
+
+                {{-- ── Columna de control ──────────────────────── --}}
+                <aside class="corte-side">
+
+                    {{-- Sesión --}}
+                    <div class="corte-card">
+                        <div class="corte-card__head">
+                            <div class="corte-card__head-left">
+                                <div class="corte-card__icon"><i class="ti tabler-clock-hour-4"></i></div>
+                                <div class="corte-card__title">Sesión en curso</div>
+                            </div>
+                        </div>
+                        <div class="corte-list">
+                            <div class="corte-list__row">
+                                <span class="corte-list__label">Caja</span>
+                                <span class="corte-list__value" x-text="cajaNombre || '—'"></span>
+                            </div>
+                            <div class="corte-list__row">
+                                <span class="corte-list__label">Cajero</span>
+                                <span class="corte-list__value" x-text="usuarioActualNombre || sesionActiva?.usuario_apertura || '—'"></span>
+                            </div>
+                            <div class="corte-list__row">
+                                <span class="corte-list__label">Apertura</span>
+                                <span class="corte-list__value" x-text="horaCorta(sesionActiva?.abierta_at)"></span>
+                            </div>
+                            <div class="corte-list__row">
+                                <span class="corte-list__label">Duración</span>
+                                <span class="corte-list__value" x-text="tiempoSesionTexto()"></span>
+                            </div>
+                            <div class="corte-list__row">
+                                <span class="corte-list__label">Tickets cobrados</span>
+                                <span class="corte-list__value" x-text="resumenCaja?.ventas_del_dia ?? 0"></span>
+                            </div>
+                            <div class="corte-list__row">
+                                <span class="corte-list__label">Total vendido</span>
+                                <span class="corte-list__value" x-text="fmt(resumenCaja?.total_vendido ?? 0)"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Arqueo --}}
+                    <div class="corte-card">
+                        <div class="corte-card__head">
+                            <div class="corte-card__head-left">
+                                <div class="corte-card__icon corte-card__icon--accent"><i class="ti tabler-report-money"></i></div>
+                                <div>
+                                    <div class="corte-card__title">Arqueo del sistema</div>
+                                    <div class="corte-card__hint">Efectivo que debería estar en el cajón.</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="corte-list">
+                            <div class="corte-list__row">
+                                <span class="corte-list__label">Fondo de apertura</span>
+                                <span class="corte-list__value" x-text="fmt(resumenCaja?.inicio_caja ?? 0)"></span>
+                            </div>
+                            <div class="corte-list__row">
+                                <span class="corte-list__label">Efectivo de ventas</span>
+                                <span class="corte-list__value" x-text="fmt(resumenCaja?.efectivo_ventas_neto ?? 0)"></span>
+                            </div>
+                            <div class="corte-list__row">
+                                <span class="corte-list__label">Retiros de caja</span>
+                                <span
+                                    class="corte-list__value"
+                                    :class="{ 'corte-list__value--neg': (resumenCaja?.retiros ?? 0) > 0 }"
+                                    x-text="(resumenCaja?.retiros ?? 0) > 0 ? `− ${fmt(resumenCaja.retiros)}` : fmt(0)"
+                                ></span>
+                            </div>
+                            <div class="corte-list__row">
+                                <span class="corte-list__label">Gastos de caja</span>
+                                <span
+                                    class="corte-list__value"
+                                    :class="{ 'corte-list__value--neg': (resumenCaja?.gastos ?? 0) > 0 }"
+                                    x-text="(resumenCaja?.gastos ?? 0) > 0 ? `− ${fmt(resumenCaja.gastos)}` : fmt(0)"
+                                ></span>
+                            </div>
+                            <div class="corte-list__row corte-list__row--total">
+                                <span class="corte-list__label">Efectivo esperado</span>
+                                <span class="corte-list__value" x-text="fmt(corteEfectivoEsperado())"></span>
+                            </div>
+
+                            <div class="corte-list__group">
+                                <div class="corte-list__group-label">Cobros que no afectan el efectivo</div>
+                                <div class="corte-list__row">
+                                    <span class="corte-list__label">Tarjeta</span>
+                                    <span class="corte-list__value corte-list__value--muted" x-text="fmt(metodoMonto('tarjeta'))"></span>
+                                </div>
+                                <div class="corte-list__row" x-show="metodoMonto('mixto') > 0">
+                                    <span class="corte-list__label">Mixto</span>
+                                    <span class="corte-list__value corte-list__value--muted" x-text="fmt(metodoMonto('mixto'))"></span>
+                                </div>
+                                <div class="corte-list__row" x-show="metodoMonto('monedero_electronico') > 0">
+                                    <span class="corte-list__label">Monedero electrónico</span>
+                                    <span class="corte-list__value corte-list__value--muted" x-text="fmt(metodoMonto('monedero_electronico'))"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </aside>
             </div>
         </div>
 
+        {{-- Barra de acciones --}}
         <div class="corte-caja__footer">
-            <button
-                type="button"
-                class="pos-btn pos-btn--cobrar corte-caja__submit corte-caja__input"
-                @click="abrirModalAutorizacionCorte()"
-            >
-                <i class="ti tabler-lock"></i>
-                Realizar corte
-            </button>
+            <div class="corte-caja__footer-inner">
+                <div class="corte-foot-read">
+                    <div class="corte-foot-read__item">
+                        <div class="corte-foot-read__label">Efectivo esperado</div>
+                        <div class="corte-foot-read__value" x-text="fmt(corteEfectivoEsperado())"></div>
+                    </div>
+                    <div class="corte-foot-read__arrow"><i class="ti tabler-arrow-right"></i></div>
+                    <div class="corte-foot-read__item">
+                        <div class="corte-foot-read__label">Cajero reporta</div>
+                        <div class="corte-foot-read__value" x-text="fmt(corteCajeroReporta())"></div>
+                    </div>
+                    <div class="corte-foot-read__item--diff">
+                        <div>
+                            <div class="corte-foot-read__label">Diferencia</div>
+                            <div
+                                class="corte-foot-read__diff"
+                                :class="{
+                                    'corte-verdict__diff--ok': corteDiferenciaEstado() === 'ok',
+                                    'corte-verdict__diff--sobra': corteDiferenciaEstado() === 'sobra',
+                                    'corte-verdict__diff--falta': corteDiferenciaEstado() === 'falta',
+                                }"
+                                x-text="`${corteDiferenciaEstado() === 'falta' ? '−' : (corteDiferenciaEstado() === 'sobra' ? '+' : '')}${fmt(Math.abs(corteDiferencia()))}`"
+                            ></div>
+                        </div>
+                        <span
+                            class="corte-foot-tag"
+                            :class="{
+                                'corte-foot-tag--ok': corteDiferenciaEstado() === 'ok',
+                                'corte-foot-tag--sobra': corteDiferenciaEstado() === 'sobra',
+                                'corte-foot-tag--falta': corteDiferenciaEstado() === 'falta',
+                            }"
+                        >
+                            <i class="ti" :class="{
+                                'tabler-circle-check': corteDiferenciaEstado() === 'ok',
+                                'tabler-trending-up': corteDiferenciaEstado() === 'sobra',
+                                'tabler-alert-triangle': corteDiferenciaEstado() === 'falta',
+                            }"></i>
+                            <span x-text="corteDiferenciaEstado() === 'ok' ? 'Cuadra sin diferencias' : (corteDiferenciaEstado() === 'sobra' ? 'Sobrante en caja' : 'Faltante en caja')"></span>
+                        </span>
+                    </div>
+                </div>
+                <div class="corte-caja__actions">
+                    <button type="button" class="pos-btn pos-btn--ghost" @click="cerrarCorteCaja()">
+                        Cancelar
+                    </button>
+                    <button
+                        type="button"
+                        class="pos-btn pos-btn--cobrar corte-caja__submit corte-caja__input"
+                        @click="abrirModalAutorizacionCorte()"
+                    >
+                        <i class="ti tabler-lock"></i>
+                        Realizar corte
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -2967,9 +3851,9 @@
                     <div
                         class="cash-summary__value"
                         :class="{
-                            'corte-resultado__diff--ok': corteDiferenciaEstado() === 'ok',
-                            'corte-resultado__diff--sobra': corteDiferenciaEstado() === 'sobra',
-                            'corte-resultado__diff--falta': corteDiferenciaEstado() === 'falta',
+                            'corte-verdict__diff--ok': corteDiferenciaEstado() === 'ok',
+                            'corte-verdict__diff--sobra': corteDiferenciaEstado() === 'sobra',
+                            'corte-verdict__diff--falta': corteDiferenciaEstado() === 'falta',
                         }"
                         x-text="`${corteDiferenciaEstado() === 'falta' ? '-' : (corteDiferenciaEstado() === 'sobra' ? '+' : '')}${fmt(Math.abs(corteDiferencia()))}`"
                     ></div>
@@ -3635,8 +4519,10 @@ function posApp() {
         modalAvisoTitulo: '',
         modalAvisoMensaje: '',
         movimientoCajaTipo: 'retiro',
+        movimientoCajaPaso: 1,
         movimientoCajaForm: {
             monto: '',
+            denominaciones: { 1000: '', 500: '', 200: '', 100: '', 50: '', 20: '', 10: '', 5: '', 2: '', 1: '', '0_50': '' },
             categoria: '',
             referencia: '',
             motivo: '',
@@ -5661,10 +6547,20 @@ function posApp() {
                 await this.cargarVentasDia();
             }
             this.movimientoCajaTipo = 'retiro';
+            this.movimientoCajaPaso = 1;
             this.movimientoCajaErrores = {};
-            this.movimientoCajaForm = { monto: '', categoria: '', referencia: '', motivo: '', autoriza_usr_id: '', autoriza_password: '' };
+            this.movimientoCajaForm = {
+                monto: '',
+                denominaciones: this.denominacionesVaciasRetiro(),
+                categoria: '',
+                referencia: '',
+                motivo: '',
+                autoriza_usr_id: '',
+                autoriza_password: '',
+            };
             this.mostrarSugerenciasCategoriaGasto = false;
             this.mostrarModalMovimientoCaja = true;
+            this.$nextTick(() => document.querySelector('.cash-withdrawal-row__input')?.focus());
         },
         async gastoCaja()      {
             if (!this.puedeRegistrarGastoCaja) {
@@ -5679,21 +6575,120 @@ function posApp() {
                 await this.cargarVentasDia();
             }
             this.movimientoCajaTipo = 'gasto';
+            this.movimientoCajaPaso = 1;
             this.movimientoCajaErrores = {};
-            this.movimientoCajaForm = { monto: '', categoria: '', referencia: '', motivo: '', autoriza_usr_id: '', autoriza_password: '' };
+            this.movimientoCajaForm = {
+                monto: '',
+                denominaciones: this.denominacionesVaciasRetiro(),
+                categoria: '',
+                referencia: '',
+                motivo: '',
+                autoriza_usr_id: '',
+                autoriza_password: '',
+            };
             this.mostrarSugerenciasCategoriaGasto = false;
             this.mostrarModalMovimientoCaja = true;
         },
         cerrarModalMovimientoCaja() {
             this.mostrarModalMovimientoCaja = false;
+            this.movimientoCajaPaso = 1;
             this.guardandoMovimientoCaja = false;
             this.movimientoCajaErrores = {};
-            this.movimientoCajaForm = { monto: '', categoria: '', referencia: '', motivo: '', autoriza_usr_id: '', autoriza_password: '' };
+            this.movimientoCajaForm = {
+                monto: '',
+                denominaciones: this.denominacionesVaciasRetiro(),
+                categoria: '',
+                referencia: '',
+                motivo: '',
+                autoriza_usr_id: '',
+                autoriza_password: '',
+            };
             this.mostrarSugerenciasCategoriaGasto = false;
         },
         seleccionarCategoriaGasto(categoria) {
             this.movimientoCajaForm.categoria = String(categoria || '');
             this.mostrarSugerenciasCategoriaGasto = false;
+        },
+        denominacionesVaciasRetiro() {
+            return { 1000: '', 500: '', 200: '', 100: '', 50: '', 20: '', 10: '', 5: '', 2: '', 1: '', '0_50': '' };
+        },
+        subtotalDenominacionRetiro(denominacion, clave = denominacion) {
+            const cantidad = Math.max(0, Number(this.movimientoCajaForm.denominaciones?.[clave] || 0));
+            return cantidad * Number(denominacion);
+        },
+        totalDenominacionesRetiro() {
+            const totalBilletes = this.billetesCorte.reduce(
+                (total, denominacion) => total + this.subtotalDenominacionRetiro(denominacion),
+                0
+            );
+            const totalMonedas = this.monedasCorte.reduce(
+                (total, moneda) => total + this.subtotalDenominacionRetiro(moneda.valor, moneda.clave),
+                0
+            );
+
+            return Math.round((totalBilletes + totalMonedas) * 100) / 100;
+        },
+        denominacionesConPiezasRetiro() {
+            const detalle = [];
+            this.billetesCorte.forEach((denominacion) => {
+                const piezas = Math.max(0, Number(this.movimientoCajaForm.denominaciones?.[denominacion] || 0));
+                if (piezas > 0) {
+                    detalle.push({ etiqueta: this.fmt(denominacion), piezas, importe: piezas * Number(denominacion) });
+                }
+            });
+            this.monedasCorte.forEach((moneda) => {
+                const piezas = Math.max(0, Number(this.movimientoCajaForm.denominaciones?.[moneda.clave] || 0));
+                if (piezas > 0) {
+                    detalle.push({ etiqueta: moneda.etiqueta, piezas, importe: piezas * Number(moneda.valor) });
+                }
+            });
+
+            return detalle;
+        },
+        piezasTotalesRetiro() {
+            return this.denominacionesConPiezasRetiro().reduce((total, detalle) => total + detalle.piezas, 0);
+        },
+        efectivoRestanteRetiro() {
+            const disponible = Number(this.resumenCaja?.efectivo_disponible ?? 0);
+            return Math.round((disponible - this.totalDenominacionesRetiro()) * 100) / 100;
+        },
+        focusSiguienteRetiroInput(event) {
+            const focusables = Array.from(document.querySelectorAll('.cash-withdrawal-row__input'))
+                .filter((el) => el.offsetParent !== null);
+            const idx = focusables.indexOf(event.target);
+            if (idx === -1) return;
+            if (idx < focusables.length - 1) {
+                const siguiente = focusables[idx + 1];
+                siguiente.focus();
+                if (typeof siguiente.select === 'function') siguiente.select();
+            } else {
+                event.target.blur();
+            }
+        },
+        sincronizarMontoRetiro() {
+            this.movimientoCajaForm.monto = this.totalDenominacionesRetiro();
+            delete this.movimientoCajaErrores.denominaciones;
+            delete this.movimientoCajaErrores.monto;
+        },
+        avanzarRetiroAConfirmacion() {
+            const total = this.totalDenominacionesRetiro();
+            const disponible = Number(this.resumenCaja?.efectivo_disponible ?? 0);
+
+            delete this.movimientoCajaErrores.denominaciones;
+            delete this.movimientoCajaErrores.monto;
+
+            if (total <= 0) {
+                this.movimientoCajaErrores.denominaciones = 'Captura al menos una pieza para continuar.';
+                return;
+            }
+            if (total > disponible) {
+                this.movimientoCajaErrores.monto = 'El retiro no puede superar el efectivo disponible en caja.';
+                return;
+            }
+
+            this.sincronizarMontoRetiro();
+            this.movimientoCajaPaso = 2;
+            this.$nextTick(() => this.$refs.retiroReferencia?.focus());
         },
         async guardarMovimientoCaja() {
             if (this.guardandoMovimientoCaja) return;
@@ -5701,6 +6696,9 @@ function posApp() {
             const payload = {
                 tipo: this.movimientoCajaTipo,
                 monto: Number(this.movimientoCajaForm.monto || 0),
+                denominaciones: this.movimientoCajaTipo === 'retiro'
+                    ? { ...this.movimientoCajaForm.denominaciones }
+                    : null,
                 categoria: this.movimientoCajaTipo === 'gasto' ? (this.movimientoCajaForm.categoria || '') : null,
                 referencia: this.movimientoCajaTipo === 'retiro' ? (this.movimientoCajaForm.referencia || '') : null,
                 motivo: this.movimientoCajaForm.motivo || '',
@@ -5729,6 +6727,9 @@ function posApp() {
                     );
                     if (!Object.keys(this.movimientoCajaErrores).length) {
                         this.movimientoCajaErrores.general = json?.message || 'Revisa la información capturada e intenta nuevamente.';
+                    }
+                    if (this.movimientoCajaTipo === 'retiro' && (this.movimientoCajaErrores.denominaciones || this.movimientoCajaErrores.monto)) {
+                        this.movimientoCajaPaso = 1;
                     }
                     return;
                 }
@@ -6135,4 +7136,3 @@ function posApp() {
 }
 </script>
 @endpush
-

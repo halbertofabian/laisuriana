@@ -1,17 +1,12 @@
-@php($templateAssetBase = asset('vendor-template/assets'))
-@php($desktopUser = auth()->user())
-@php($desktopInitials = collect(explode(' ', trim($desktopUser?->usr_nombre ?? 'La Suriana')))->filter()->take(2)->map(fn ($p) => mb_substr($p, 0, 1))->implode(''))
-@php($desktopProfile = $desktopUser?->roles()->orderBy('rol_nombre')->value('rol_nombre') ?? 'Usuario')
 <!doctype html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="es">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="csrf-token" content="{{ csrf_token() }}" />
-    <title>@yield('title', 'Desktop') | {{ config('app.name', 'La Suriana Retail') }}</title>
+    <meta name="csrf-token" content="bWfUCbMPjKq7EPkfhNxttKbK3E3Se2bJqvVKs0gh" />
+    <title>Etiquetas | La I. Suriana Retail</title>
 
-    @stack('desktop-vendor-styles')
-
+    
     <style>
         /* =====================================================================
            LA SURIANA · DESKTOP — MICROSOFT FLUENT DESIGN SYSTEM
@@ -754,7 +749,37 @@
             .desktop-toolbar__search { width: 100%; }
         }
     </style>
-    @stack('desktop-styles')
+        <style>
+        /* Cada pestaña es un panel independiente que ocupa el alto del pane. */
+        .desktop-etq-panel { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+        .desktop-etq-panel[hidden] { display: none; }
+
+        /* Barra de contexto de cada panel. */
+        .desktop-etq-bar {
+            flex: 0 0 auto;
+            display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+            padding: 7px 12px;
+            border-bottom: 1px solid var(--stroke);
+            background: var(--surface-alt);
+        }
+        .desktop-etq-bar__text { font-size: .78rem; color: var(--text-2); }
+        .desktop-etq-bar__text strong { color: var(--text); font-weight: 600; }
+
+        .desktop-pane > .desktop-etq-panel > .desktop-list-foot { flex: 0 0 auto; }
+
+        .desktop-etq-num { text-align: right; font-variant-numeric: tabular-nums; }
+        .desktop-etq-dim { font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .desktop-etq-regla { min-width: 240px; max-width: 320px; }
+        .desktop-etq-campos { display: flex; flex-wrap: wrap; gap: 4px; }
+        .desktop-etq-hint { font-size: .74rem; color: var(--text-2); margin: 0 0 12px; }
+        .desktop-etq-campos-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px 12px; }
+
+        @media (max-width: 860px) {
+            .desktop-etq-bar { align-items: flex-start; }
+            .desktop-etq-regla { min-width: 160px; }
+            .desktop-etq-campos-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+    </style>
 </head>
 <body>
     <div class="app" id="app-shell">
@@ -797,14 +822,14 @@
                 <button type="button" class="iconbtn" aria-label="Configuración" title="Configuración">
                     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6h.09A1.65 1.65 0 0 0 11 3.09V3a2 2 0 0 1 4 0v.09A1.65 1.65 0 0 0 16 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                 </button>
-                <span class="avatar" title="{{ $desktopUser?->usr_nombre }}">{{ strtoupper($desktopInitials) }}</span>
+                <span class="avatar" title="Administrador General">AG</span>
             </div>
         </header>
 
         <nav class="app__nav" aria-label="Navegación principal">
             <div class="nav-group">
                 <div class="nav-group__label">Inicio</div>
-                <a href="{{ route('desktop.dashboard') }}" class="nav-item {{ request()->routeIs('desktop.dashboard') ? 'is-active' : '' }}">
+                <a href="/desktop/dashboard" class="nav-item ">
                     <span class="nav-item__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg></span>
                     <span class="nav-item__label">Inicio</span>
                 </a>
@@ -812,7 +837,7 @@
 
             <div class="nav-group">
                 <div class="nav-group__label">Accesos</div>
-                <a href="{{ route('desktop.usuarios') }}" class="nav-item {{ request()->routeIs('desktop.usuarios') || request()->routeIs('desktop.roles') || request()->routeIs('desktop.permisos') || request()->routeIs('desktop.bitacora') ? 'is-active' : '' }}">
+                <a href="/desktop/usuarios" class="nav-item ">
                     <span class="nav-item__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="M15.5 4.5 19 8"/><path d="m18 2 4 4"/></svg></span>
                     <span class="nav-item__label">Accesos</span>
                 </a>
@@ -820,43 +845,39 @@
 
             <div class="nav-group">
                 <div class="nav-group__label">Comercio</div>
-                <a href="{{ route('desktop.operacion.gestion_configuraciones.index') }}" class="nav-item {{ request()->routeIs('desktop.operacion.gestion_configuraciones.*') && !request()->routeIs('desktop.operacion.gestion_configuraciones.clientes.*') ? 'is-active' : '' }}">
+                <a href="/desktop/operacion/gestion-configuraciones" class="nav-item ">
                     <span class="nav-item__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
                     <span class="nav-item__label">Administración</span>
                 </a>
-                <a href="{{ route('desktop.operacion.catalogo_comercial.index') }}" class="nav-item {{ request()->routeIs('desktop.operacion.catalogo_comercial.*') ? 'is-active' : '' }}">
+                <a href="/desktop/operacion/catalogo-comercial" class="nav-item ">
                     <span class="nav-item__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg></span>
                     <span class="nav-item__label">Catálogo</span>
                 </a>
-                @if($desktopUser?->tienePermiso('etiquetas.formatos.ver'))
-                    <a href="{{ route('desktop.operacion.etiquetas.index') }}" class="nav-item {{ request()->routeIs('desktop.operacion.etiquetas.*') ? 'is-active' : '' }}">
+                                    <a href="/desktop/operacion/etiquetas" class="nav-item ">
                         <span class="nav-item__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7"/><path d="M7 3h10v8H7z"/><path d="M9 14h6"/></svg></span>
                         <span class="nav-item__label">Etiquetas</span>
                     </a>
-                @endif
-                @if($desktopUser?->tienePermiso('cliente.ver'))
-                    <a href="{{ route('desktop.operacion.gestion_configuraciones.clientes.index') }}" class="nav-item {{ request()->routeIs('desktop.operacion.gestion_configuraciones.clientes.*') ? 'is-active' : '' }}">
+                                                    <a href="/desktop/operacion/gestion-configuraciones/clientes" class="nav-item ">
                         <span class="nav-item__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
                         <span class="nav-item__label">Clientes</span>
                     </a>
-                @endif
-                <a href="{{ route('desktop.operacion.inventario.index') }}" class="nav-item {{ request()->routeIs('desktop.operacion.inventario.*') ? 'is-active' : '' }}">
+                                <a href="/desktop/operacion/inventario" class="nav-item ">
                     <span class="nav-item__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.97 12.92A2 2 0 0 0 2 14.63v3.24a2 2 0 0 0 .97 1.71l3 1.8a2 2 0 0 0 2.06 0L12 19v-5.5l-5-3-4.03 2.42Z"/><path d="m7 16.5-4.74-2.85M7 16.5l5-3M7 16.5v5.17"/><path d="M12 13.5V19l3.97 2.38a2 2 0 0 0 2.06 0l3-1.8a2 2 0 0 0 .97-1.71v-3.24a2 2 0 0 0-.97-1.71L17 10.5l-5 3Z"/><path d="m17 16.5-5-3M17 16.5l4.74-2.85M17 16.5v5.17"/><path d="M7.97 4.42A2 2 0 0 0 7 6.13v4.37l5 3 5-3V6.13a2 2 0 0 0-.97-1.71l-3-1.8a2 2 0 0 0-2.06 0l-3 1.8Z"/><path d="M12 8 7.26 5.15M12 8l4.74-2.85M12 13.5V8"/></svg></span>
                     <span class="nav-item__label">Inventario</span>
                 </a>
-                <a href="{{ route('desktop.operacion.pedido_piso.index') }}" class="nav-item {{ request()->routeIs('desktop.operacion.pedido_piso.*') ? 'is-active' : '' }}">
+                <a href="/desktop/operacion/pedido-piso" class="nav-item ">
                     <span class="nav-item__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg></span>
                     <span class="nav-item__label">Pedidos</span>
                 </a>
-                <a href="{{ route('pos.index') }}" class="nav-item {{ request()->routeIs('pos.*') ? 'is-active' : '' }}">
+                <a href="/pos" class="nav-item ">
                     <span class="nav-item__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h2"/><path d="M14 15h2"/></svg></span>
                     <span class="nav-item__label">Caja</span>
                 </a>
-                <a href="{{ route('desktop.ventas') }}" class="nav-item {{ request()->routeIs('desktop.ventas') ? 'is-active' : '' }}">
+                <a href="/desktop/ventas" class="nav-item ">
                     <span class="nav-item__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 3-3 3 3 5-6"/></svg></span>
                     <span class="nav-item__label">Ventas</span>
                 </a>
-                <a href="{{ route('desktop.reportes') }}" class="nav-item {{ request()->routeIs('desktop.reportes', 'reportes.*') ? 'is-active' : '' }}">
+                <a href="/desktop/reportes" class="nav-item ">
                     <span class="nav-item__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg></span>
                     <span class="nav-item__label">Reportes</span>
                 </a>
@@ -865,16 +886,15 @@
             <div class="nav-user">
                 <div class="nav-user__card">
                     <div class="nav-user__head">
-                        <span class="nav-user__avatar" title="{{ $desktopUser?->usr_nombre }}">{{ strtoupper($desktopInitials) }}</span>
+                        <span class="nav-user__avatar" title="Administrador General">AG</span>
                         <div class="nav-user__meta">
-                            <span class="nav-user__name">{{ $desktopUser?->usr_nombre ?? 'Sin usuario' }}</span>
-                            <span class="nav-user__role">{{ $desktopProfile }}</span>
+                            <span class="nav-user__name">Administrador General</span>
+                            <span class="nav-user__role">Administrador</span>
                         </div>
                     </div>
                     <div class="nav-user__actions">
-                        <form method="POST" action="{{ route('logout') }}">
-                            @csrf
-                            <button type="submit" class="desktop-btn desktop-btn--danger nav-user__logout" title="Salir">
+                        <form method="POST" action="/logout">
+                            <input type="hidden" name="_token" value="bWfUCbMPjKq7EPkfhNxttKbK3E3Se2bJqvVKs0gh" autocomplete="off">                            <button type="submit" class="desktop-btn desktop-btn--danger nav-user__logout" title="Salir">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
                                 <span>Salir</span>
                             </button>
@@ -886,31 +906,525 @@
 
         <section class="app__main">
             <div class="desktop-toolbar">
-                @yield('desktop-toolbar')
+                    <div class="desktop-toolbar__group">
+        <div class="desktop-pivot" role="tablist" aria-label="Secciones de etiquetas">
+            <button type="button" class="desktop-btn desktop-btn--active" data-tab="formatos" aria-current="page">Formatos</button>
+            <button type="button" class="desktop-btn" data-tab="asignaciones">Asignación por línea</button>
+            <button type="button" class="desktop-btn" data-tab="plantillas">Plantillas</button>
+            <button type="button" class="desktop-btn" data-tab="unidades">Reglas por unidad</button>
+            <button type="button" class="desktop-btn" data-tab="historial">Historial</button>
+        </div>
+
+                    <span class="desktop-toolbar__divider" data-tab-only="formatos"></span>
+            <button type="button" class="desktop-btn desktop-btn--primary" id="btn-nuevo-formato" data-tab-only="formatos">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg>
+                Nuevo formato
+            </button>
+        
+                    <span class="desktop-toolbar__divider" data-tab-only="asignaciones" hidden></span>
+            <button type="button" class="desktop-btn desktop-btn--primary" id="btn-nueva-asignacion" data-tab-only="asignaciones" hidden>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg>
+                Nueva asignación
+            </button>
+        
+                    <span class="desktop-toolbar__divider" data-tab-only="plantillas" hidden></span>
+            <button type="button" class="desktop-btn desktop-btn--primary" id="btn-nueva-plantilla" data-tab-only="plantillas" hidden>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg>
+                Nueva plantilla
+            </button>
+        
+        <button type="button" class="desktop-btn desktop-btn--ghost" id="btn-recargar-etiquetas">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+            Actualizar
+        </button>
+    </div>
+
+    <div class="desktop-toolbar__group">
+        <input type="search" id="etq-buscar" class="desktop-toolbar__search" placeholder="Buscar en la sección">
+    </div>
             </div>
             <main class="desktop-content">
-                @yield('content')
-            </main>
+                    <section class="desktop-pane">
+        
+        <div class="desktop-etq-panel" data-panel="formatos">
+            <div class="desktop-etq-bar">
+                <span class="desktop-etq-bar__text">
+                    <strong>Formatos de impresión.</strong>
+                    Definen el tamaño físico de la etiqueta y si la salida es térmica o en hoja.
+                </span>
+            </div>
+
+            <div class="desktop-list-wrap">
+                <table class="desktop-list">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th style="width:160px;">Dimensiones</th>
+                            <th style="width:120px;">Salida</th>
+                            <th style="width:110px; text-align:right;">Líneas</th>
+                            <th style="width:120px;">Estatus</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                                                    <tr>
+                                <td>
+                                    <span class="desktop-list__name">ETIQUETA A</span>
+                                    <span class="desktop-list__meta">Orientación auto</span>
+                                </td>
+                                <td class="desktop-etq-dim">50 × 30 mm</td>
+                                <td><span class="desktop-pill desktop-pill--neutral">Termica</span></td>
+                                <td class="desktop-etq-num">1</td>
+                                <td>
+                                    <span class="desktop-status desktop-status--active">
+                                        Activo
+                                    </span>
+                                </td>
+                            </tr>
+                                            </tbody>
+                </table>
+            </div>
+
+            <div class="desktop-list-foot">
+                <div>1 formato</div>
+            </div>
+        </div>
+
+        
+        <div class="desktop-etq-panel" data-panel="asignaciones" hidden>
+            <div class="desktop-etq-bar">
+                <span class="desktop-etq-bar__text">
+                    <strong>Asignación por línea.</strong>
+                    Cada línea de producto usa el formato y la plantilla que definas aquí al generar etiquetas.
+                </span>
+            </div>
+
+            <div class="desktop-list-wrap">
+                <table class="desktop-list">
+                    <thead>
+                        <tr>
+                            <th>Línea</th>
+                            <th>Formato</th>
+                            <th>Plantilla</th>
+                            <th style="width:120px;">Estatus</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                                                    <tr>
+                                <td><span class="desktop-list__name">COLECCIÓN PRIMAVERA 2026</span></td>
+                                <td>ETIQUETA A</td>
+                                <td>A</td>
+                                <td>
+                                    <span class="desktop-status desktop-status--active">
+                                        Activo
+                                    </span>
+                                </td>
+                            </tr>
+                                            </tbody>
+                </table>
+            </div>
+
+            <div class="desktop-list-foot">
+                <div>1 asignación</div>
+            </div>
+        </div>
+
+        
+        <div class="desktop-etq-panel" data-panel="plantillas" hidden>
+            <div class="desktop-etq-bar">
+                <span class="desktop-etq-bar__text">
+                    <strong>Plantillas de contenido.</strong>
+                    Determinan qué datos se imprimen: nombre, SKU, código de barras, precio y demás.
+                </span>
+            </div>
+
+            <div class="desktop-list-wrap">
+                <table class="desktop-list">
+                    <thead>
+                        <tr>
+                            <th style="width:260px;">Nombre</th>
+                            <th>Campos incluidos</th>
+                            <th style="width:120px;">Estatus</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                                                                                <tr>
+                                <td>
+                                    <span class="desktop-list__name">A</span>
+                                                                    </td>
+                                <td>
+                                    <div class="desktop-etq-campos">
+                                                                                    <span class="desktop-pill desktop-pill--brand">nombre producto</span>
+                                                                                    <span class="desktop-pill desktop-pill--brand">codigo barras</span>
+                                                                                    <span class="desktop-pill desktop-pill--brand">precio</span>
+                                                                            </div>
+                                </td>
+                                <td>
+                                    <span class="desktop-status desktop-status--active">
+                                        Activo
+                                    </span>
+                                </td>
+                            </tr>
+                                            </tbody>
+                </table>
+            </div>
+
+            <div class="desktop-list-foot">
+                <div>1 plantilla</div>
+            </div>
+        </div>
+
+        
+        <div class="desktop-etq-panel" data-panel="unidades" hidden>
+            <div class="desktop-etq-bar">
+                <span class="desktop-etq-bar__text">
+                    <strong>Reglas por unidad de medida.</strong>
+                    Definen cuántas etiquetas se generan al recibir mercancía en cada unidad.
+                </span>
+            </div>
+
+            <div class="desktop-list-wrap">
+                <table class="desktop-list">
+                    <thead>
+                        <tr>
+                            <th>Unidad de medida</th>
+                            <th style="width:360px;">Regla al recibir</th>
+                            <th style="width:120px; text-align:right;">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                                                                                <tr>
+                                <td>
+                                    <span class="desktop-list__name">CAJA</span>
+                                    <span class="desktop-list__meta">CJ</span>
+                                </td>
+                                <td>
+                                    <select class="desktop-toolbar__select desktop-etq-regla" data-regla="7" >
+                                        <option value="">Sin configurar</option>
+                                        <option value="por_unidad_recibida" >Una etiqueta por unidad recibida</option>
+                                        <option value="por_detalle_recepcion" selected>Una etiqueta por detalle de recepción</option>
+                                    </select>
+                                </td>
+                                <td style="text-align:right;">
+                                                                            <button type="button" class="desktop-btn desktop-btn--default" data-save-regla="7">Guardar</button>
+                                                                    </td>
+                            </tr>
+                                                                                <tr>
+                                <td>
+                                    <span class="desktop-list__name">METRO</span>
+                                    <span class="desktop-list__meta">M</span>
+                                </td>
+                                <td>
+                                    <select class="desktop-toolbar__select desktop-etq-regla" data-regla="3" >
+                                        <option value="">Sin configurar</option>
+                                        <option value="por_unidad_recibida" >Una etiqueta por unidad recibida</option>
+                                        <option value="por_detalle_recepcion" selected>Una etiqueta por detalle de recepción</option>
+                                    </select>
+                                </td>
+                                <td style="text-align:right;">
+                                                                            <button type="button" class="desktop-btn desktop-btn--default" data-save-regla="3">Guardar</button>
+                                                                    </td>
+                            </tr>
+                                                                                <tr>
+                                <td>
+                                    <span class="desktop-list__name">PAR</span>
+                                    <span class="desktop-list__meta">PAR</span>
+                                </td>
+                                <td>
+                                    <select class="desktop-toolbar__select desktop-etq-regla" data-regla="6" >
+                                        <option value="">Sin configurar</option>
+                                        <option value="por_unidad_recibida" >Una etiqueta por unidad recibida</option>
+                                        <option value="por_detalle_recepcion" >Una etiqueta por detalle de recepción</option>
+                                    </select>
+                                </td>
+                                <td style="text-align:right;">
+                                                                            <button type="button" class="desktop-btn desktop-btn--default" data-save-regla="6">Guardar</button>
+                                                                    </td>
+                            </tr>
+                                                                                <tr>
+                                <td>
+                                    <span class="desktop-list__name">PIEZA</span>
+                                    <span class="desktop-list__meta">PZA</span>
+                                </td>
+                                <td>
+                                    <select class="desktop-toolbar__select desktop-etq-regla" data-regla="2" >
+                                        <option value="">Sin configurar</option>
+                                        <option value="por_unidad_recibida" selected>Una etiqueta por unidad recibida</option>
+                                        <option value="por_detalle_recepcion" >Una etiqueta por detalle de recepción</option>
+                                    </select>
+                                </td>
+                                <td style="text-align:right;">
+                                                                            <button type="button" class="desktop-btn desktop-btn--default" data-save-regla="2">Guardar</button>
+                                                                    </td>
+                            </tr>
+                                            </tbody>
+                </table>
+            </div>
+
+            <div class="desktop-list-foot">
+                <div>4 unidades</div>
+            </div>
+        </div>
+
+        
+        <div class="desktop-etq-panel" data-panel="historial" hidden>
+            <div class="desktop-etq-bar">
+                <span class="desktop-etq-bar__text">
+                    <strong>Historial de impresiones.</strong>
+                    Últimas 100 generaciones de etiquetas por recepción de mercancía.
+                </span>
+            </div>
+
+            <div class="desktop-list-wrap">
+                <table class="desktop-list">
+                    <thead>
+                        <tr>
+                            <th style="width:190px;">Recepción</th>
+                            <th style="width:160px;">Modo</th>
+                            <th style="width:120px; text-align:right;">Etiquetas</th>
+                            <th style="width:130px;">Estatus</th>
+                            <th>Generado</th>
+                            <th style="width:56px; text-align:right;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                                                    <tr data-empty>
+                                <td colspan="6" class="desktop-list__empty">Aún no se han generado etiquetas.</td>
+                            </tr>
+                                            </tbody>
+                </table>
+            </div>
+
+            <div class="desktop-list-foot">
+                <div>0 impresiones</div>
+            </div>
+        </div>
+    </section>
+
+    
+            <div class="desktop-modal" id="modal-formato" aria-hidden="true">
+            <div class="desktop-modal__dialog" style="max-width:640px;">
+                <div class="desktop-modal__head">
+                    <div class="desktop-modal__title">Nuevo formato</div>
+                    <button type="button" class="desktop-modal__close" data-close-modal="#modal-formato" aria-label="Cerrar">&times;</button>
+                </div>
+                <form id="form-formato">
+                    <div class="desktop-modal__body">
+                        <p class="desktop-etq-hint">Las medidas están en milímetros y corresponden al área imprimible de la etiqueta.</p>
+                        <div class="desktop-form-grid">
+                            <div class="desktop-field desktop-field--full">
+                                <label for="etf_nombre">Nombre</label>
+                                <input type="text" id="etf_nombre" name="etf_nombre" maxlength="120" placeholder="Ej. Térmica 50 × 30" required>
+                            </div>
+                            <div class="desktop-field">
+                                <label for="etf_ancho_mm">Ancho (mm)</label>
+                                <input type="number" id="etf_ancho_mm" name="etf_ancho_mm" step="0.01" min="1" placeholder="50" required>
+                            </div>
+                            <div class="desktop-field">
+                                <label for="etf_alto_mm">Alto (mm)</label>
+                                <input type="number" id="etf_alto_mm" name="etf_alto_mm" step="0.01" min="1" placeholder="30" required>
+                            </div>
+                            <div class="desktop-field">
+                                <label for="etf_tipo_salida">Tipo de salida</label>
+                                <select id="etf_tipo_salida" name="etf_tipo_salida">
+                                    <option value="termica">Térmica</option>
+                                    <option value="hoja">Hoja</option>
+                                </select>
+                            </div>
+                            <div class="desktop-field">
+                                <label for="etf_estatus">Estatus</label>
+                                <select id="etf_estatus" name="etf_estatus">
+                                    <option value="activo">Activo</option>
+                                    <option value="inactivo">Inactivo</option>
+                                </select>
+                            </div>
+                        </div>
+                        <input type="hidden" name="etf_orientacion" value="auto">
+                    </div>
+                    <div class="desktop-modal__foot">
+                        <div class="desktop-modal__foot-group">
+                            <button type="button" class="desktop-btn desktop-btn--default" data-close-modal="#modal-formato">Cancelar</button>
+                            <button type="submit" class="desktop-btn desktop-btn--primary">Guardar formato</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    
+    
+            <div class="desktop-modal" id="modal-asignacion" aria-hidden="true">
+            <div class="desktop-modal__dialog" style="max-width:640px;">
+                <div class="desktop-modal__head">
+                    <div class="desktop-modal__title">Asignar formato a una línea</div>
+                    <button type="button" class="desktop-modal__close" data-close-modal="#modal-asignacion" aria-label="Cerrar">&times;</button>
+                </div>
+                <form id="form-asignacion">
+                    <div class="desktop-modal__body">
+                        <p class="desktop-etq-hint">Si la línea ya tenía una asignación, se reemplaza por esta.</p>
+                        <div class="desktop-form-grid">
+                            <div class="desktop-field desktop-field--full">
+                                <label for="elc_lna_id">Línea</label>
+                                <select id="elc_lna_id" name="elc_lna_id" required>
+                                                                            <option value="5">COLECCIÓN PRIMAVERA 2026</option>
+                                                                            <option value="6">LINEA A</option>
+                                                                            <option value="2">LÍNEA CASUAL</option>
+                                                                            <option value="3">LÍNEA DEPORTIVA</option>
+                                                                            <option value="4">LÍNEA PREMIUM</option>
+                                                                    </select>
+                            </div>
+                            <div class="desktop-field">
+                                <label for="elc_etf_id">Formato</label>
+                                <select id="elc_etf_id" name="elc_etf_id" required>
+                                                                            <option value="1">ETIQUETA A</option>
+                                                                    </select>
+                            </div>
+                            <div class="desktop-field">
+                                <label for="elc_etp_id">Plantilla</label>
+                                <select id="elc_etp_id" name="elc_etp_id" required>
+                                                                            <option value="1">A</option>
+                                                                    </select>
+                            </div>
+                        </div>
+                        <input type="hidden" name="elc_estatus" value="activo">
+                    </div>
+                    <div class="desktop-modal__foot">
+                        <div class="desktop-modal__foot-group">
+                            <button type="button" class="desktop-btn desktop-btn--default" data-close-modal="#modal-asignacion">Cancelar</button>
+                            <button type="submit" class="desktop-btn desktop-btn--primary">Guardar asignación</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    
+    
+            <div class="desktop-modal" id="modal-plantilla" aria-hidden="true">
+            <div class="desktop-modal__dialog" style="max-width:700px;">
+                <div class="desktop-modal__head">
+                    <div class="desktop-modal__title">Nueva plantilla</div>
+                    <button type="button" class="desktop-modal__close" data-close-modal="#modal-plantilla" aria-label="Cerrar">&times;</button>
+                </div>
+                <form id="form-plantilla">
+                    <div class="desktop-modal__body">
+                        <p class="desktop-etq-hint">Marca los datos que deben imprimirse en la etiqueta.</p>
+                        <div class="desktop-form-grid">
+                            <div class="desktop-field desktop-field--full">
+                                <label for="etp_nombre">Nombre</label>
+                                <input type="text" id="etp_nombre" name="etp_nombre" maxlength="120" placeholder="Ej. Etiqueta con precio" required>
+                            </div>
+                            <div class="desktop-field desktop-field--full">
+                                <label for="etp_descripcion">Descripción</label>
+                                <input type="text" id="etp_descripcion" name="etp_descripcion" maxlength="180" placeholder="Opcional">
+                            </div>
+                            <div class="desktop-field desktop-field--full">
+                                <label>Campos incluidos</label>
+                                <div class="desktop-etq-campos-grid">
+                                                                            <label class="desktop-check">
+                                            <input type="checkbox" name="etp_campos[]" value="nombre_producto" checked>
+                                            <span class="desktop-check__box">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                                            </span>
+                                            <span class="desktop-check__label">Nombre producto</span>
+                                        </label>
+                                                                            <label class="desktop-check">
+                                            <input type="checkbox" name="etp_campos[]" value="sku" checked>
+                                            <span class="desktop-check__box">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                                            </span>
+                                            <span class="desktop-check__label">Sku</span>
+                                        </label>
+                                                                            <label class="desktop-check">
+                                            <input type="checkbox" name="etp_campos[]" value="codigo_barras" checked>
+                                            <span class="desktop-check__box">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                                            </span>
+                                            <span class="desktop-check__label">Codigo barras</span>
+                                        </label>
+                                                                            <label class="desktop-check">
+                                            <input type="checkbox" name="etp_campos[]" value="precio" checked>
+                                            <span class="desktop-check__box">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                                            </span>
+                                            <span class="desktop-check__label">Precio</span>
+                                        </label>
+                                                                            <label class="desktop-check">
+                                            <input type="checkbox" name="etp_campos[]" value="linea" >
+                                            <span class="desktop-check__box">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                                            </span>
+                                            <span class="desktop-check__label">Linea</span>
+                                        </label>
+                                                                            <label class="desktop-check">
+                                            <input type="checkbox" name="etp_campos[]" value="talla" >
+                                            <span class="desktop-check__box">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                                            </span>
+                                            <span class="desktop-check__label">Talla</span>
+                                        </label>
+                                                                            <label class="desktop-check">
+                                            <input type="checkbox" name="etp_campos[]" value="color" >
+                                            <span class="desktop-check__box">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                                            </span>
+                                            <span class="desktop-check__label">Color</span>
+                                        </label>
+                                                                            <label class="desktop-check">
+                                            <input type="checkbox" name="etp_campos[]" value="unidad" >
+                                            <span class="desktop-check__box">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                                            </span>
+                                            <span class="desktop-check__label">Unidad</span>
+                                        </label>
+                                                                            <label class="desktop-check">
+                                            <input type="checkbox" name="etp_campos[]" value="cantidad" >
+                                            <span class="desktop-check__box">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                                            </span>
+                                            <span class="desktop-check__label">Cantidad</span>
+                                        </label>
+                                                                            <label class="desktop-check">
+                                            <input type="checkbox" name="etp_campos[]" value="sucursal" >
+                                            <span class="desktop-check__box">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                                            </span>
+                                            <span class="desktop-check__label">Sucursal</span>
+                                        </label>
+                                                                            <label class="desktop-check">
+                                            <input type="checkbox" name="etp_campos[]" value="fecha_recepcion" >
+                                            <span class="desktop-check__box">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                                            </span>
+                                            <span class="desktop-check__label">Fecha recepcion</span>
+                                        </label>
+                                                                            <label class="desktop-check">
+                                            <input type="checkbox" name="etp_campos[]" value="folio_recepcion" >
+                                            <span class="desktop-check__box">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                                            </span>
+                                            <span class="desktop-check__label">Folio recepcion</span>
+                                        </label>
+                                                                    </div>
+                            </div>
+                        </div>
+                        <input type="hidden" name="etp_estatus" value="activo">
+                    </div>
+                    <div class="desktop-modal__foot">
+                        <div class="desktop-modal__foot-group">
+                            <button type="button" class="desktop-btn desktop-btn--default" data-close-modal="#modal-plantilla">Cancelar</button>
+                            <button type="submit" class="desktop-btn desktop-btn--primary">Crear plantilla</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+                </main>
         </section>
     </div>
 
-    @if(session('success'))
-        <div class="desktop-feedback is-success is-visible" id="desktop-feedback-success" role="status" aria-live="polite">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--success); flex: none; margin-top: 1px;"><path d="M20 6 9 17l-5-5"/></svg>
-            <div>{{ session('success') }}</div>
-        </div>
-    @endif
-
-    @if(session('error'))
-        <div class="desktop-feedback is-error is-visible" id="desktop-feedback-error" role="alert" aria-live="assertive">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--danger); flex: none; margin-top: 1px;"><circle cx="12" cy="12" r="10"/><path d="M15 9 9 15"/><path d="m9 9 6 6"/></svg>
-            <div>{{ session('error') }}</div>
-        </div>
-    @endif
-
+    
+    
     <div id="dx-toast-wrap"></div>
 
-    <script src="{{ $templateAssetBase }}/vendor/libs/jquery/jquery.js"></script>
+    <script src="/vendor-template/assets/vendor/libs/jquery/jquery.js"></script>
     <script>
         $.ajaxSetup({
             cache: false,
@@ -1191,7 +1705,125 @@
             applyUppercasePresentation(document);
         })();
     </script>
-    @stack('desktop-vendor-scripts')
-    @stack('desktop-scripts')
+            <script>
+        (function () {
+            const rutas = {
+                formatos: "http:\/\/localhost\/desktop\/operacion\/etiquetas\/formatos",
+                asignaciones: "http:\/\/localhost\/desktop\/operacion\/etiquetas\/asignaciones",
+                plantillas: "http:\/\/localhost\/desktop\/operacion\/etiquetas\/plantillas",
+                reglas: "http:\/\/localhost\/desktop\/operacion\/etiquetas\/reglas-unidad",
+            };
+
+            const $buscar = $('#etq-buscar');
+
+            function activarTab(tab) {
+                $('[data-tab]').each(function () {
+                    const activo = $(this).data('tab') === tab;
+                    $(this).toggleClass('desktop-btn--active', activo);
+                    if (activo) $(this).attr('aria-current', 'page'); else $(this).removeAttr('aria-current');
+                });
+                $('[data-panel]').each(function () { this.hidden = $(this).data('panel') !== tab; });
+                $('[data-tab-only]').each(function () { this.hidden = $(this).data('tab-only') !== tab; });
+                $buscar.val('');
+                filtrar('');
+            }
+
+            function filtrar(termino) {
+                const texto = String(termino || '').trim().toLowerCase();
+                const $panel = $('[data-panel]').filter(function () { return !this.hidden; });
+                const $tbody = $panel.find('tbody');
+                let visibles = 0;
+
+                $tbody.find('tr').each(function () {
+                    if (this.hasAttribute('data-empty') || this.hasAttribute('data-filtro-vacio')) return;
+                    const coincide = !texto || $(this).text().toLowerCase().indexOf(texto) !== -1;
+                    this.hidden = !coincide;
+                    if (coincide) visibles += 1;
+                });
+
+                $tbody.find('tr[data-filtro-vacio]').remove();
+                if (texto && visibles === 0 && $tbody.find('tr[data-empty]').length === 0) {
+                    const columnas = $panel.find('thead th').length;
+                    $tbody.append('<tr data-filtro-vacio><td colspan="' + columnas + '" class="desktop-list__empty">Sin resultados para la búsqueda.</td></tr>');
+                }
+            }
+
+            function abrirModal(selector) {
+                $(selector).addClass('is-open').attr('aria-hidden', 'false');
+                $(selector).find('input, select').filter(':visible').first().trigger('focus');
+            }
+
+            function cerrarModal(selector) {
+                $(selector).removeClass('is-open').attr('aria-hidden', 'true');
+            }
+
+            function errorDe(xhr) {
+                const json = xhr.responseJSON || {};
+                if (json.errors) {
+                    const primero = Object.values(json.errors)[0];
+                    if (Array.isArray(primero) && primero.length) return primero[0];
+                }
+                return json.message || 'No fue posible guardar el cambio.';
+            }
+
+            function guardar($boton, url, data, mensaje) {
+                if ($boton) $boton.prop('disabled', true);
+                return $.ajax({ url: url, method: 'POST', data: data })
+                    .done(function (respuesta) {
+                        DesktopUI.toast(respuesta.message || mensaje, 'success');
+                        window.setTimeout(function () { window.location.reload(); }, 700);
+                    })
+                    .fail(function (xhr) {
+                        if ($boton) $boton.prop('disabled', false);
+                        DesktopUI.toast(errorDe(xhr), 'error');
+                    });
+            }
+
+            $('[data-tab]').on('click', function () { activarTab($(this).data('tab')); });
+            $buscar.on('input', function () { filtrar(this.value); });
+            $('#btn-recargar-etiquetas').on('click', function () { window.location.reload(); });
+
+            $('#btn-nuevo-formato').on('click', function () { abrirModal('#modal-formato'); });
+            $('#btn-nueva-asignacion').on('click', function () { abrirModal('#modal-asignacion'); });
+            $('#btn-nueva-plantilla').on('click', function () { abrirModal('#modal-plantilla'); });
+
+            $('[data-close-modal]').on('click', function () { cerrarModal($(this).data('close-modal')); });
+            $('.desktop-modal').on('click', function (evento) { if (evento.target === this) cerrarModal(this); });
+            $(document).on('keydown', function (evento) {
+                if (evento.key === 'Escape') $('.desktop-modal.is-open').each(function () { cerrarModal(this); });
+            });
+
+            $('#form-formato').on('submit', function (evento) {
+                evento.preventDefault();
+                guardar($(this).find('[type="submit"]'), rutas.formatos, $(this).serialize(), 'Formato creado.');
+            });
+
+            $('#form-asignacion').on('submit', function (evento) {
+                evento.preventDefault();
+                guardar($(this).find('[type="submit"]'), rutas.asignaciones, $(this).serialize(), 'Asignación guardada.');
+            });
+
+            $('#form-plantilla').on('submit', function (evento) {
+                evento.preventDefault();
+                if ($(this).find('input[name="etp_campos[]"]:checked').length === 0) {
+                    DesktopUI.toast('Selecciona al menos un campo para la plantilla.', 'error');
+                    return;
+                }
+                guardar($(this).find('[type="submit"]'), rutas.plantillas, $(this).serialize(), 'Plantilla creada.');
+            });
+
+            $('[data-save-regla]').on('click', function () {
+                const unidad = this.dataset.saveRegla;
+                const regla = $('[data-regla="' + unidad + '"]').val();
+                if (!regla) {
+                    DesktopUI.toast('Selecciona una regla antes de guardar.', 'error');
+                    return;
+                }
+                guardar($(this), rutas.reglas, { eur_umd_id: unidad, eur_regla: regla }, 'Regla guardada.');
+            });
+
+            activarTab('formatos');
+        })();
+    </script>
 </body>
 </html>

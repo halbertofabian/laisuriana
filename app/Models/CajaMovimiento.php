@@ -28,6 +28,7 @@ class CajaMovimiento extends Model
         'cjm_usr_autorizo_id',
         'cjm_tipo',
         'cjm_monto',
+        'cjm_denominaciones',
         'cjm_categoria',
         'cjm_referencia',
         'cjm_motivo',
@@ -41,6 +42,7 @@ class CajaMovimiento extends Model
     {
         return [
             'cjm_monto' => 'decimal:2',
+            'cjm_denominaciones' => 'array',
             'cjm_fecha_movimiento' => 'datetime',
         ];
     }

@@ -998,7 +998,12 @@ class PuntoVentaController extends Controller
         $copias = $movimiento->cjm_tipo === 'retiro'
             ? ['Copia cajero', 'Copia resguardo']
             : ['Comprobante de gasto'];
-        $alto = $movimiento->cjm_tipo === 'retiro' ? 255 : 190;
+        $denominaciones = collect((array) $movimiento->cjm_denominaciones)
+            ->filter(fn ($denominacion): bool => (int) ($denominacion['cantidad'] ?? 0) > 0)
+            ->values();
+        $alto = $movimiento->cjm_tipo === 'retiro'
+            ? 255 + ($denominaciones->count() * 5)
+            : 190;
 
         $pdf = new \TCPDF('P', 'mm', [80, $alto], true, 'UTF-8', false, false);
         $pdf->SetCreator(config('app.name', 'La Suriana'));
@@ -1044,6 +1049,17 @@ class PuntoVentaController extends Controller
             }
             $html .= '<tr><td width="38%"><b>Monto</b></td><td width="62%" align="right">$' . e($fmt($movimiento->cjm_monto)) . '</td></tr>';
             $html .= '</table>';
+            if ($denominaciones->isNotEmpty()) {
+                $html .= '<div style="font-size:7px;font-weight:bold;margin-top:3px;">DENOMINACIONES</div>';
+                $html .= '<table cellspacing="0" cellpadding="1" style="font-size:7px;width:100%;">';
+                foreach ($denominaciones as $denominacion) {
+                    $cantidad = (int) ($denominacion['cantidad'] ?? 0);
+                    $valor = (float) ($denominacion['valor'] ?? 0);
+                    $etiqueta = (string) ($denominacion['etiqueta'] ?? ('$' . $fmt($valor)));
+                    $html .= '<tr><td width="65%">' . e($etiqueta) . ' x ' . e((string) $cantidad) . '</td><td width="35%" align="right">$' . e($fmt($cantidad * $valor)) . '</td></tr>';
+                }
+                $html .= '</table>';
+            }
             $html .= '<hr/>';
             $html .= '<div style="font-size:7px;"><b>Motivo</b><br/>' . nl2br(e((string) ($movimiento->cjm_motivo ?? 'Sin detalle'))) . '</div>';
             $html .= '<div style="text-align:center;font-size:7px;line-height:1.5;margin-top:6px;">'

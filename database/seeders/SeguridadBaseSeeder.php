@@ -77,6 +77,10 @@ class SeguridadBaseSeeder extends Seeder
             ['clave' => 'pos.retiro_caja', 'descripcion' => 'Registrar retiros de caja en POS', 'modulo' => 'pos'],
             ['clave' => 'pos.gasto_caja', 'descripcion' => 'Registrar gastos de caja en POS', 'modulo' => 'pos'],
             ['clave' => 'pos.corte_caja', 'descripcion' => 'Autorizar cierres y cortes de caja en POS', 'modulo' => 'pos'],
+            ['clave' => 'reportes.ventas.ver', 'descripcion' => 'Consultar reportes de ventas', 'modulo' => 'reportes'],
+            ['clave' => 'reportes.caja.ver', 'descripcion' => 'Consultar reportes de caja', 'modulo' => 'reportes'],
+            ['clave' => 'reportes.inventario.ver', 'descripcion' => 'Consultar reportes de inventario', 'modulo' => 'reportes'],
+            ['clave' => 'reportes.exportar', 'descripcion' => 'Exportar reportes', 'modulo' => 'reportes'],
         ];
 
         foreach ($permisosBase as $permiso) {

@@ -5,6 +5,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Desktop\OperacionCatalogoComercialController;
 use App\Http\Controllers\Desktop\OperacionGestionConfiguracionesController;
 use App\Http\Controllers\Desktop\OperacionInventarioController;
+use App\Http\Controllers\Desktop\OperacionEtiquetasController;
 use App\Http\Controllers\Demo\DataTableDemoController;
 use App\Http\Controllers\Operacion\CatalogoComercialController;
 use App\Http\Controllers\Operacion\CajaController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\Seguridad\BitacoraController;
 use App\Http\Controllers\Seguridad\PermisoController;
 use App\Http\Controllers\Seguridad\RolController;
 use App\Http\Controllers\Seguridad\UsuarioController;
+use App\Http\Controllers\Reportes\ReporteController;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Route;
 
@@ -74,7 +76,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/desktop/bitacora', [DashboardController::class, 'desktopBitacora'])->name('desktop.bitacora');
     Route::get('/desktop/ventas', [DashboardController::class, 'desktopVentas'])->name('desktop.ventas');
     Route::get('/desktop/ventas/data', [DashboardController::class, 'desktopVentasData'])->name('desktop.ventas.data');
-    Route::get('/desktop/reportes', [DashboardController::class, 'desktopReportes'])->name('desktop.reportes');
+    Route::get('/desktop/reportes', [ReporteController::class, 'index'])->name('desktop.reportes');
+    Route::get('/desktop/reportes/{reporte}/data', [ReporteController::class, 'data'])->name('reportes.data');
+    Route::get('/desktop/reportes/{reporte}/exportar/{formato}', [ReporteController::class, 'exportar'])->name('reportes.exportar');
+    Route::get('/desktop/reportes/{reporte}', [ReporteController::class, 'show'])->name('reportes.show');
     Route::get('/desktop/reportes/ventas/vendedores/data', [DashboardController::class, 'desktopReportesVentasVendedoresData'])->name('desktop.reportes.ventas.vendedores.data');
     Route::get('/desktop/reportes/ventas/vendedores/exportar/excel', [DashboardController::class, 'desktopReportesVentasVendedoresExportarExcel'])->name('desktop.reportes.ventas.vendedores.exportar.excel');
     Route::get('/desktop/reportes/ventas/vendedores/exportar/pdf', [DashboardController::class, 'desktopReportesVentasVendedoresExportarPdf'])->name('desktop.reportes.ventas.vendedores.exportar.pdf');
@@ -181,6 +186,20 @@ Route::middleware('auth')->group(function () {
         Route::get('/kardex', [OperacionInventarioController::class, 'kardex'])->name('kardex.index')->middleware('permiso:inventario_base.ver');
         Route::get('/minimos', [OperacionInventarioController::class, 'minimos'])->name('minimos.index')->middleware('permiso:inventario_base.ver');
         Route::get('/minimos/bajo/data', [OperacionInventarioController::class, 'dataBajoMinimo'])->name('minimos.bajo.data')->middleware('permiso:inventario_base.ver');
+    });
+    Route::prefix('desktop/operacion/etiquetas')->name('desktop.operacion.etiquetas.')->group(function () {
+        Route::get('/', [OperacionEtiquetasController::class, 'index'])->name('index')->middleware('permiso:etiquetas.formatos.ver');
+        Route::post('/formatos', [OperacionEtiquetasController::class, 'storeFormato'])->name('formatos.store')->middleware('permiso:etiquetas.formatos.crear');
+        Route::put('/formatos/{formato}', [OperacionEtiquetasController::class, 'updateFormato'])->name('formatos.update')->middleware('permiso:etiquetas.formatos.editar');
+        Route::post('/plantillas', [OperacionEtiquetasController::class, 'storePlantilla'])->name('plantillas.store')->middleware('permiso:etiquetas.plantillas.gestionar');
+        Route::put('/plantillas/{plantilla}', [OperacionEtiquetasController::class, 'updatePlantilla'])->name('plantillas.update')->middleware('permiso:etiquetas.plantillas.gestionar');
+        Route::post('/asignaciones', [OperacionEtiquetasController::class, 'storeConfiguracion'])->name('asignaciones.store')->middleware('permiso:etiquetas.lineas.asignar');
+        Route::post('/reglas-unidad', [OperacionEtiquetasController::class, 'storeRegla'])->name('reglas.store')->middleware('permiso:etiquetas.reglas_unidad.gestionar');
+        Route::get('/recepciones/{recepcion}/analisis', [OperacionEtiquetasController::class, 'analizarRecepcion'])->name('recepciones.analisis')->middleware('permiso:etiquetas.generar');
+        Route::post('/recepciones/{recepcion}/generar', [OperacionEtiquetasController::class, 'generarRecepcion'])->name('recepciones.generar')->middleware('permiso:etiquetas.generar');
+        Route::get('/archivos/{archivo}/ver', [OperacionEtiquetasController::class, 'verArchivo'])->name('archivos.ver')->middleware('permiso:etiquetas.archivos.descargar');
+        Route::get('/archivos/{archivo}/descargar', [OperacionEtiquetasController::class, 'descargarArchivo'])->name('archivos.descargar')->middleware('permiso:etiquetas.archivos.descargar');
+        Route::get('/impresiones/{impresion}/zip', [OperacionEtiquetasController::class, 'descargarZip'])->name('impresiones.zip')->middleware('permiso:etiquetas.archivos.descargar');
     });
     Route::prefix('desktop/operacion/gestion-configuraciones')->name('desktop.operacion.gestion_configuraciones.')->group(function () {
         Route::get('/', [OperacionGestionConfiguracionesController::class, 'index'])->name('index');

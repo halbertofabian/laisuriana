@@ -513,6 +513,19 @@ class PosCambiosYCancelacionesTest extends TestCase
             ->actingAs($admin)
             ->postJson(route('pos.caja.retiros.store'), [
                 'monto' => 200,
+                'denominaciones' => [
+                    '1000' => 0,
+                    '500' => 0,
+                    '200' => 1,
+                    '100' => 0,
+                    '50' => 0,
+                    '20' => 0,
+                    '10' => 0,
+                    '5' => 0,
+                    '2' => 0,
+                    '1' => 0,
+                    '0_50' => 0,
+                ],
                 'referencia' => 'Resguardo nocturno',
                 'motivo' => 'Retiro preventivo por excedente de efectivo.',
                 'autoriza_usr_id' => $autorizador->usr_id,
@@ -536,6 +549,8 @@ class PosCambiosYCancelacionesTest extends TestCase
         $this->assertEquals(249.9, (float) $resumen->json('resumen.efectivo_disponible'));
 
         $movimiento = CajaMovimiento::query()->where('cjm_tipo', 'retiro')->firstOrFail();
+        $this->assertSame(1, $movimiento->cjm_denominaciones['200']['cantidad']);
+        $this->assertEquals(200.0, $movimiento->cjm_denominaciones['200']['valor']);
         $ticket = $this->actingAs($admin)->get(route('pos.caja.movimientos.ticket', $movimiento));
         $ticket->assertOk();
         $ticket->assertHeader('content-type', 'application/pdf');

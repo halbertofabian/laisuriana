@@ -30,6 +30,9 @@ class PosCajaMovimientoService
             $usuarioAutorizaId = $tipo === 'retiro'
                 ? (int) ($datos['autoriza_usr_id'] ?? 0)
                 : (int) $usuario->usr_id;
+            $denominaciones = $tipo === 'retiro'
+                ? $this->normalizarDenominaciones((array) ($datos['denominaciones'] ?? []))
+                : null;
 
             if ($monto > $efectivoDisponible) {
                 throw ValidationException::withMessages([
@@ -46,6 +49,7 @@ class PosCajaMovimientoService
                 'cjm_usr_autorizo_id' => $usuarioAutorizaId,
                 'cjm_tipo' => $tipo,
                 'cjm_monto' => $monto,
+                'cjm_denominaciones' => $denominaciones,
                 'cjm_categoria' => $tipo === 'gasto' ? trim((string) ($datos['categoria'] ?? '')) : null,
                 'cjm_referencia' => trim((string) ($datos['referencia'] ?? '')) ?: null,
                 'cjm_motivo' => trim((string) ($datos['motivo'] ?? '')) ?: null,
@@ -64,6 +68,7 @@ class PosCajaMovimientoService
                     'cjm_folio' => $movimiento->cjm_folio,
                     'cjm_tipo' => $movimiento->cjm_tipo,
                     'cjm_monto' => $movimiento->cjm_monto,
+                    'cjm_denominaciones' => $movimiento->cjm_denominaciones,
                     'cjm_cse_id' => $movimiento->cjm_cse_id,
                     'cjm_categoria' => $movimiento->cjm_categoria,
                 ]
@@ -77,6 +82,34 @@ class PosCajaMovimientoService
                 'cajaSesion.caja:caj_id,caj_nombre',
             ]);
         });
+    }
+
+    private function normalizarDenominaciones(array $capturadas): array
+    {
+        $valores = [
+            '1000' => 1000,
+            '500' => 500,
+            '200' => 200,
+            '100' => 100,
+            '50' => 50,
+            '20' => 20,
+            '10' => 10,
+            '5' => 5,
+            '2' => 2,
+            '1' => 1,
+            '0_50' => 0.5,
+        ];
+
+        return collect($valores)
+            ->mapWithKeys(fn (float|int $valor, string $clave): array => [
+                $clave => [
+                    'etiqueta' => '$' . number_format((float) $valor, $valor < 1 ? 2 : 0),
+                    'tipo' => $valor >= 20 ? 'billete' : 'moneda',
+                    'cantidad' => max(0, (int) ($capturadas[$clave] ?? 0)),
+                    'valor' => (float) $valor,
+                ],
+            ])
+            ->all();
     }
 
     public function resumenSesionActual(Usuario $usuario): ?array

@@ -149,6 +149,31 @@
         .desktop-rme-money__row.is-grand span { font-weight: 700; color: var(--text); }
         .desktop-rme-money__row.is-grand b { color: var(--brand); font-weight: 800; font-size: 1.05rem; }
 
+        .desktop-rme-etq-summary { display: grid; gap: 14px; }
+        .desktop-rme-etq-intro { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding: 12px 14px; border: 1px solid var(--stroke); border-radius: var(--r-md); background: var(--surface-alt); }
+        .desktop-rme-etq-intro strong { display: block; margin-bottom: 3px; font-size: .88rem; }
+        .desktop-rme-etq-intro span { display: block; font-size: .76rem; line-height: 1.45; color: var(--text-2); }
+        .desktop-rme-etq-total { flex: none; text-align: right; font-size: 1.25rem; font-weight: 750; color: var(--brand); font-variant-numeric: tabular-nums; }
+        .desktop-rme-etq-total small { display: block; font-size: .67rem; font-weight: 650; text-transform: uppercase; color: var(--text-3); }
+        .desktop-rme-etq-table { width: 100%; border-collapse: collapse; font-size: .78rem; }
+        .desktop-rme-etq-table th { padding: 7px 9px; border-bottom: 1px solid var(--stroke); background: var(--surface-alt); text-align: left; color: var(--text-3); font-size: .68rem; text-transform: uppercase; }
+        .desktop-rme-etq-table td { padding: 9px; border-bottom: 1px solid var(--divider); vertical-align: top; }
+        .desktop-rme-etq-table td.num { text-align: right; font-weight: 650; font-variant-numeric: tabular-nums; }
+        .desktop-rme-etq-lineas { display: block; margin-top: 2px; color: var(--text-2); font-size: .7rem; }
+        .desktop-rme-etq-alert { padding: 10px 12px; border: 1px solid #efc0c0; border-radius: var(--r-md); background: #fff4f4; color: #8f2626; font-size: .76rem; line-height: 1.45; }
+        .desktop-rme-etq-alert strong { display: block; margin-bottom: 5px; }
+        .desktop-rme-etq-alert ul { margin: 0; padding-left: 18px; }
+        .desktop-rme-etq-modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+        .desktop-rme-etq-mode { display: flex; gap: 10px; min-height: 88px; padding: 12px; border: 1px solid var(--stroke-strong); border-radius: var(--r-md); cursor: pointer; }
+        .desktop-rme-etq-mode:has(input:checked) { border-color: var(--brand); background: var(--brand-soft); box-shadow: inset 0 0 0 1px var(--brand); }
+        .desktop-rme-etq-mode input { margin-top: 3px; accent-color: var(--brand); }
+        .desktop-rme-etq-mode strong { display: block; margin-bottom: 3px; font-size: .8rem; }
+        .desktop-rme-etq-mode span { display: block; color: var(--text-2); font-size: .72rem; line-height: 1.45; }
+        .desktop-rme-etq-files { display: grid; gap: 8px; }
+        .desktop-rme-etq-file { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 11px; border: 1px solid var(--stroke); border-radius: var(--r-md); }
+        .desktop-rme-etq-file span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .78rem; font-weight: 600; }
+        #rme-etiquetas-generar:disabled { opacity: .48; cursor: not-allowed; }
+
         @media (max-width: 1100px) {
             .desktop-rme-bar { flex-wrap: wrap; }
             .desktop-rme-bar__search { flex: 1 1 100%; max-width: none; order: -1; }
@@ -156,6 +181,7 @@
         }
         @media (max-width: 860px) {
             .desktop-rme-drawer__panel { width: 100%; }
+            .desktop-rme-etq-modes { grid-template-columns: 1fr; }
         }
     </style>
 @endpush
@@ -302,6 +328,23 @@
                 <a href="#" target="_blank" class="desktop-btn desktop-btn--default" id="rme-modal-termico">Reporte termico</a>
                 <button type="button" class="desktop-btn desktop-btn--default" id="rme-modal-imprimir-directo">Imprimir compacto</button>
                 <button type="button" class="desktop-btn desktop-btn--default" id="rme-modal-imprimir-horizontal">Imprimir horizontal</button>
+                <button type="button" class="desktop-btn desktop-btn--primary" id="rme-modal-etiquetas">Imprimir etiquetas</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="desktop-modal" id="rme-etiquetas-modal" aria-hidden="true">
+        <div class="desktop-modal__dialog" style="max-width:760px;">
+            <div class="desktop-modal__head">
+                <div class="desktop-modal__title" id="rme-etiquetas-title">Preparar etiquetas</div>
+                <button type="button" class="desktop-modal__close" data-close-rme-etiquetas aria-label="Cerrar">&times;</button>
+            </div>
+            <div class="desktop-modal__body" id="rme-etiquetas-body">
+                <div style="padding:32px; text-align:center; color:var(--text-2);">Analizando productos y formatos…</div>
+            </div>
+            <div class="desktop-modal__foot" id="rme-etiquetas-foot">
+                <button type="button" class="desktop-btn desktop-btn--default" data-close-rme-etiquetas>Cancelar</button>
+                <button type="button" class="desktop-btn desktop-btn--primary" id="rme-etiquetas-generar" disabled>Generar archivos</button>
             </div>
         </div>
     </div>
@@ -321,6 +364,11 @@
                 termico: @json(url('/desktop/operacion/inventario/recepciones/__ID__/reporte-termico')),
                 imprimirDirecto:     @json(url('/desktop/operacion/inventario/recepciones/__ID__/imprimir-termico-directo')),
                 imprimirHorizontal: @json(url('/desktop/operacion/inventario/recepciones/__ID__/imprimir-horizontal')),
+                etiquetasAnalisis: @json(url('/desktop/operacion/etiquetas/recepciones/__ID__/analisis')),
+                etiquetasGenerar: @json(url('/desktop/operacion/etiquetas/recepciones/__ID__/generar')),
+                etiquetasArchivoVer: @json(url('/desktop/operacion/etiquetas/archivos/__ID__/ver')),
+                etiquetasZip: @json(url('/desktop/operacion/etiquetas/impresiones/__ID__/zip')),
+                etiquetasConfig: @json(route('desktop.operacion.etiquetas.index')),
                 cancelar: @json(url('/desktop/operacion/inventario/recepciones/__ID__/cancelar')),
                 recibir: @json(route('desktop.operacion.inventario.recibir.index')),
             };
@@ -645,6 +693,71 @@
                 });
             }
 
+            let etiquetasRecepcionId = 0;
+            function abrirModalEtiquetas() { $('#rme-etiquetas-modal').addClass('is-open').attr('aria-hidden', 'false'); }
+            function cerrarModalEtiquetas() { $('#rme-etiquetas-modal').removeClass('is-open').attr('aria-hidden', 'true'); }
+            function renderAnalisisEtiquetas(analisis) {
+                const grupos = analisis.grupos || [];
+                const errores = analisis.errores || [];
+                const total = grupos.reduce(function (sum, g) { return sum + Number(g.etiquetas || 0); }, 0);
+                const filas = grupos.map(function (g) {
+                    const formato = g.formato || {};
+                    const lineasArray = Array.isArray(g.lineas) ? g.lineas : Object.values(g.lineas || {});
+                    const lineas = lineasArray.length ? lineasArray.join(', ') : '—';
+                    return '<tr><td><strong>' + escapeHtml(formato.etf_nombre || 'Formato sin nombre') + '</strong><span class="desktop-rme-etq-lineas">' + escapeHtml(lineas) + '</span></td>' +
+                        '<td>' + escapeHtml(String(formato.etf_ancho_mm || '—')) + ' × ' + escapeHtml(String(formato.etf_alto_mm || '—')) + ' mm</td>' +
+                        '<td class="num">' + num(g.productos) + '</td><td class="num">' + num(g.etiquetas) + '</td></tr>';
+                }).join('');
+                const erroresAgrupados = Object.values(errores.reduce(function (acc, e) {
+                    const mensaje = e.mensaje || 'Configuración incompleta';
+                    acc[mensaje] = acc[mensaje] || { mensaje: mensaje, cantidad: 0, skus: [] };
+                    acc[mensaje].cantidad += 1;
+                    if (e.sku && acc[mensaje].skus.length < 4) acc[mensaje].skus.push(e.sku);
+                    return acc;
+                }, {}));
+                const incidencias = errores.length ? '<div class="desktop-rme-etq-alert"><strong>No se puede generar todavía</strong><ul>' + erroresAgrupados.map(function (e) { const afectados = e.cantidad > 1 ? ' (' + e.cantidad + ' productos)' : ''; const skus = e.skus.length ? '<span class="desktop-rme-etq-lineas">SKU: ' + escapeHtml(e.skus.join(', ')) + (e.cantidad > e.skus.length ? '…' : '') + '</span>' : ''; return '<li>' + escapeHtml(e.mensaje) + afectados + skus + '</li>'; }).join('') + '</ul><div style="margin-top:8px"><a href="' + rutas.etiquetasConfig + '" class="desktop-btn desktop-btn--default">Abrir configuración de etiquetas</a></div></div>' : '';
+                const tabla = grupos.length ? '<table class="desktop-rme-etq-table"><thead><tr><th>Formato y líneas</th><th>Dimensiones</th><th style="text-align:right">Productos</th><th style="text-align:right">Etiquetas</th></tr></thead><tbody>' + filas + '</tbody></table>' : '';
+                const modos = analisis.puede_generar ? '<div><div class="desktop-rme-meta__title" style="margin-bottom:7px">¿Cómo deseas preparar los archivos?</div><div class="desktop-rme-etq-modes">' +
+                    '<label class="desktop-rme-etq-mode"><input type="radio" name="rme-etq-modo" value="separado" checked><span><strong>Un PDF por formato</strong><span>Recomendado cuando cada tamaño va a una impresora o configuración distinta. Incluye descarga ZIP.</span></span></label>' +
+                    '<label class="desktop-rme-etq-mode"><input type="radio" name="rme-etq-modo" value="unico"><span><strong>Un solo PDF</strong><span>Combina todos los tamaños en un documento con páginas de dimensiones diferentes.</span></span></label>' +
+                    '</div></div>' : '';
+                $('#rme-etiquetas-title').text('Etiquetas · ' + ((analisis.recepcion || {}).rme_folio || 'Recepción'));
+                $('#rme-etiquetas-body').html('<div class="desktop-rme-etq-summary"><div class="desktop-rme-etq-intro"><div><strong>Resumen antes de generar</strong><span>El sistema agrupó los productos automáticamente según su línea, plantilla y unidad de venta.</span></div><div class="desktop-rme-etq-total">' + num(total) + '<small>etiquetas</small></div></div>' + incidencias + tabla + modos + '</div>');
+                $('#rme-etiquetas-generar').prop('disabled', !analisis.puede_generar).show().text('Generar archivos');
+            }
+            function imprimirEtiquetas(id) {
+                etiquetasRecepcionId = Number(id || 0);
+                cerrarModal();
+                abrirModalEtiquetas();
+                $('#rme-etiquetas-title').text('Preparar etiquetas');
+                $('#rme-etiquetas-body').html('<div style="padding:32px; text-align:center; color:var(--text-2);">Analizando productos, líneas y formatos…</div>');
+                $('#rme-etiquetas-generar').prop('disabled', true).show().text('Generar archivos');
+                $.getJSON(urlFor(rutas.etiquetasAnalisis, id)).done(renderAnalisisEtiquetas).fail(function (x) {
+                    const mensaje = x.responseJSON?.message || 'No fue posible analizar las etiquetas de esta recepción.';
+                    $('#rme-etiquetas-body').html('<div class="desktop-rme-etq-alert"><strong>No se pudo analizar la recepción</strong>' + escapeHtml(mensaje) + '</div>');
+                    $('#rme-etiquetas-generar').prop('disabled', true);
+                });
+            }
+            function generarEtiquetas() {
+                const modo = $('[name="rme-etq-modo"]:checked').val();
+                if (!etiquetasRecepcionId || !modo) return;
+                const $button = $('#rme-etiquetas-generar').prop('disabled', true).text('Generando…');
+                $.ajax({ url: urlFor(rutas.etiquetasGenerar, etiquetasRecepcionId), method: 'POST', data: { modo: modo }, headers: { 'X-CSRF-TOKEN': csrf } }).done(function (r) {
+                    const data = r.data || {};
+                    const files = data.archivos || [];
+                    const links = files.map(function (a) { return '<div class="desktop-rme-etq-file"><span>' + escapeHtml(a.nombre || 'Etiquetas.pdf') + '</span><a class="desktop-btn desktop-btn--primary" href="' + urlFor(rutas.etiquetasArchivoVer, a.id) + '" target="_blank" rel="noopener">Ver PDF</a></div>'; }).join('');
+                    const zip = files.length > 1 ? '<div style="margin-top:10px"><a class="desktop-btn desktop-btn--primary" href="' + urlFor(rutas.etiquetasZip, data.eim_id) + '">Descargar todos en ZIP</a></div>' : '';
+                    $('#rme-etiquetas-body').html('<div class="desktop-rme-etq-summary"><div class="desktop-rme-etq-intro"><div><strong>Archivos listos</strong><span>La recepción y el inventario no fueron modificados. Esta generación quedó registrada en el historial.</span></div><div class="desktop-rme-etq-total">' + num(files.length) + '<small>archivos</small></div></div><div class="desktop-rme-etq-files">' + links + '</div>' + zip + '</div>');
+                    $button.hide();
+                    notify('Etiquetas generadas', 'Los PDF están listos para abrir en el navegador.', 'success');
+                }).fail(function (x) {
+                    const bag = x.responseJSON?.errors || {};
+                    const detalles = Object.values(bag).flat().join(' ') || x.responseJSON?.message || 'No fue posible generar las etiquetas.';
+                    $('#rme-etiquetas-body').prepend('<div class="desktop-rme-etq-alert" style="margin-bottom:12px"><strong>No se generaron archivos</strong>' + escapeHtml(detalles) + '</div>');
+                    $button.prop('disabled', false).text('Intentar de nuevo');
+                });
+            }
+
             async function cancelar(id) {
                 const ok = await DesktopUI.confirm({
                     title: 'Descartar borrador',
@@ -699,9 +812,13 @@
             $table.on('click', '[data-act="cancelar"]', function () { cancelar($(this).data('id')); });
             $('#rme-modal-imprimir-directo').on('click', function () { if (recepcionActualId > 0) imprimirDirecto(recepcionActualId); });
             $('#rme-modal-imprimir-horizontal').on('click', function () { if (recepcionActualId > 0) imprimirHorizontal(recepcionActualId); });
+            $('#rme-modal-etiquetas').on('click', function () { if (recepcionActualId > 0) imprimirEtiquetas(recepcionActualId); });
+            $('#rme-etiquetas-generar').on('click', generarEtiquetas);
             $(document).on('click', '[data-close-rme]', cerrarModal);
+            $(document).on('click', '[data-close-rme-etiquetas]', cerrarModalEtiquetas);
             $('#rme-modal').on('click', function (e) { if (e.target === this) cerrarModal(); });
-            $(document).on('keydown', function (e) { if (e.key === 'Escape') cerrarModal(); });
+            $('#rme-etiquetas-modal').on('click', function (e) { if (e.target === this) cerrarModalEtiquetas(); });
+            $(document).on('keydown', function (e) { if (e.key === 'Escape') { cerrarModal(); cerrarModalEtiquetas(); } });
             syncPeriodoUI();
             syncBadge();
             buildTabla();
