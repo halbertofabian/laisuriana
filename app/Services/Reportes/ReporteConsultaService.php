@@ -19,6 +19,9 @@ class ReporteConsultaService
                 $this->def('ventas-vendedor', 'Ventas por vendedor', 'Compara piezas, tickets, descuentos y venta neta por asesor.', 'tabler-user-chart', 'reportes.ventas.ver'),
                 $this->def('ventas-producto', 'Ventas por producto y SKU', 'Detecta productos líderes, variantes con rotación y rezagos.', 'tabler-package', 'reportes.ventas.ver'),
                 $this->def('ventas-categoria', 'Ventas por categoría', 'Analiza la mezcla comercial por categoría, línea y marca.', 'tabler-category-2', 'reportes.ventas.ver'),
+                $this->def('ventas-linea', 'Ventas por línea', 'Participación y rendimiento de cada línea de producto.', 'tabler-list-tree', 'reportes.ventas.ver'),
+                $this->def('ventas-marca', 'Ventas por marca', 'Compara marcas por piezas, tickets, venta neta y participación.', 'tabler-tag', 'reportes.ventas.ver'),
+                $this->def('ventas-modelo', 'Ventas por modelo', 'Detecta los modelos con mayor y menor rotación, con su marca.', 'tabler-shirt', 'reportes.ventas.ver'),
                 $this->def('ventas-cliente', 'Ventas por cliente', 'Frecuencia, ticket promedio, importe y última compra.', 'tabler-users', 'reportes.ventas.ver'),
                 $this->def('ventas-metodo-pago', 'Métodos de pago', 'Conciliación de efectivo, tarjeta, mixto y monedero.', 'tabler-credit-card', 'reportes.ventas.ver'),
                 $this->def('ventas-descuentos', 'Descuentos aplicados', 'Detalle de descuentos por vendedor, folio y producto.', 'tabler-discount-2', 'reportes.ventas.ver'),
@@ -55,6 +58,9 @@ class ReporteConsultaService
             'ventas-vendedor' => $this->ventasAgrupadas('vendedor', $sucursalId, $desde, $hasta, $filtros, $exportar),
             'ventas-producto' => $this->ventasAgrupadas('producto', $sucursalId, $desde, $hasta, $filtros, $exportar),
             'ventas-categoria' => $this->ventasAgrupadas('categoria', $sucursalId, $desde, $hasta, $filtros, $exportar),
+            'ventas-linea' => $this->ventasAgrupadas('linea', $sucursalId, $desde, $hasta, $filtros, $exportar),
+            'ventas-marca' => $this->ventasAgrupadas('marca', $sucursalId, $desde, $hasta, $filtros, $exportar),
+            'ventas-modelo' => $this->ventasAgrupadas('modelo', $sucursalId, $desde, $hasta, $filtros, $exportar),
             'ventas-cliente' => $this->ventasClientes($sucursalId, $desde, $hasta, $filtros, $exportar),
             'ventas-metodo-pago' => $this->ventasMetodosPago($sucursalId, $desde, $hasta, $filtros),
             'ventas-descuentos' => $this->ventasDescuentos($sucursalId, $desde, $hasta, $filtros, $exportar),
@@ -75,6 +81,9 @@ class ReporteConsultaService
             'vendedor' => ['keys'=>['vendedor'], 'headers'=>['Vendedor','Piezas netas','Tickets','Venta neta','Descuentos','Ticket promedio','Último movimiento']],
             'producto' => ['keys'=>['producto_codigo','producto','sku_codigo','sku','linea'], 'headers'=>['Código producto','Producto','Código SKU','Variante','Línea','Piezas netas','Tickets','Venta neta','Descuentos','Precio promedio','Último movimiento']],
             'categoria' => ['keys'=>['categoria','linea','marca'], 'headers'=>['Categoría','Línea','Marca','Piezas netas','Tickets','Venta neta','Descuentos','Participación','Último movimiento']],
+            'modelo' => ['keys'=>['modelo','marca'], 'headers'=>['Modelo','Marca','Piezas netas','Tickets','Venta neta','Descuentos','Participación','Último movimiento']],
+            'marca' => ['keys'=>['marca'], 'headers'=>['Marca','Piezas netas','Tickets','Venta neta','Descuentos','Participación','Último movimiento']],
+            'linea' => ['keys'=>['linea'], 'headers'=>['Línea','Piezas netas','Tickets','Venta neta','Descuentos','Participación','Último movimiento']],
         ][$tipo];
         $q = DB::query()->fromSub($mov, 'mov')->groupBy($config['keys']);
         foreach ($config['keys'] as $key) $q->addSelect($key);
@@ -84,25 +93,28 @@ class ReporteConsultaService
         $q->selectRaw('ROUND(SUM(cantidad),2) as piezas_netas, COUNT(DISTINCT folio) as tickets, ROUND(SUM(importe),2) as venta_neta, ROUND(SUM(descuento),2) as descuentos');
         if ($tipo === 'vendedor') $q->selectRaw('ROUND(SUM(importe) / NULLIF(COUNT(DISTINCT folio),0),2) as ticket_promedio');
         if ($tipo === 'producto') $q->selectRaw('ROUND(SUM(importe) / NULLIF(SUM(cantidad),0),2) as precio_promedio');
-        if ($tipo === 'categoria') { $total = DB::query()->fromSub(clone $mov, 't')->sum('importe'); $q->selectRaw('ROUND((SUM(importe) / NULLIF(?,0))*100,2) as participacion', [$total]); }
+        if (in_array($tipo, ['categoria','modelo','marca','linea'], true)) { $total = DB::query()->fromSub(clone $mov, 't')->sum('importe'); $q->selectRaw('ROUND((SUM(importe) / NULLIF(?,0))*100,2) as participacion', [$total]); }
         $q->selectRaw('MAX(fecha) as ultimo_movimiento');
         $rows = $q->orderByDesc('venta_neta')->limit($exportar ? 20000 : 500)->get();
-        return $this->resultado($config['headers'], $rows, ['Venta neta'=>$rows->sum('venta_neta'), 'Piezas netas'=>$rows->sum('piezas_netas'), 'Tickets'=>$rows->sum('tickets'), 'Descuentos'=>$rows->sum('descuentos')]);
+        // Los tickets no se suman por fila: un mismo folio puede aparecer en
+        // varias marcas, líneas o categorías y quedaría contado dos veces.
+        $tickets = (int) DB::query()->fromSub(clone $mov, 't')->distinct()->count('folio');
+        return $this->resultado($config['headers'], $rows, ['Venta neta'=>$rows->sum('venta_neta'), 'Piezas netas'=>$rows->sum('piezas_netas'), 'Tickets'=>$tickets, 'Descuentos'=>$rows->sum('descuentos')]);
     }
 
     private function movimientosVenta(int $sucursal, Carbon $desde, Carbon $hasta, array $f): Builder
     {
         $base = DB::table('tbl_pos_venta_detalle_pvd as pvd')->join('tbl_pos_ventas_psv as psv','psv.psv_id','=','pvd.pvd_psv_id')->join('tbl_producto_skus_psk as psk','psk.psk_id','=','pvd.pvd_psk_id')->join('tbl_productos_prd as prd','prd.prd_id','=','psk.psk_prd_id')
-            ->leftJoin('tbl_usuarios_usr as usr','usr.usr_id','=','pvd.pvd_usr_id')->leftJoin('tbl_almacenes_alm as alm','alm.alm_id','=','psv.psv_alm_id')->leftJoin('tbl_categorias_ctg as ctg','ctg.ctg_id','=','prd.prd_ctg_id')->leftJoin('tbl_lineas_lna as lna','lna.lna_id','=','prd.prd_lna_id')->leftJoin('tbl_marcas_mrc as mrc','mrc.mrc_id','=','prd.prd_mrc_id')
+            ->leftJoin('tbl_usuarios_usr as usr','usr.usr_id','=','pvd.pvd_usr_id')->leftJoin('tbl_almacenes_alm as alm','alm.alm_id','=','psv.psv_alm_id')->leftJoin('tbl_categorias_ctg as ctg','ctg.ctg_id','=','prd.prd_ctg_id')->leftJoin('tbl_lineas_lna as lna','lna.lna_id','=','prd.prd_lna_id')->leftJoin('tbl_marcas_mrc as mrc','mrc.mrc_id','=','prd.prd_mrc_id')->leftJoin('tbl_modelos_mdl as mdl','mdl.mdl_id','=','prd.prd_mdl_id')
             ->where('psv.psv_scl_id',$sucursal)->where('psv.psv_estatus','!=','cancelada')->where('psv.psv_deleted',false)->where('pvd.pvd_deleted',false)->whereBetween('psv.psv_fecha_cobro',[$desde->copy()->startOfDay(),$hasta->copy()->endOfDay()])
             ->when($f['usuario_id']??null,fn($q,$v)=>$q->where('pvd.pvd_usr_id',$v))->when($f['almacen_id']??null,fn($q,$v)=>$q->where('psv.psv_alm_id',$v))->when($f['caja_id']??null,fn($q,$v)=>$q->where('psv.psv_caj_id',$v))
             // Sin vendedor en la partida, la venta se atribuye a su almacén.
-            ->selectRaw("psv.psv_fecha_cobro fecha, psv.psv_folio folio, COALESCE(usr.usr_nombre,alm.alm_nombre,'Sin vendedor') vendedor, prd.prd_codigo producto_codigo, prd.prd_nombre producto, psk.psk_codigo sku_codigo, COALESCE(psk.psk_nombre,prd.prd_nombre) sku, COALESCE(ctg.ctg_nombre,'Sin categoría') categoria, COALESCE(lna.lna_nombre,'Sin línea') linea, COALESCE(mrc.mrc_nombre,'Sin marca') marca, pvd.pvd_cantidad cantidad, pvd.pvd_importe importe, pvd.pvd_descuento_importe descuento");
+            ->selectRaw("psv.psv_fecha_cobro fecha, psv.psv_folio folio, COALESCE(usr.usr_nombre,alm.alm_nombre,'Sin vendedor') vendedor, prd.prd_codigo producto_codigo, prd.prd_nombre producto, psk.psk_codigo sku_codigo, COALESCE(psk.psk_nombre,prd.prd_nombre) sku, COALESCE(ctg.ctg_nombre,'Sin categoría') categoria, COALESCE(lna.lna_nombre,'Sin línea') linea, COALESCE(mrc.mrc_nombre,'Sin marca') marca, COALESCE(mdl.mdl_nombre,'Sin modelo') modelo, pvd.pvd_cantidad cantidad, pvd.pvd_importe importe, pvd.pvd_descuento_importe descuento");
         $dev = DB::table('tbl_pos_cambios_detalle_pcd as pcd')->join('tbl_pos_ventas_psv as psv','psv.psv_id','=','pcd.pcd_psv_id')->join('tbl_pos_venta_detalle_pvd as pvd','pvd.pvd_id','=','pcd.pcd_pvd_origen_id')->join('tbl_producto_skus_psk as psk','psk.psk_id','=','pcd.pcd_psk_id')->join('tbl_productos_prd as prd','prd.prd_id','=','psk.psk_prd_id')
-            ->leftJoin('tbl_usuarios_usr as usr','usr.usr_id','=','pvd.pvd_usr_id')->leftJoin('tbl_almacenes_alm as alm','alm.alm_id','=','psv.psv_alm_id')->leftJoin('tbl_categorias_ctg as ctg','ctg.ctg_id','=','prd.prd_ctg_id')->leftJoin('tbl_lineas_lna as lna','lna.lna_id','=','prd.prd_lna_id')->leftJoin('tbl_marcas_mrc as mrc','mrc.mrc_id','=','prd.prd_mrc_id')
+            ->leftJoin('tbl_usuarios_usr as usr','usr.usr_id','=','pvd.pvd_usr_id')->leftJoin('tbl_almacenes_alm as alm','alm.alm_id','=','psv.psv_alm_id')->leftJoin('tbl_categorias_ctg as ctg','ctg.ctg_id','=','prd.prd_ctg_id')->leftJoin('tbl_lineas_lna as lna','lna.lna_id','=','prd.prd_lna_id')->leftJoin('tbl_marcas_mrc as mrc','mrc.mrc_id','=','prd.prd_mrc_id')->leftJoin('tbl_modelos_mdl as mdl','mdl.mdl_id','=','prd.prd_mdl_id')
             ->where('psv.psv_scl_id',$sucursal)->where('psv.psv_estatus','!=','cancelada')->where('pcd.pcd_deleted',false)->whereBetween('psv.psv_fecha_cobro',[$desde->copy()->startOfDay(),$hasta->copy()->endOfDay()])
             ->when($f['usuario_id']??null,fn($q,$v)=>$q->where('pvd.pvd_usr_id',$v))->when($f['almacen_id']??null,fn($q,$v)=>$q->where('psv.psv_alm_id',$v))->when($f['caja_id']??null,fn($q,$v)=>$q->where('psv.psv_caj_id',$v))
-            ->selectRaw("psv.psv_fecha_cobro fecha, psv.psv_folio folio, COALESCE(usr.usr_nombre,alm.alm_nombre,'Sin vendedor') vendedor, prd.prd_codigo producto_codigo, prd.prd_nombre producto, psk.psk_codigo sku_codigo, COALESCE(psk.psk_nombre,prd.prd_nombre) sku, COALESCE(ctg.ctg_nombre,'Sin categoría') categoria, COALESCE(lna.lna_nombre,'Sin línea') linea, COALESCE(mrc.mrc_nombre,'Sin marca') marca, pcd.pcd_cantidad * -1 cantidad, pcd.pcd_importe_credito * -1 importe, ((pcd.pcd_cantidad * pcd.pcd_precio_unitario)-pcd.pcd_importe_credito) * -1 descuento");
+            ->selectRaw("psv.psv_fecha_cobro fecha, psv.psv_folio folio, COALESCE(usr.usr_nombre,alm.alm_nombre,'Sin vendedor') vendedor, prd.prd_codigo producto_codigo, prd.prd_nombre producto, psk.psk_codigo sku_codigo, COALESCE(psk.psk_nombre,prd.prd_nombre) sku, COALESCE(ctg.ctg_nombre,'Sin categoría') categoria, COALESCE(lna.lna_nombre,'Sin línea') linea, COALESCE(mrc.mrc_nombre,'Sin marca') marca, COALESCE(mdl.mdl_nombre,'Sin modelo') modelo, pcd.pcd_cantidad * -1 cantidad, pcd.pcd_importe_credito * -1 importe, ((pcd.pcd_cantidad * pcd.pcd_precio_unitario)-pcd.pcd_importe_credito) * -1 descuento");
         return $base->unionAll($dev);
     }
 
