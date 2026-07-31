@@ -424,6 +424,11 @@
 
         table.desktop-list {
             width: 100% !important;
+            /* Ancho mínimo legible: por debajo de esto la tabla desborda y
+               .desktop-list-wrap muestra scroll horizontal, en lugar de
+               comprimir las columnas hasta romper el texto. Una vista con
+               muchas columnas puede subirlo con --list-min-w en su .desktop-pane. */
+            min-width: var(--list-min-w, 720px);
             border-collapse: collapse !important;
             font-size: .82rem;
             table-layout: auto;
@@ -560,6 +565,9 @@
             backdrop-filter: blur(1px);
         }
         .desktop-modal.is-open { display: flex; animation: dxfade .14s ease; }
+        /* Último recurso: si el diálogo no cabe (ventanas muy bajas), el propio
+           overlay permite desplazarse en lugar de recortar el contenido. */
+        .desktop-modal { overflow-y: auto; }
         @keyframes dxfade { from { opacity: 0; } to { opacity: 1; } }
 
         .desktop-modal__dialog {
@@ -589,7 +597,14 @@
         }
         .desktop-modal__close:hover { background: var(--surface-sunken); color: var(--text); }
 
-        .desktop-modal__body { padding: 2px 18px 6px; overflow: auto; }
+        /* El contenido suele ir envuelto en un <form>; sin esto el form no cede
+           altura, el cuerpo nunca se limita y el modal queda sin scroll con el
+           pie fuera de la pantalla. */
+        .desktop-modal__dialog > form {
+            display: flex; flex-direction: column;
+            flex: 1 1 auto; min-height: 0;
+        }
+        .desktop-modal__body { padding: 2px 18px 6px; overflow: auto; flex: 1 1 auto; min-height: 0; }
         /* Footer estándar de modales. Por defecto alinea a la derecha (compatible
            con modales que ponen los botones directos). Para el patrón de dos grupos
            —riesgo a la izquierda, confirmación a la derecha— envolver así:

@@ -8,69 +8,103 @@
 
 @push('desktop-styles')
     <style>
-        .desktop-etq-toolbar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-            flex-wrap: wrap;
-            padding: 8px 12px;
-            border-bottom: 1px solid var(--stroke);
-            background: var(--surface-alt);
+        #etiquetado-length {
+            min-width: 148px;
         }
-        .desktop-etq-toolbar__group {
-            display: flex;
+        .desktop-etq-filterbtn {
+            display: inline-flex;
             align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        .desktop-etq-number {
-            width: 124px;
-            height: 38px;
-            padding: 0 12px;
-            border: 1px solid var(--stroke);
+            gap: 6px;
+            height: 30px;
+            padding: 0 11px;
+            border: 1px solid var(--stroke-strong);
             border-radius: var(--r-md);
             background: var(--surface);
             color: var(--text);
             font: inherit;
-            font-size: .84rem;
-        }
-        .desktop-etq-number:focus {
-            outline: none;
-            border-color: var(--brand);
-            box-shadow: 0 0 0 1px var(--brand);
-        }
-        #etiquetado-length {
-            min-width: 148px;
-        }
-        .desktop-etq-panel {
-            display: none;
-            padding: 12px;
-            border-bottom: 1px solid var(--stroke);
-            background: rgba(255,255,255,.72);
-        }
-        .desktop-etq-panel.is-open {
-            display: block;
-        }
-        .desktop-etq-panel__head {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            margin-bottom: 12px;
-            flex-wrap: wrap;
-        }
-        .desktop-etq-panel__title {
-            margin: 0;
-            font-size: .84rem;
+            font-size: .8rem;
             font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
         }
-        .desktop-etq-panel__copy {
-            margin: 4px 0 0;
+        .desktop-etq-filterbtn svg { width: 15px; height: 15px; }
+        .desktop-etq-filterbtn:hover { background: var(--surface-sunken); }
+        .desktop-etq-filterbtn.is-active { border-color: var(--brand); color: var(--brand); }
+        .desktop-etq-filterbtn__badge {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 5px;
+            border-radius: 999px;
+            background: var(--brand);
+            color: var(--on-brand);
+            font-size: .68rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+        .desktop-etq-filterbtn__badge.is-visible { display: inline-flex; }
+
+        /* ===== Drawer de filtros y ajustes ===== */
+        .desktop-drawer { position: fixed; inset: 0; z-index: var(--z-drawer); display: none; }
+        .desktop-drawer.is-open { display: block; }
+        .desktop-drawer__scrim {
+            position: absolute; inset: 0;
+            background: rgba(16, 24, 40, .28);
+            animation: dxfade .14s ease;
+        }
+        .desktop-drawer__panel {
+            position: absolute; top: 0; right: 0;
+            height: 100%;
+            width: min(380px, 100%);
+            display: flex; flex-direction: column;
+            background: var(--surface);
+            border-left: 1px solid var(--stroke);
+            box-shadow: var(--shadow-16);
+            animation: dxdrawer .18s ease;
+        }
+        @keyframes dxdrawer { from { transform: translateX(20px); opacity: .5; } to { transform: none; opacity: 1; } }
+        .desktop-drawer__head {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 8px;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--stroke);
+        }
+        .desktop-drawer__title { font-size: .95rem; font-weight: 600; letter-spacing: -.01em; }
+        .desktop-drawer__close {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 28px; height: 28px;
+            border: 0; border-radius: var(--r-md);
+            background: transparent; color: var(--text-2);
+            font-size: 1.2rem; line-height: 1; cursor: pointer;
+        }
+        .desktop-drawer__close:hover { background: var(--surface-sunken); color: var(--text); }
+        .desktop-drawer__body { flex: 1 1 auto; overflow: auto; padding: 14px 16px; }
+        .desktop-drawer__group { display: grid; gap: 12px; }
+        .desktop-drawer__section-title {
+            font-size: .68rem;
+            font-weight: 700;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            color: var(--text-3);
+            margin: 6px 0 -2px;
+        }
+        .desktop-drawer__copy {
+            margin: 0;
             color: var(--text-2);
             font-size: .75rem;
             line-height: 1.5;
         }
+        .desktop-drawer__foot {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 8px;
+            padding: 12px 16px;
+            border-top: 1px solid var(--stroke);
+        }
+        .desktop-drawer__body .desktop-field input,
+        .desktop-drawer__body .desktop-field select { min-height: 34px; }
+
         .desktop-etq-actions {
             display: inline-flex;
             justify-content: flex-end;
@@ -97,13 +131,8 @@
             background: #fff;
             border-color: var(--brand);
         }
-        @media (max-width: 860px) {
-            .desktop-etq-toolbar__group {
-                width: 100%;
-            }
-            .desktop-etq-number {
-                width: 100%;
-            }
+        @media (max-width: 560px) {
+            .desktop-drawer__panel { width: 100%; }
         }
     </style>
 @endpush
@@ -122,89 +151,16 @@
         </a>
     </div>
     <div class="desktop-toolbar__group">
-        <select class="desktop-toolbar__select" id="etiquetado-length">
-            <option value="25">25 por página</option>
-            <option value="50">50 por página</option>
-            <option value="100" selected>100 por página</option>
-        </select>
-        <input type="search" id="etiquetado-search" class="desktop-toolbar__search" placeholder="Buscar SKU, producto o nombre etiqueta">
+        <button type="button" class="desktop-etq-filterbtn" id="btn-etq-filtros" aria-haspopup="dialog" aria-expanded="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+            Filtros y ajustes
+            <span class="desktop-etq-filterbtn__badge" id="etq-filtros-badge"></span>
+        </button>
     </div>
 @endsection
 
 @section('content')
     <section class="desktop-pane">
-        <div class="desktop-etq-toolbar">
-            <div class="desktop-etq-toolbar__group">
-                <select class="desktop-toolbar__select" id="flt-etq-producto">
-                    <option value="">Todos los productos</option>
-                    @foreach($opciones['productos'] as $producto)
-                        <option value="{{ $producto->prd_id }}">{{ $producto->prd_codigo }} - {{ $producto->prd_nombre }}</option>
-                    @endforeach
-                </select>
-                <input type="number" class="desktop-etq-number" id="etq-copias" min="1" max="50" value="1" placeholder="Copias">
-                <button type="button" class="desktop-btn desktop-btn--default" id="btn-toggle-etq-settings">
-                    Ajustes Zebra
-                </button>
-                <button type="button" class="desktop-btn desktop-btn--ghost" id="btn-restaurar-zebra">
-                    Restaurar valores
-                </button>
-            </div>
-            <div class="desktop-etq-toolbar__group" style="font-size:.75rem; color:var(--text-2);">
-                Genera etiquetas PDF Zebra con código de barras, nombre y precio.
-            </div>
-        </div>
-
-        <div class="desktop-etq-panel" id="desktop-etq-panel">
-            <div class="desktop-etq-panel__head">
-                <div>
-                    <h3 class="desktop-etq-panel__title">Configuración Zebra (preparación sin impresora)</h3>
-                    <p class="desktop-etq-panel__copy">Imprime al 100% de escala y sin ajustar a página. Activa el ajuste manual solo si necesitas calibrar medidas físicas o barcode.</p>
-                </div>
-                <label class="desktop-check">
-                    <input type="checkbox" id="etq-usar-config-manual" value="1">
-                    <span class="desktop-check__box">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-                    </span>
-                    <span class="desktop-check__label">Ajustar manualmente</span>
-                </label>
-            </div>
-
-            <div class="desktop-form-grid" id="etq-config-manual-wrap" hidden>
-                <div class="desktop-field">
-                    <label>Ancho (mm)</label>
-                    <input type="number" step="0.1" min="20" max="120" id="etq-width-mm">
-                </div>
-                <div class="desktop-field">
-                    <label>Alto (mm)</label>
-                    <input type="number" step="0.1" min="10" max="120" id="etq-height-mm">
-                </div>
-                <div class="desktop-field">
-                    <label>Margen izq (mm)</label>
-                    <input type="number" step="0.1" min="0" max="10" id="etq-margin-left-mm">
-                </div>
-                <div class="desktop-field">
-                    <label>Margen der (mm)</label>
-                    <input type="number" step="0.1" min="0" max="10" id="etq-margin-right-mm">
-                </div>
-                <div class="desktop-field">
-                    <label>Margen sup (mm)</label>
-                    <input type="number" step="0.1" min="0" max="10" id="etq-margin-top-mm">
-                </div>
-                <div class="desktop-field">
-                    <label>Margen inf (mm)</label>
-                    <input type="number" step="0.1" min="0" max="10" id="etq-margin-bottom-mm">
-                </div>
-                <div class="desktop-field">
-                    <label>Alto barcode (mm)</label>
-                    <input type="number" step="0.1" min="4" max="25" id="etq-barcode-height-mm">
-                </div>
-                <div class="desktop-field">
-                    <label>Grosor barra (xres)</label>
-                    <input type="number" step="0.01" min="0.2" max="0.8" id="etq-barcode-xres">
-                </div>
-            </div>
-        </div>
-
         <div class="desktop-list-wrap">
             <table id="desktop-etiquetado-table" class="desktop-list">
                 <thead>
@@ -224,6 +180,97 @@
             <div id="desktop-etiquetado-pagination" class="desktop-pager"></div>
         </div>
     </section>
+
+    <aside class="desktop-drawer" id="desktop-etq-drawer" aria-hidden="true" role="dialog" aria-label="Filtros y ajustes de etiquetado">
+        <div class="desktop-drawer__scrim" data-close-etq-drawer></div>
+        <div class="desktop-drawer__panel">
+            <div class="desktop-drawer__head">
+                <div class="desktop-drawer__title">Filtros y ajustes</div>
+                <button type="button" class="desktop-drawer__close" data-close-etq-drawer aria-label="Cerrar">&times;</button>
+            </div>
+            <div class="desktop-drawer__body">
+                <div class="desktop-drawer__group">
+                    <div class="desktop-drawer__section-title">Filtros</div>
+                    <div class="desktop-field">
+                        <label>Producto</label>
+                        <select id="flt-etq-producto">
+                            <option value="">Todos los productos</option>
+                            @foreach($opciones['productos'] as $producto)
+                                <option value="{{ $producto->prd_id }}">{{ $producto->prd_codigo }} - {{ $producto->prd_nombre }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="desktop-field">
+                        <label>Copias por etiqueta</label>
+                        <input type="number" id="etq-copias" min="1" max="50" value="1">
+                    </div>
+                    <div class="desktop-field">
+                        <label>Registros por página</label>
+                        <select id="etiquetado-length">
+                            <option value="25">25 por página</option>
+                            <option value="50">50 por página</option>
+                            <option value="100" selected>100 por página</option>
+                        </select>
+                    </div>
+                    <div class="desktop-field">
+                        <label>Buscar</label>
+                        <input type="search" id="etiquetado-search" placeholder="Buscar SKU, producto o nombre etiqueta">
+                    </div>
+
+                    <div class="desktop-drawer__section-title">Ajustes Zebra</div>
+                    <p class="desktop-drawer__copy">Genera etiquetas PDF Zebra con código de barras, nombre y precio. Imprime al 100% de escala y sin ajustar a página; activa el ajuste manual solo si necesitas calibrar medidas físicas o barcode.</p>
+                    <label class="desktop-check">
+                        <input type="checkbox" id="etq-usar-config-manual" value="1">
+                        <span class="desktop-check__box">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                        </span>
+                        <span class="desktop-check__label">Ajustar manualmente</span>
+                    </label>
+
+                    <div class="desktop-form-grid" id="etq-config-manual-wrap" hidden>
+                        <div class="desktop-field">
+                            <label>Ancho (mm)</label>
+                            <input type="number" step="0.1" min="20" max="120" id="etq-width-mm">
+                        </div>
+                        <div class="desktop-field">
+                            <label>Alto (mm)</label>
+                            <input type="number" step="0.1" min="10" max="120" id="etq-height-mm">
+                        </div>
+                        <div class="desktop-field">
+                            <label>Margen izq (mm)</label>
+                            <input type="number" step="0.1" min="0" max="10" id="etq-margin-left-mm">
+                        </div>
+                        <div class="desktop-field">
+                            <label>Margen der (mm)</label>
+                            <input type="number" step="0.1" min="0" max="10" id="etq-margin-right-mm">
+                        </div>
+                        <div class="desktop-field">
+                            <label>Margen sup (mm)</label>
+                            <input type="number" step="0.1" min="0" max="10" id="etq-margin-top-mm">
+                        </div>
+                        <div class="desktop-field">
+                            <label>Margen inf (mm)</label>
+                            <input type="number" step="0.1" min="0" max="10" id="etq-margin-bottom-mm">
+                        </div>
+                        <div class="desktop-field">
+                            <label>Alto barcode (mm)</label>
+                            <input type="number" step="0.1" min="4" max="25" id="etq-barcode-height-mm">
+                        </div>
+                        <div class="desktop-field">
+                            <label>Grosor barra (xres)</label>
+                            <input type="number" step="0.01" min="0.2" max="0.8" id="etq-barcode-xres">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="desktop-drawer__foot">
+                <button type="button" class="desktop-btn desktop-btn--ghost" id="btn-restaurar-zebra">
+                    Restaurar valores
+                </button>
+                <button type="button" class="desktop-btn desktop-btn--primary" data-close-etq-drawer>Listo</button>
+            </div>
+        </div>
+    </aside>
 @endsection
 
 @push('desktop-vendor-scripts')
@@ -263,11 +310,25 @@
                     .replaceAll("'", '&#39;');
             }
 
-            function toggleSettingsPanel(forceState) {
-                const panel = document.getElementById('desktop-etq-panel');
-                const shouldOpen = typeof forceState === 'boolean' ? forceState : !panel.classList.contains('is-open');
-                panel.classList.toggle('is-open', shouldOpen);
-                $('#btn-toggle-etq-settings').toggleClass('desktop-btn--active', shouldOpen);
+            function refreshEtqFilterButton() {
+                let count = 0;
+                if ($('#flt-etq-producto').val()) count += 1;
+                if ($('#etq-usar-config-manual').is(':checked')) count += 1;
+                if ($('#etiquetado-search').val() && $('#etiquetado-search').val().trim()) count += 1;
+                if ($('#etiquetado-length').val() !== '100') count += 1;
+
+                $('#etq-filtros-badge').text(count ? count : '').toggleClass('is-visible', count > 0);
+                $('#btn-etq-filtros').toggleClass('is-active', count > 0);
+            }
+
+            function openEtqDrawer() {
+                $('#desktop-etq-drawer').addClass('is-open').attr('aria-hidden', 'false');
+                $('#btn-etq-filtros').attr('aria-expanded', 'true');
+            }
+
+            function closeEtqDrawer() {
+                $('#desktop-etq-drawer').removeClass('is-open').attr('aria-hidden', 'true');
+                $('#btn-etq-filtros').attr('aria-expanded', 'false');
             }
 
             function cargarConfiguracionZebraBase() {
@@ -283,6 +344,7 @@
 
             function syncManualConfigVisibility() {
                 $('#etq-config-manual-wrap').prop('hidden', !$('#etq-usar-config-manual').is(':checked'));
+                refreshEtqFilterButton();
             }
 
             function obtenerConfiguracionZebraManual() {
@@ -431,8 +493,12 @@
                 });
             }
 
-            $('#btn-toggle-etq-settings').on('click', function () {
-                toggleSettingsPanel();
+            $('#btn-etq-filtros').on('click', openEtqDrawer);
+            $('[data-close-etq-drawer]').on('click', closeEtqDrawer);
+            $(document).on('keydown', function (event) {
+                if (event.key === 'Escape' && $('#desktop-etq-drawer').hasClass('is-open')) {
+                    closeEtqDrawer();
+                }
             });
 
             $('#btn-restaurar-zebra').on('click', function () {
@@ -441,13 +507,18 @@
             });
 
             $('#etq-usar-config-manual').on('change', syncManualConfigVisibility);
-            $('#flt-etq-producto').on('change', recargarEtiquetado);
+            $('#flt-etq-producto').on('change', function () {
+                refreshEtqFilterButton();
+                recargarEtiquetado();
+            });
             $('#btn-recargar-etiquetado').on('click', recargarEtiquetado);
             $('#etiquetado-search').on('input', function () {
+                refreshEtqFilterButton();
                 if (!etiquetasTable) return;
                 etiquetasTable.search(this.value).draw();
             });
             $('#etiquetado-length').on('change', function () {
+                refreshEtqFilterButton();
                 if (!etiquetasTable) return;
                 etiquetasTable.page.len(Number(this.value || 100)).draw();
             });

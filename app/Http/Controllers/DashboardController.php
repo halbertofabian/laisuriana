@@ -4,8 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Almacen;
 use App\Models\Caja;
+use App\Models\CajaSesion;
+use App\Models\ExistenciaAlmacen;
 use App\Models\Linea;
+use App\Models\PedidoPiso;
 use App\Models\Permiso;
+use App\Models\PosVenta;
+use App\Models\Producto;
+use App\Models\ProductoSku;
 use App\Models\Rol;
 use App\Models\Sucursal;
 use App\Models\Usuario;
@@ -24,7 +30,160 @@ class DashboardController extends Controller
 
     public function desktop()
     {
-        return view('desktop.dashboard');
+        return view('desktop.dashboard', $this->obtenerMetricasDashboard());
+    }
+
+    private function obtenerMetricasDashboard(): array
+    {
+        $hoy = now()->startOfDay();
+        $ayer = now()->subDay()->startOfDay();
+        $semanaActual = now()->startOfWeek(Carbon::MONDAY);
+        $mesActual = now()->startOfMonth();
+
+        $ventasHoy = PosVenta::query()
+            ->where('psv_deleted', false)
+            ->whereNull('psv_deleted_at')
+            ->where('psv_estatus', '!=', 'cancelada')
+            ->where('psv_tipo_operacion', 'venta')
+            ->where('psv_fecha_cobro', '>=', $hoy)
+            ->selectRaw('COUNT(*) as total_tickets, COALESCE(SUM(psv_total), 0) as total_ingresos, COALESCE(AVG(psv_total), 0) as ticket_promedio')
+            ->first();
+
+        $ventasAyer = PosVenta::query()
+            ->where('psv_deleted', false)
+            ->whereNull('psv_deleted_at')
+            ->where('psv_estatus', '!=', 'cancelada')
+            ->where('psv_tipo_operacion', 'venta')
+            ->whereBetween('psv_fecha_cobro', [$ayer, $hoy])
+            ->selectRaw('COUNT(*) as total_tickets, COALESCE(SUM(psv_total), 0) as total_ingresos')
+            ->first();
+
+        $ventasSemana = PosVenta::query()
+            ->where('psv_deleted', false)
+            ->whereNull('psv_deleted_at')
+            ->where('psv_estatus', '!=', 'cancelada')
+            ->where('psv_tipo_operacion', 'venta')
+            ->where('psv_fecha_cobro', '>=', $semanaActual)
+            ->selectRaw('COUNT(*) as total_tickets, COALESCE(SUM(psv_total), 0) as total_ingresos')
+            ->first();
+
+        $ventasMes = PosVenta::query()
+            ->where('psv_deleted', false)
+            ->whereNull('psv_deleted_at')
+            ->where('psv_estatus', '!=', 'cancelada')
+            ->where('psv_tipo_operacion', 'venta')
+            ->where('psv_fecha_cobro', '>=', $mesActual)
+            ->selectRaw('COUNT(*) as total_tickets, COALESCE(SUM(psv_total), 0) as total_ingresos')
+            ->first();
+
+        $topVendedores = DB::table('tbl_pos_ventas_psv as psv')
+            ->join('tbl_usuarios_usr as usr', 'usr.usr_id', '=', 'psv.psv_usr_id')
+            ->where('psv.psv_deleted', false)
+            ->whereNull('psv.psv_deleted_at')
+            ->where('psv.psv_estatus', '!=', 'cancelada')
+            ->where('psv.psv_tipo_operacion', 'venta')
+            ->where('psv.psv_fecha_cobro', '>=', $mesActual)
+            ->groupBy('psv.psv_usr_id', 'usr.usr_nombre')
+            ->orderByDesc('total_ventas')
+            ->limit(5)
+            ->selectRaw('usr.usr_nombre as vendedor, COUNT(*) as tickets, COALESCE(SUM(psv.psv_total), 0) as total_ventas')
+            ->get();
+
+        $ventasPorMetodoPago = DB::table('tbl_pos_ventas_psv')
+            ->where('psv_deleted', false)
+            ->whereNull('psv_deleted_at')
+            ->where('psv_estatus', '!=', 'cancelada')
+            ->where('psv_tipo_operacion', 'venta')
+            ->where('psv_fecha_cobro', '>=', $mesActual)
+            ->groupBy('psv_metodo_pago')
+            ->selectRaw('psv_metodo_pago as metodo, COUNT(*) as cantidad, COALESCE(SUM(psv_total), 0) as total')
+            ->get();
+
+        $totalProductos = Producto::query()
+            ->where('prd_deleted', false)
+            ->whereNull('prd_deleted_at')
+            ->where('prd_estatus', 'activo')
+            ->count();
+
+        $totalSkus = ProductoSku::query()
+            ->where('psk_deleted', false)
+            ->whereNull('psk_deleted_at')
+            ->where('psk_estatus', 'activo')
+            ->count();
+
+        $pedidosPendientes = PedidoPiso::query()
+            ->where('pdp_deleted', false)
+            ->whereNull('pdp_deleted_at')
+            ->whereIn('pdp_estatus', ['pendiente', 'en_proceso'])
+            ->count();
+
+        $productosStockBajo = DB::table('tbl_producto_skus_psk as psk')
+            ->leftJoin('tbl_existencias_almacen_exa as exa', function ($join) {
+                $join->on('exa.exa_psk_id', '=', 'psk.psk_id')
+                    ->where('exa.exa_deleted', false)
+                    ->whereNull('exa.exa_deleted_at');
+            })
+            ->leftJoin('tbl_productos_prd as prd', 'prd.prd_id', '=', 'psk.psk_prd_id')
+            ->where('psk.psk_deleted', false)
+            ->whereNull('psk.psk_deleted_at')
+            ->where('psk.psk_estatus', 'activo')
+            ->whereNotNull('psk.psk_stock_minimo')
+            ->where('psk.psk_stock_minimo', '>', 0)
+            ->groupBy('psk.psk_id', 'psk.psk_codigo', 'psk.psk_nombre', 'psk.psk_stock_minimo', 'prd.prd_nombre')
+            ->havingRaw('COALESCE(SUM(exa.exa_existencia), 0) <= psk.psk_stock_minimo')
+            ->selectRaw('psk.psk_codigo, COALESCE(psk.psk_nombre, prd.prd_nombre) as nombre, psk.psk_stock_minimo, COALESCE(SUM(exa.exa_existencia), 0) as stock_actual')
+            ->limit(10)
+            ->get();
+
+        $cajasAbiertas = CajaSesion::query()
+            ->where('cse_estatus', 'abierta')
+            ->count();
+
+        $ventasUltimos7Dias = DB::table('tbl_pos_ventas_psv')
+            ->where('psv_deleted', false)
+            ->whereNull('psv_deleted_at')
+            ->where('psv_estatus', '!=', 'cancelada')
+            ->where('psv_tipo_operacion', 'venta')
+            ->where('psv_fecha_cobro', '>=', now()->subDays(6)->startOfDay())
+            ->groupByRaw('DATE(psv_fecha_cobro)')
+            ->orderByRaw('DATE(psv_fecha_cobro)')
+            ->selectRaw('DATE(psv_fecha_cobro) as fecha, COUNT(*) as tickets, COALESCE(SUM(psv_total), 0) as total')
+            ->get();
+
+        return [
+            'metricas' => [
+                'ventas_hoy' => [
+                    'tickets' => (int) ($ventasHoy->total_tickets ?? 0),
+                    'ingresos' => (float) ($ventasHoy->total_ingresos ?? 0),
+                    'ticket_promedio' => (float) ($ventasHoy->ticket_promedio ?? 0),
+                ],
+                'ventas_ayer' => [
+                    'tickets' => (int) ($ventasAyer->total_tickets ?? 0),
+                    'ingresos' => (float) ($ventasAyer->total_ingresos ?? 0),
+                ],
+                'ventas_semana' => [
+                    'tickets' => (int) ($ventasSemana->total_tickets ?? 0),
+                    'ingresos' => (float) ($ventasSemana->total_ingresos ?? 0),
+                ],
+                'ventas_mes' => [
+                    'tickets' => (int) ($ventasMes->total_tickets ?? 0),
+                    'ingresos' => (float) ($ventasMes->total_ingresos ?? 0),
+                ],
+                'variacion_hoy_vs_ayer' => ($ventasAyer->total_ingresos ?? 0) > 0
+                    ? round((($ventasHoy->total_ingresos - $ventasAyer->total_ingresos) / $ventasAyer->total_ingresos) * 100, 1)
+                    : null,
+            ],
+            'top_vendedores' => $topVendedores,
+            'ventas_por_metodo_pago' => $ventasPorMetodoPago,
+            'operativo' => [
+                'total_productos' => $totalProductos,
+                'total_skus' => $totalSkus,
+                'pedidos_pendientes' => $pedidosPendientes,
+                'cajas_abiertas' => $cajasAbiertas,
+            ],
+            'productos_stock_bajo' => $productosStockBajo,
+            'ventas_ultimos_7_dias' => $ventasUltimos7Dias,
+        ];
     }
 
     public function desktopUsuarios()
