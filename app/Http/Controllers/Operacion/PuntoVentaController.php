@@ -1211,7 +1211,6 @@ class PuntoVentaController extends Controller
         $rows = DB::table('tbl_pos_ventas_psv as psv')
             ->leftJoin('tbl_cajas_caj as caj', 'caj.caj_id', '=', 'psv.psv_caj_id')
             ->leftJoin('tbl_almacenes_alm as alm', 'alm.alm_id', '=', 'psv.psv_alm_id')
-            ->leftJoin('tbl_usuarios_usr as usr', 'usr.usr_id', '=', 'psv.psv_usr_id')
             ->leftJoin('tbl_clientes_cli as cli', 'cli.cli_id', '=', 'psv.psv_cli_id')
             ->where('psv.psv_deleted', false)
             ->whereNull('psv.psv_deleted_at')
@@ -1219,10 +1218,11 @@ class PuntoVentaController extends Controller
                 $buscar = trim((string) $request->query('buscar'));
                 $q->where(function ($sub) use ($buscar): void {
                     $sub->where('psv.psv_folio', 'like', "%{$buscar}%")
-                        ->orWhere('usr.usr_nombre', 'like', "%{$buscar}%")
                         ->orWhere('cli.cli_nombre', 'like', "%{$buscar}%")
                         ->orWhere('cli.cli_apellido_paterno', 'like', "%{$buscar}%")
                         ->orWhere('cli.cli_apellido_materno', 'like', "%{$buscar}%");
+                    app(\App\Services\Operacion\VentaListadoVendedoresService::class)
+                        ->agregarFiltroBusqueda($sub, $buscar);
                 });
             })
             ->when($request->filled('caja_id'), fn ($q) => $q->where('psv.psv_caj_id', (int) $request->query('caja_id')))
@@ -1241,9 +1241,10 @@ class PuntoVentaController extends Controller
                 'psv.psv_tipo_operacion',
                 'caj.caj_nombre',
                 'alm.alm_nombre',
-                'usr.usr_nombre as vendedor',
                 DB::raw("TRIM(CONCAT(COALESCE(cli.cli_nombre,''),' ',COALESCE(cli.cli_apellido_paterno,''),' ',COALESCE(cli.cli_apellido_materno,''))) as cliente"),
             ]);
+
+        $rows = app(\App\Services\Operacion\VentaListadoVendedoresService::class)->agregar($rows);
 
         return response()->json(['data' => $rows]);
     }

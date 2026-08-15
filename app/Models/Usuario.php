@@ -10,15 +10,19 @@ use Illuminate\Notifications\Notifiable;
 class Usuario extends Authenticatable
 {
     use HasFactory;
-    use Notifiable;
     use HasLogicalDeletion;
+    use Notifiable;
 
     public const CREATED_AT = 'usr_created_at';
+
     public const UPDATED_AT = 'usr_updated_at';
+
     public const LOGICAL_DELETED_COLUMN = 'usr_deleted';
+
     public const LOGICAL_DELETED_AT_COLUMN = 'usr_deleted_at';
 
     protected $table = 'tbl_usuarios_usr';
+
     protected $primaryKey = 'usr_id';
 
     protected $fillable = [
@@ -83,6 +87,11 @@ class Usuario extends Authenticatable
             ->wherePivot('cju_deleted', false)
             ->wherePivotNull('cju_deleted_at')
             ->wherePivot('cju_estatus', 'activo');
+    }
+
+    public function perfilComision()
+    {
+        return $this->hasOne(ComisionVendedor::class, 'cve_usr_id', 'usr_id');
     }
 
     public function tienePermiso(string $permisoClave): bool

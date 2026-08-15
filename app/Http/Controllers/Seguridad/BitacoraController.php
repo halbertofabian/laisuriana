@@ -9,9 +9,7 @@ use Illuminate\Http\Request;
 
 class BitacoraController extends Controller
 {
-    public function __construct(private readonly BitacoraService $bitacoraService)
-    {
-    }
+    public function __construct(private readonly BitacoraService $bitacoraService) {}
 
     public function index()
     {
@@ -122,6 +120,14 @@ class BitacoraController extends Controller
             'rol.activar' => 'Activación de rol',
             'rol.inactivar' => 'Inactivación de rol',
             'seguridad.cerrar_sesion' => 'Cierre de sesión',
+            'comisiones.configurar' => 'Configuración de comisiones',
+            'comisiones.calcular' => 'Cálculo de comisiones',
+            'comisiones.recalcular' => 'Recálculo de comisiones',
+            'comisiones.cerrar' => 'Cierre de periodo de comisiones',
+            'comisiones.consulta' => 'Consulta de comisiones',
+            'comisiones.exportar_csv' => 'Exportación de comisiones (CSV)',
+            'comisiones.exportar_xlsx' => 'Exportación de comisiones (Excel)',
+            'comisiones.exportar_pdf' => 'Exportación de comisiones (PDF)',
             default => ucwords(str_replace(['.', '_'], ' ', $accion)),
         };
     }
@@ -135,34 +141,51 @@ class BitacoraController extends Controller
         $nombre = match ($entidad) {
             'tbl_usuarios_usr' => 'Usuario',
             'tbl_roles_rol' => 'Rol',
+            'tbl_comision_periodos_cpe' => 'Periodo de comisiones',
+            'reporte' => 'Reporte',
             default => $entidad,
         };
 
-        return trim($nombre . ($entidadId !== '' ? (' #' . $entidadId) : ''));
+        return trim($nombre.($entidadId !== '' ? (' #'.$entidadId) : ''));
     }
 
     private function describirQueOcurrio(string $accion, string $entidad, string $entidadId, array $payload): string
     {
         $usuarioObjetivo = trim((string) ($payload['usr_usuario'] ?? ''));
         $rolObjetivo = trim((string) ($payload['rol_nombre'] ?? ''));
+        $periodo = trim((string) ($payload['periodo'] ?? $payload['desde'] ?? ''));
+        $vendedores = (int) ($payload['vendedores'] ?? 0);
+        $resultados = (int) ($payload['resultado'] ?? 0);
+        $sufijoPeriodo = $periodo !== '' ? " del periodo {$periodo}" : '';
+        $cantidadResultados = $resultados === 1 ? '1 registro' : "{$resultados} registros";
 
         return match ($accion) {
-            'usuario.crear' => 'Se creó un usuario' . ($usuarioObjetivo !== '' ? ": {$usuarioObjetivo}" : ($entidadId !== '' ? " (ID {$entidadId})" : '.')),
-            'usuario.editar' => 'Se actualizó un usuario' . ($usuarioObjetivo !== '' ? ": {$usuarioObjetivo}" : ($entidadId !== '' ? " (ID {$entidadId})" : '.')),
-            'usuario.activar' => 'Se activó un usuario' . ($usuarioObjetivo !== '' ? ": {$usuarioObjetivo}" : ($entidadId !== '' ? " (ID {$entidadId})" : '.')),
-            'usuario.inactivar' => 'Se inactivó un usuario' . ($usuarioObjetivo !== '' ? ": {$usuarioObjetivo}" : ($entidadId !== '' ? " (ID {$entidadId})" : '.')),
-            'rol.crear' => 'Se creó un rol' . ($rolObjetivo !== '' ? ": {$rolObjetivo}" : ($entidadId !== '' ? " (ID {$entidadId})" : '.')),
-            'rol.editar' => 'Se actualizó un rol' . ($rolObjetivo !== '' ? ": {$rolObjetivo}" : ($entidadId !== '' ? " (ID {$entidadId})" : '.')),
-            'rol.activar' => 'Se activó un rol' . ($rolObjetivo !== '' ? ": {$rolObjetivo}" : ($entidadId !== '' ? " (ID {$entidadId})" : '.')),
-            'rol.inactivar' => 'Se inactivó un rol' . ($rolObjetivo !== '' ? ": {$rolObjetivo}" : ($entidadId !== '' ? " (ID {$entidadId})" : '.')),
+            'usuario.crear' => 'Se creó un usuario'.($usuarioObjetivo !== '' ? ": {$usuarioObjetivo}" : ($entidadId !== '' ? " (ID {$entidadId})" : '.')),
+            'usuario.editar' => 'Se actualizó un usuario'.($usuarioObjetivo !== '' ? ": {$usuarioObjetivo}" : ($entidadId !== '' ? " (ID {$entidadId})" : '.')),
+            'usuario.activar' => 'Se activó un usuario'.($usuarioObjetivo !== '' ? ": {$usuarioObjetivo}" : ($entidadId !== '' ? " (ID {$entidadId})" : '.')),
+            'usuario.inactivar' => 'Se inactivó un usuario'.($usuarioObjetivo !== '' ? ": {$usuarioObjetivo}" : ($entidadId !== '' ? " (ID {$entidadId})" : '.')),
+            'rol.crear' => 'Se creó un rol'.($rolObjetivo !== '' ? ": {$rolObjetivo}" : ($entidadId !== '' ? " (ID {$entidadId})" : '.')),
+            'rol.editar' => 'Se actualizó un rol'.($rolObjetivo !== '' ? ": {$rolObjetivo}" : ($entidadId !== '' ? " (ID {$entidadId})" : '.')),
+            'rol.activar' => 'Se activó un rol'.($rolObjetivo !== '' ? ": {$rolObjetivo}" : ($entidadId !== '' ? " (ID {$entidadId})" : '.')),
+            'rol.inactivar' => 'Se inactivó un rol'.($rolObjetivo !== '' ? ": {$rolObjetivo}" : ($entidadId !== '' ? " (ID {$entidadId})" : '.')),
             'seguridad.cerrar_sesion' => 'El usuario cerró su sesión.',
+            'comisiones.configurar' => ($payload['antes'] ?? null) === null
+                ? 'Se configuró por primera vez el periodo de comisiones'.($periodo !== '' ? " {$periodo}." : '.')
+                : 'Se actualizó la configuración de comisiones'.$sufijoPeriodo.'.',
+            'comisiones.calcular' => "Se calcularon las comisiones{$sufijoPeriodo} para {$vendedores} vendedores.",
+            'comisiones.recalcular' => "Se recalcularon las comisiones{$sufijoPeriodo} para {$vendedores} vendedores.",
+            'comisiones.cerrar' => 'Se cerró el periodo de comisiones'.($periodo !== '' ? " {$periodo}." : '.'),
+            'comisiones.consulta' => "Se consultó el reporte de comisiones{$sufijoPeriodo}; se obtuvo {$cantidadResultados}.",
+            'comisiones.exportar_csv' => "Se exportó el reporte de comisiones{$sufijoPeriodo} en formato CSV con {$cantidadResultados}.",
+            'comisiones.exportar_xlsx' => "Se exportó el reporte de comisiones{$sufijoPeriodo} en formato Excel con {$cantidadResultados}.",
+            'comisiones.exportar_pdf' => "Se exportó el reporte de comisiones{$sufijoPeriodo} en formato PDF con {$cantidadResultados}.",
             default => $this->resumenEntidad($entidad, $entidadId),
         };
     }
 
     private function resumenPayload(mixed $payload): string
     {
-        if (!is_array($payload) || $payload === []) {
+        if (! is_array($payload) || $payload === []) {
             return 'Sin detalle adicional';
         }
 
@@ -171,16 +194,26 @@ class BitacoraController extends Controller
             'usr_estatus' => 'Estatus',
             'rol_nombre' => 'Rol',
             'rol_estatus' => 'Estatus rol',
+            'periodo' => 'Periodo',
+            'vendedores' => 'Vendedores',
+            'antes' => 'Antes',
+            'despues' => 'Después',
+            'reporte' => 'Reporte',
+            'desde' => 'Desde',
+            'hasta' => 'Hasta',
+            'filtros' => 'Filtros',
+            'estado_periodo' => 'Estado del periodo',
+            'resultado' => 'Registros',
         ];
 
         $partes = [];
         foreach ($payload as $clave => $valor) {
             $claveLimpia = $etiquetas[$clave] ?? $clave;
-            $partes[] = $claveLimpia . ': ' . (is_scalar($valor) ? (string) $valor : json_encode($valor));
+            $partes[] = $claveLimpia.': '.(is_scalar($valor) ? (string) $valor : json_encode($valor));
         }
 
         $texto = implode(' | ', $partes);
 
-        return mb_strlen($texto) > 140 ? mb_substr($texto, 0, 140) . '...' : $texto;
+        return mb_strlen($texto) > 140 ? mb_substr($texto, 0, 140).'...' : $texto;
     }
 }

@@ -2,13 +2,13 @@
 
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Demo\DataTableDemoController;
 use App\Http\Controllers\Desktop\OperacionCatalogoComercialController;
+use App\Http\Controllers\Desktop\OperacionEtiquetasController;
 use App\Http\Controllers\Desktop\OperacionGestionConfiguracionesController;
 use App\Http\Controllers\Desktop\OperacionInventarioController;
-use App\Http\Controllers\Desktop\OperacionEtiquetasController;
-use App\Http\Controllers\Demo\DataTableDemoController;
-use App\Http\Controllers\Operacion\CatalogoComercialController;
 use App\Http\Controllers\Operacion\CajaController;
+use App\Http\Controllers\Operacion\CatalogoComercialController;
 use App\Http\Controllers\Operacion\ChecklistEntregableController;
 use App\Http\Controllers\Operacion\ClienteController;
 use App\Http\Controllers\Operacion\EscaneoProductoController;
@@ -17,11 +17,12 @@ use App\Http\Controllers\Operacion\PedidoPisoController;
 use App\Http\Controllers\Operacion\PuntoVentaController;
 use App\Http\Controllers\Operacion\SucursalAlmacenController;
 use App\Http\Controllers\Operacion\TicketPersonalizacionController;
+use App\Http\Controllers\Reportes\ComisionController;
+use App\Http\Controllers\Reportes\ReporteController;
 use App\Http\Controllers\Seguridad\BitacoraController;
 use App\Http\Controllers\Seguridad\PermisoController;
 use App\Http\Controllers\Seguridad\RolController;
 use App\Http\Controllers\Seguridad\UsuarioController;
-use App\Http\Controllers\Reportes\ReporteController;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Route;
 
@@ -80,6 +81,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/desktop/reportes/{reporte}/data', [ReporteController::class, 'data'])->name('reportes.data');
     Route::get('/desktop/reportes/{reporte}/exportar/{formato}', [ReporteController::class, 'exportar'])->name('reportes.exportar');
     Route::get('/desktop/reportes/{reporte}', [ReporteController::class, 'show'])->name('reportes.show');
+    Route::post('/desktop/reportes/ventas-comisiones/calcular', [ComisionController::class, 'calcular'])->name('reportes.comisiones.calcular');
+    Route::post('/desktop/reportes/ventas-comisiones/cerrar', [ComisionController::class, 'cerrar'])->name('reportes.comisiones.cerrar')->middleware('permiso:comisiones.cerrar');
     Route::get('/desktop/reportes/ventas/vendedores/data', [DashboardController::class, 'desktopReportesVentasVendedoresData'])->name('desktop.reportes.ventas.vendedores.data');
     Route::get('/desktop/reportes/ventas/vendedores/exportar/excel', [DashboardController::class, 'desktopReportesVentasVendedoresExportarExcel'])->name('desktop.reportes.ventas.vendedores.exportar.excel');
     Route::get('/desktop/reportes/ventas/vendedores/exportar/pdf', [DashboardController::class, 'desktopReportesVentasVendedoresExportarPdf'])->name('desktop.reportes.ventas.vendedores.exportar.pdf');
@@ -313,6 +316,12 @@ Route::middleware('auth')->group(function () {
         Route::put('/personalizar-ticket', [OperacionGestionConfiguracionesController::class, 'updatePersonalizarTicket'])
             ->name('ticket.update')
             ->middleware('permiso:caja.editar');
+        Route::get('/comisiones', [ComisionController::class, 'configuracion'])
+            ->name('comisiones.index')
+            ->middleware('permiso:comisiones.configurar');
+        Route::put('/comisiones', [ComisionController::class, 'guardar'])
+            ->name('comisiones.update')
+            ->middleware('permiso:comisiones.configurar');
     });
     Route::view('/mobile/descarga-apk', 'mobile.descarga-apk')->name('mobile.descarga-apk');
 

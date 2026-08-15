@@ -10,10 +10,10 @@ class ReporteCatalogoTest extends TestCase
 {
     public function test_catalogo_expone_reportes_individuales_organizados(): void
     {
-        $catalogo = (new ReporteConsultaService())->catalogo();
+        $catalogo = (new ReporteConsultaService)->catalogo();
 
         $this->assertSame(['ventas', 'caja', 'inventario', 'compras'], array_keys($catalogo));
-        $this->assertCount(19, collect($catalogo)->flatMap(fn (array $grupo) => $grupo['reportes']));
+        $this->assertCount(20, collect($catalogo)->flatMap(fn (array $grupo) => $grupo['reportes']));
         $this->assertSame(
             collect($catalogo)->flatMap(fn (array $grupo) => $grupo['reportes'])->pluck('slug')->unique()->count(),
             collect($catalogo)->flatMap(fn (array $grupo) => $grupo['reportes'])->count(),
@@ -23,7 +23,7 @@ class ReporteCatalogoTest extends TestCase
     #[DataProvider('reportesCriticos')]
     public function test_reportes_criticos_tienen_definicion_y_permiso(string $slug, string $permiso): void
     {
-        $definicion = (new ReporteConsultaService())->definicion($slug);
+        $definicion = (new ReporteConsultaService)->definicion($slug);
 
         $this->assertSame($slug, $definicion['slug']);
         $this->assertSame($permiso, $definicion['permiso']);
@@ -40,6 +40,7 @@ class ReporteCatalogoTest extends TestCase
             ['ventas-marca', 'reportes.ventas.ver'],
             ['ventas-modelo', 'reportes.ventas.ver'],
             ['ventas-devoluciones', 'reportes.ventas.ver'],
+            ['ventas-comisiones', 'comisiones.ver'],
             ['caja-cortes', 'reportes.caja.ver'],
             ['caja-retiros', 'reportes.caja.ver'],
             ['inventario-movimientos', 'reportes.inventario.ver'],

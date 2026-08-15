@@ -18,11 +18,15 @@ class Linea extends Model
     ];
 
     public const CREATED_AT = 'lna_created_at';
+
     public const UPDATED_AT = 'lna_updated_at';
+
     public const LOGICAL_DELETED_COLUMN = 'lna_deleted';
+
     public const LOGICAL_DELETED_AT_COLUMN = 'lna_deleted_at';
 
     protected $table = 'tbl_lineas_lna';
+
     protected $primaryKey = 'lna_id';
 
     protected $fillable = [
@@ -47,5 +51,10 @@ class Linea extends Model
             get: fn ($value) => is_string($value) ? mb_strtoupper($value) : $value,
             set: fn ($value) => is_string($value) ? mb_strtoupper(trim($value)) : $value,
         );
+    }
+
+    public function grupoComision()
+    {
+        return $this->belongsToMany(ComisionGrupo::class, 'tbl_comision_grupo_lineas_cgl', 'cgl_lna_id', 'cgl_cgr_id');
     }
 }

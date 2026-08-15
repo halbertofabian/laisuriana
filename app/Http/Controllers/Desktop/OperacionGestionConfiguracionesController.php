@@ -66,6 +66,10 @@ class OperacionGestionConfiguracionesController extends Controller
             return redirect()->route('desktop.operacion.gestion_configuraciones.clientes.index');
         }
 
+        if ($user?->tienePermiso('comisiones.configurar')) {
+            return redirect()->route('desktop.operacion.gestion_configuraciones.comisiones.index');
+        }
+
         abort(403);
     }
 
@@ -742,6 +746,7 @@ class OperacionGestionConfiguracionesController extends Controller
             ['key' => 'tipos_almacen', 'label' => 'Tipos de almacén', 'route' => route('desktop.operacion.gestion_configuraciones.tipos_almacen.index')],
             ['key' => 'cajas', 'label' => 'Cajas', 'route' => route('desktop.operacion.gestion_configuraciones.cajas.index')],
             ['key' => 'clientes', 'label' => 'Clientes', 'route' => route('desktop.operacion.gestion_configuraciones.clientes.index')],
+            ['key' => 'comisiones', 'label' => 'Comisiones', 'route' => route('desktop.operacion.gestion_configuraciones.comisiones.index')],
             ['key' => 'ticket', 'label' => 'Personalizar ticket', 'route' => route('desktop.operacion.gestion_configuraciones.ticket.index')],
             ['key' => 'impresoras', 'label' => 'Impresoras', 'route' => route('desktop.operacion.gestion_configuraciones.impresoras.index')],
         ];

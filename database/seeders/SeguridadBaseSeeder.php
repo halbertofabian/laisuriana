@@ -81,6 +81,12 @@ class SeguridadBaseSeeder extends Seeder
             ['clave' => 'reportes.caja.ver', 'descripcion' => 'Consultar reportes de caja', 'modulo' => 'reportes'],
             ['clave' => 'reportes.inventario.ver', 'descripcion' => 'Consultar reportes de inventario', 'modulo' => 'reportes'],
             ['clave' => 'reportes.exportar', 'descripcion' => 'Exportar reportes', 'modulo' => 'reportes'],
+            ['clave' => 'comisiones.ver', 'descripcion' => 'Consultar el reporte de comisiones', 'modulo' => 'reportes'],
+            ['clave' => 'comisiones.configurar', 'descripcion' => 'Configurar grupos, vendedores y periodos de comisión', 'modulo' => 'reportes'],
+            ['clave' => 'comisiones.calcular', 'descripcion' => 'Calcular comisiones por primera vez', 'modulo' => 'reportes'],
+            ['clave' => 'comisiones.recalcular', 'descripcion' => 'Recalcular periodos de comisión no cerrados', 'modulo' => 'reportes'],
+            ['clave' => 'comisiones.cerrar', 'descripcion' => 'Cerrar periodos de comisión', 'modulo' => 'reportes'],
+            ['clave' => 'comisiones.exportar', 'descripcion' => 'Exportar el reporte de comisiones', 'modulo' => 'reportes'],
         ];
 
         foreach ($permisosBase as $permiso) {
