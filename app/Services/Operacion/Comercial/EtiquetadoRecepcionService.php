@@ -21,9 +21,9 @@ class EtiquetadoRecepcionService
         private readonly EtiquetaProductoRenderer $renderer,
     ) {}
 
-    public function analizar(int $recepcionId): array
+    public function analizar(int $recepcionId, array $etiquetasPorDetalle = []): array
     {
-        $recepcion = RecepcionMercancia::query()->with(['sucursal:scl_id,scl_nombre', 'detalle.sku.valoresAtributo.atributo', 'detalle.sku.producto.linea', 'detalle.sku.producto.unidad'])->findOrFail($recepcionId);
+        $recepcion = RecepcionMercancia::query()->with(['sucursal:scl_id,scl_nombre', 'detalle.sku.valoresAtributo.atributo', 'detalle.sku.producto.linea', 'detalle.sku.producto.unidad', 'detalle.sku.producto.marca:mrc_id,mrc_nombre'])->findOrFail($recepcionId);
         $errores = []; $grupos = [];
         foreach ($recepcion->detalle as $detalle) {
             $sku = $detalle->sku; $producto = $sku?->producto;
@@ -34,22 +34,47 @@ class EtiquetadoRecepcionService
             $regla = EtiquetaUnidadRegla::query()->where('eur_umd_id', $producto->prd_umd_id)->where('eur_estatus','activo')->first();
             if (!$regla) { $errores[] = $this->incidencia($detalle, 'unidad', 'La unidad '.($producto->unidad?->umd_nombre ?: 'sin unidad').' no tiene regla de etiquetas.'); continue; }
             $cantidad = (float) $detalle->rmd_cantidad;
-            $etiquetas = $regla->eur_regla === 'por_detalle_recepcion' ? 1 : (int) $cantidad;
+            $esPorDetalle = $regla->eur_regla === 'por_detalle_recepcion';
+            $etiquetas = $esPorDetalle
+                ? max(1, (int) ($etiquetasPorDetalle[$detalle->rmd_id] ?? 1))
+                : (int) $cantidad;
             if ($cantidad <= 0 || ($regla->eur_regla === 'por_unidad_recibida' && floor($cantidad) !== $cantidad)) { $errores[] = $this->incidencia($detalle, 'cantidad', 'La cantidad recibida no es válida para la regla de unidad.'); continue; }
             $campos = (array) $config->plantilla->etp_campos;
             if (in_array('codigo_barras', $campos, true) && trim((string) ($sku->psk_codigo_barras ?: $sku->psk_codigo)) === '') { $errores[] = $this->incidencia($detalle, 'codigo_barras', 'La plantilla requiere código de barras y el SKU no lo tiene.'); continue; }
             $id = (int) $config->elc_etf_id;
             $grupos[$id] ??= ['formato'=>$config->formato, 'plantilla'=>$config->plantilla, 'lineas'=>[], 'items'=>[], 'productos'=>0, 'etiquetas'=>0];
             $grupos[$id]['lineas'][(int) $producto->prd_lna_id] = $producto->linea->lna_nombre;
-            $grupos[$id]['items'][] = compact('detalle','sku','producto','config','etiquetas');
+            $grupos[$id]['items'][] = compact('detalle','sku','producto','config','etiquetas','esPorDetalle');
             $grupos[$id]['productos']++; $grupos[$id]['etiquetas'] += $etiquetas;
         }
-        return ['recepcion'=>$recepcion, 'grupos'=>array_values($grupos), 'errores'=>$errores, 'puede_generar'=>empty($errores) && !empty($grupos)];
+        foreach ($grupos as &$grupo) {
+            usort($grupo['items'], function (array $a, array $b): int {
+                return [$this->textoOrdenProducto($a), $this->textoOrdenColor($a), (string) $a['sku']->psk_codigo]
+                    <=> [$this->textoOrdenProducto($b), $this->textoOrdenColor($b), (string) $b['sku']->psk_codigo];
+            });
+        }
+        unset($grupo);
+
+        $ajustesPorDetalle = collect($grupos)
+            ->flatMap(fn (array $grupo) => $grupo['items'])
+            ->filter(fn (array $item) => $item['esPorDetalle'])
+            ->map(fn (array $item) => [
+                'rmd_id' => $item['detalle']->rmd_id,
+                'sku' => $item['sku']->psk_codigo,
+                'nombre_producto' => $item['sku']->psk_nombre ?: $item['producto']->prd_nombre,
+                'cantidad_recibida' => $item['detalle']->rmd_cantidad,
+                'unidad' => $item['producto']->unidad?->umd_nombre,
+                'etiquetas' => $item['etiquetas'],
+            ])
+            ->values()
+            ->all();
+
+        return ['recepcion'=>$recepcion, 'grupos'=>array_values($grupos), 'ajustes_por_detalle'=>$ajustesPorDetalle, 'errores'=>$errores, 'puede_generar'=>empty($errores) && !empty($grupos)];
     }
 
-    public function generar(Request $request, int $recepcionId, string $modo): array
+    public function generar(Request $request, int $recepcionId, string $modo, array $etiquetasPorDetalle = []): array
     {
-        $analisis = $this->analizar($recepcionId);
+        $analisis = $this->analizar($recepcionId, $etiquetasPorDetalle);
         if (!$analisis['puede_generar']) throw ValidationException::withMessages(['etiquetas' => collect($analisis['errores'])->pluck('mensaje')->all()]);
         return DB::transaction(function () use ($request, $analisis, $modo, $recepcionId) {
             $historial = DB::table('tbl_etiqueta_impresiones_eim')->insertGetId(['eim_rme_id'=>$recepcionId,'eim_usuario_id'=>optional($request->user())->usr_id,'eim_modo'=>$modo,'eim_estatus'=>'procesando','eim_total_etiquetas'=>collect($analisis['grupos'])->sum('etiquetas'),'eim_total_productos'=>collect($analisis['grupos'])->sum('productos'),'eim_resumen'=>json_encode($this->resumen($analisis)),'eim_created_at'=>now(),'eim_updated_at'=>now()]);
@@ -127,6 +152,17 @@ class EtiquetadoRecepcionService
         return (array) ($item['config']->plantilla?->etp_campos ?: []);
     }
 
+    private function textoOrdenProducto(array $item): string
+    {
+        return Str::lower(trim((string) ($item['sku']->psk_nombre ?: $item['producto']->prd_nombre)));
+    }
+
+    private function textoOrdenColor(array $item): string
+    {
+        return Str::lower((string) $item['sku']->valoresAtributo
+            ->first(fn ($valor) => Str::lower((string) ($valor->atributo?->atr_nombre ?? '')) === 'color')?->vat_valor);
+    }
+
     private function dibujarEtiqueta(TCPDF $pdf, EtiquetaFormato $f, array $campos, array $d, float $offsetX = 0, float $offsetY = 0, ?float $anchoEtiqueta = null, ?float $altoEtiqueta = null): void
     {
         $this->renderer->dibujar(
@@ -145,7 +181,7 @@ class EtiquetadoRecepcionService
             ],
         );
     }
-    private function datosEtiqueta($recepcion, array $i): array { $p=$i['producto'];$s=$i['sku'];$attrs=$s->valoresAtributo->mapWithKeys(fn($v)=>[Str::lower($v->atributo?->atr_nombre ?? '')=>$v->vat_valor]);return ['nombre_producto'=>$s->psk_nombre?:$p->prd_nombre,'sku'=>$s->psk_codigo,'codigo_barras'=>$s->psk_codigo_barras?:$s->psk_codigo,'precio'=>'$'.number_format((float)$s->psk_precio,2),'linea'=>$p->linea?->lna_nombre,'unidad'=>$p->unidad?->umd_nombre,'cantidad'=>(string)$i['detalle']->rmd_cantidad,'talla'=>$attrs['talla']??'','color'=>$attrs['color']??'','sucursal'=>$recepcion?->sucursal?->scl_nombre ?? '','folio_recepcion'=>$recepcion?->rme_folio ?? '','fecha_recepcion'=>optional($recepcion?->rme_fecha_captura)->format('d/m/Y') ?? '']; }
+    private function datosEtiqueta($recepcion, array $i): array { $p=$i['producto'];$s=$i['sku'];$attrs=$s->valoresAtributo->mapWithKeys(fn($v)=>[Str::lower($v->atributo?->atr_nombre ?? '')=>$v->vat_valor]);return ['nombre_producto'=>$s->psk_nombre?:$p->prd_nombre,'sku'=>$s->psk_codigo,'codigo_barras'=>$s->psk_codigo_barras?:$s->psk_codigo,'precio'=>'$'.number_format((float)$s->psk_precio,2),'marca'=>$p->marca?->mrc_nombre,'linea'=>$p->linea?->lna_nombre,'unidad'=>$p->unidad?->umd_nombre,'cantidad'=>(string)$i['detalle']->rmd_cantidad,'talla'=>$attrs['talla']??'','color'=>$attrs['color']??'','sucursal'=>$recepcion?->sucursal?->scl_nombre ?? '','folio_recepcion'=>$recepcion?->rme_folio ?? '','fecha_recepcion'=>optional($recepcion?->rme_fecha_captura)->format('d/m/Y') ?? '','fecha_impresion'=>now()->format('d/m/Y')]; }
     private function resumen(array $a): array { return collect($a['grupos'])->map(fn($g)=>['formato'=>$g['formato']->etf_nombre,'lineas'=>array_values($g['lineas']),'productos'=>$g['productos'],'etiquetas'=>$g['etiquetas']])->all(); }
     private function incidencia($d,string $tipo,string $mensaje): array{return ['rmd_id'=>$d->rmd_id,'sku'=>$d->sku?->psk_codigo,'tipo'=>$tipo,'mensaje'=>$mensaje];}
 }

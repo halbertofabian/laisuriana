@@ -34,6 +34,13 @@ class EtiquetaProductoRenderer
         $sku = $this->sanitizarCodigo((string) ($datos['sku'] ?? ''));
         $codigoBarras = $this->sanitizarCodigo((string) (($datos['codigo_barras'] ?? '') ?: $sku));
 
+        if ($mostrar('fecha_impresion') && !empty($datos['fecha_impresion'])) {
+            $pdf->SetFont('helvetica', '', 4.8 * $escala);
+            $pdf->SetXY($x, $y);
+            $pdf->Cell($anchoUtil, 2 * $escala, 'Impresión: ' . $datos['fecha_impresion'], 0, 0, 'R');
+            $y += 2.7 * $escala;
+        }
+
         if ($mostrar('codigo_barras') && $codigoBarras !== '') {
             $altoBarcode = 9.5 * $escala;
             $pdf->write1DBarcode(
@@ -80,6 +87,13 @@ class EtiquetaProductoRenderer
             $y = $pdf->GetY();
         }
 
+        if ($mostrar('marca') && !empty($datos['marca'])) {
+            $pdf->SetFont('helvetica', '', 4.8 * $escala);
+            $pdf->SetXY($x, $y + (0.3 * $escala));
+            $pdf->Cell($anchoUtil, 2 * $escala, (string) $datos['marca'], 0, 1, 'L');
+            $y = $pdf->GetY();
+        }
+
         $secundarios = collect(['linea', 'talla', 'color', 'unidad', 'cantidad', 'sucursal', 'fecha_recepcion', 'folio_recepcion'])
             ->filter(fn (string $campo) => $mostrar($campo) && !empty($datos[$campo]))
             ->map(fn (string $campo) => (string) $datos[$campo])
@@ -92,10 +106,10 @@ class EtiquetaProductoRenderer
         }
 
         if ($mostrar('precio') && !empty($datos['precio'])) {
-            $precioY = max($pdf->GetY(), $limiteInferior - (4.3 * $escala));
-            $pdf->SetFont('helvetica', 'B', 12.5 * $escala);
-            $pdf->SetXY($x, min($precioY, $limiteInferior));
-            $pdf->Cell($anchoUtil, 3 * $escala, (string) $datos['precio'], 0, 0, 'R');
+            // El precio conserva una franja propia al pie; los datos opcionales no deben empujarlo fuera de la etiqueta.
+            $pdf->SetFont('helvetica', 'B', 11.5 * $escala);
+            $pdf->SetXY($x, $limiteInferior - (5.2 * $escala));
+            $pdf->Cell($anchoUtil, 4.5 * $escala, (string) $datos['precio'], 0, 0, 'R');
         }
     }
 

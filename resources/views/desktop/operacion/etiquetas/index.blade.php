@@ -695,7 +695,7 @@
                         <div class="desktop-etq-section">Campos que aparecerán</div>
                         <div class="desktop-field desktop-field--full">
                             <div class="desktop-etq-checks">
-                                @foreach(['nombre_producto' => 'Producto', 'sku' => 'SKU', 'codigo_barras' => 'Código de barras', 'precio' => 'Precio', 'linea' => 'Línea', 'talla' => 'Talla', 'color' => 'Color', 'unidad' => 'Unidad', 'cantidad' => 'Cantidad/metraje', 'sucursal' => 'Sucursal', 'fecha_recepcion' => 'Fecha recepción', 'folio_recepcion' => 'Folio entrada'] as $clave => $etiqueta)
+                                @foreach(['nombre_producto' => 'Producto', 'sku' => 'SKU', 'codigo_barras' => 'Código de barras', 'precio' => 'Precio', 'marca' => 'Marca', 'linea' => 'Línea', 'talla' => 'Talla', 'color' => 'Color', 'unidad' => 'Unidad', 'cantidad' => 'Cantidad/metraje', 'sucursal' => 'Sucursal', 'fecha_recepcion' => 'Fecha recepción', 'fecha_impresion' => 'Fecha de impresión', 'folio_recepcion' => 'Folio entrada'] as $clave => $etiqueta)
                                     <label class="desktop-check">
                                         <input type="checkbox" name="etp_campos[]" value="{{ $clave }}">
                                         <span class="desktop-check__box">

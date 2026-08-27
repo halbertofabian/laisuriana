@@ -87,7 +87,18 @@ class OperacionEtiquetasController extends Controller
         return response()->json(['message' => 'Regla de unidad guardada.', 'data' => $regla]);
     }
     public function analizarRecepcion(int $recepcion): JsonResponse { return response()->json($this->etiquetas->analizar($recepcion)); }
-    public function generarRecepcion(GenerarEtiquetasRecepcionRequest $request, int $recepcion): JsonResponse { return response()->json(['message'=>'Etiquetas generadas.','data'=>$this->etiquetas->generar($request,$recepcion,$request->validated('modo'))]); }
+    public function generarRecepcion(GenerarEtiquetasRecepcionRequest $request, int $recepcion): JsonResponse
+    {
+        return response()->json([
+            'message' => 'Etiquetas generadas.',
+            'data' => $this->etiquetas->generar(
+                $request,
+                $recepcion,
+                $request->validated('modo'),
+                $request->validated('etiquetas_por_detalle', []),
+            ),
+        ]);
+    }
     public function verArchivo(int $archivo)
     {
         $row = DB::table('tbl_etiqueta_impresion_archivos_eia')->where('eia_id', $archivo)->first();

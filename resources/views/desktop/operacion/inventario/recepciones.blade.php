@@ -698,8 +698,10 @@
             function cerrarModalEtiquetas() { $('#rme-etiquetas-modal').removeClass('is-open').attr('aria-hidden', 'true'); }
             function renderAnalisisEtiquetas(analisis) {
                 const grupos = analisis.grupos || [];
+                const ajustesPorDetalle = analisis.ajustes_por_detalle || [];
                 const errores = analisis.errores || [];
                 const total = grupos.reduce(function (sum, g) { return sum + Number(g.etiquetas || 0); }, 0);
+                const totalAutomatico = total - ajustesPorDetalle.reduce(function (sum, item) { return sum + Number(item.etiquetas || 1); }, 0);
                 const filas = grupos.map(function (g) {
                     const formato = g.formato || {};
                     const lineasArray = Array.isArray(g.lineas) ? g.lineas : Object.values(g.lineas || {});
@@ -717,12 +719,23 @@
                 }, {}));
                 const incidencias = errores.length ? '<div class="desktop-rme-etq-alert"><strong>No se puede generar todavía</strong><ul>' + erroresAgrupados.map(function (e) { const afectados = e.cantidad > 1 ? ' (' + e.cantidad + ' productos)' : ''; const skus = e.skus.length ? '<span class="desktop-rme-etq-lineas">SKU: ' + escapeHtml(e.skus.join(', ')) + (e.cantidad > e.skus.length ? '…' : '') + '</span>' : ''; return '<li>' + escapeHtml(e.mensaje) + afectados + skus + '</li>'; }).join('') + '</ul><div style="margin-top:8px"><a href="' + rutas.etiquetasConfig + '" class="desktop-btn desktop-btn--default">Abrir configuración de etiquetas</a></div></div>' : '';
                 const tabla = grupos.length ? '<table class="desktop-rme-etq-table"><thead><tr><th>Formato y líneas</th><th>Dimensiones</th><th style="text-align:right">Productos</th><th style="text-align:right">Etiquetas</th></tr></thead><tbody>' + filas + '</tbody></table>' : '';
+                const ajustes = ajustesPorDetalle.length ? '<div style="margin-top:18px"><div class="desktop-rme-meta__title" style="margin-bottom:7px">Cantidad por producto</div><div class="desktop-rme-etq-lineas" style="margin-bottom:8px">Estos productos usan la regla “una etiqueta por producto/detalle”. Ajusta cuántas etiquetas deseas generar; el valor inicial es 1.</div><table class="desktop-rme-etq-table"><thead><tr><th>Producto</th><th>Recibido</th><th>Unidad</th><th style="text-align:right">Etiquetas</th></tr></thead><tbody>' + ajustesPorDetalle.map(function (item) {
+                    const producto = [item.sku, item.nombre_producto].filter(Boolean).join(' · ') || 'Producto sin nombre';
+                    return '<tr><td><strong>' + escapeHtml(producto) + '</strong></td><td class="num">' + escapeHtml(String(item.cantidad_recibida || '—')) + '</td><td>' + escapeHtml(item.unidad || '—') + '</td><td class="num"><input type="number" class="desktop-rme-etq-qty" data-rmd-id="' + escapeHtml(String(item.rmd_id)) + '" min="1" max="1000" step="1" value="' + escapeHtml(String(item.etiquetas || 1)) + '" aria-label="Etiquetas para ' + escapeHtml(producto) + '"></td></tr>';
+                }).join('') + '</tbody></table></div>' : '';
                 const modos = analisis.puede_generar ? '<div><div class="desktop-rme-meta__title" style="margin-bottom:7px">¿Cómo deseas preparar los archivos?</div><div class="desktop-rme-etq-modes">' +
                     '<label class="desktop-rme-etq-mode"><input type="radio" name="rme-etq-modo" value="separado" checked><span><strong>Un PDF por formato</strong><span>Recomendado cuando cada tamaño va a una impresora o configuración distinta. Incluye descarga ZIP.</span></span></label>' +
                     '<label class="desktop-rme-etq-mode"><input type="radio" name="rme-etq-modo" value="unico"><span><strong>Un solo PDF</strong><span>Combina todos los tamaños en un documento con páginas de dimensiones diferentes.</span></span></label>' +
                     '</div></div>' : '';
                 $('#rme-etiquetas-title').text('Etiquetas · ' + ((analisis.recepcion || {}).rme_folio || 'Recepción'));
-                $('#rme-etiquetas-body').html('<div class="desktop-rme-etq-summary"><div class="desktop-rme-etq-intro"><div><strong>Resumen antes de generar</strong><span>El sistema agrupó los productos automáticamente según su línea, plantilla y unidad de venta.</span></div><div class="desktop-rme-etq-total">' + num(total) + '<small>etiquetas</small></div></div>' + incidencias + tabla + modos + '</div>');
+                $('#rme-etiquetas-body').html('<div class="desktop-rme-etq-summary"><div class="desktop-rme-etq-intro"><div><strong>Resumen antes de generar</strong><span>El sistema agrupó los productos automáticamente según su línea, plantilla y unidad de venta.</span></div><div class="desktop-rme-etq-total"><span id="rme-etiquetas-total">' + num(total) + '</span><small>etiquetas</small></div></div>' + incidencias + tabla + ajustes + modos + '</div>');
+                $('.desktop-rme-etq-qty').on('input', function () {
+                    const ajustado = $('.desktop-rme-etq-qty').toArray().reduce(function (sum, input) {
+                        const cantidad = Number($(input).val());
+                        return sum + (Number.isInteger(cantidad) && cantidad > 0 ? cantidad : 0);
+                    }, 0);
+                    $('#rme-etiquetas-total').text(num(totalAutomatico + ajustado));
+                });
                 $('#rme-etiquetas-generar').prop('disabled', !analisis.puede_generar).show().text('Generar archivos');
             }
             function imprimirEtiquetas(id) {
@@ -741,8 +754,23 @@
             function generarEtiquetas() {
                 const modo = $('[name="rme-etq-modo"]:checked').val();
                 if (!etiquetasRecepcionId || !modo) return;
+                const etiquetasPorDetalle = {};
+                let cantidadInvalida = false;
+                $('.desktop-rme-etq-qty').each(function () {
+                    const cantidad = Number($(this).val());
+                    const detalleId = String($(this).data('rmd-id'));
+                    if (!Number.isInteger(cantidad) || cantidad < 1 || cantidad > 1000 || !detalleId) {
+                        cantidadInvalida = true;
+                        return false;
+                    }
+                    etiquetasPorDetalle[detalleId] = cantidad;
+                });
+                if (cantidadInvalida) {
+                    notify('Cantidad no válida', 'Indica entre 1 y 1000 etiquetas para cada producto.', 'error');
+                    return;
+                }
                 const $button = $('#rme-etiquetas-generar').prop('disabled', true).text('Generando…');
-                $.ajax({ url: urlFor(rutas.etiquetasGenerar, etiquetasRecepcionId), method: 'POST', data: { modo: modo }, headers: { 'X-CSRF-TOKEN': csrf } }).done(function (r) {
+                $.ajax({ url: urlFor(rutas.etiquetasGenerar, etiquetasRecepcionId), method: 'POST', data: { modo: modo, etiquetas_por_detalle: etiquetasPorDetalle }, headers: { 'X-CSRF-TOKEN': csrf } }).done(function (r) {
                     const data = r.data || {};
                     const files = data.archivos || [];
                     const links = files.map(function (a) { return '<div class="desktop-rme-etq-file"><span>' + escapeHtml(a.nombre || 'Etiquetas.pdf') + '</span><a class="desktop-btn desktop-btn--primary" href="' + urlFor(rutas.etiquetasArchivoVer, a.id) + '" target="_blank" rel="noopener">Ver PDF</a></div>'; }).join('');
