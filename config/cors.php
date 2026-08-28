@@ -2,6 +2,7 @@
 
 return [
     'paths' => [
+        'api/*',
         'mobile/*',
         'pos/*',
         'operacion/pedidos-piso/*',
@@ -11,6 +12,8 @@ return [
     'allowed_methods' => ['*'],
 
     'allowed_origins' => [
+        'http://localhost',
+        'capacitor://localhost',
         'http://localhost:8081',
         'http://127.0.0.1:8081',
     ],

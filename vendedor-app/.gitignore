@@ -1,0 +1,12 @@
+node_modules
+dist
+*.tsbuildinfo
+.env.local
+.env.*.local
+android/.gradle
+android/app/build
+android/keystore.properties
+*.jks
+*.keystore
+releases/*.apk
+qa/**/*.png

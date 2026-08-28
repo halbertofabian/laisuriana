@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
-use App\Models\Usuario;
 use App\Services\AuthService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -66,16 +65,7 @@ class AuthController extends Controller
             return response()->json(['data' => []]);
         }
 
-        $data = Usuario::query()
-            ->select(['usr_usuario', 'usr_nombre'])
-            ->where('usr_estatus', 'activo')
-            ->where(function ($query) use ($q): void {
-                $query->where('usr_usuario', 'like', "%{$q}%")
-                    ->orWhere('usr_nombre', 'like', "%{$q}%");
-            })
-            ->orderBy('usr_usuario')
-            ->limit(10)
-            ->get();
+        $data = app(AuthService::class)->buscarUsuariosActivos($q);
 
         return response()->json(['data' => $data]);
     }

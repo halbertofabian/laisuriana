@@ -1,0 +1,67 @@
+:root {
+  color-scheme: light;
+
+  /* Brand */
+  --color-brand-900: #073b68;
+  --color-brand-800: #1064ae;
+  --color-brand-700: #0d5596;
+  --color-brand-100: #e3f0fb;
+  --color-accent-500: #8cc8fa;
+  --color-accent-100: #edf7ff;
+
+  /* Neutrals */
+  --color-canvas: #f6f8fb;
+  --color-surface: #ffffff;
+  --color-surface-muted: #edf2f7;
+  --color-ink: #17212b;
+  --color-ink-secondary: #65717e;
+  --color-ink-tertiary: #929da7;
+  --color-border: #dde3ea;
+  --color-border-strong: #c8d1db;
+
+  /* Semantic */
+  --color-success: #23765f;
+  --color-success-soft: #e1f2eb;
+  --color-warning: #9a6412;
+  --color-warning-soft: #fff2d4;
+  --color-danger: #ad3b38;
+  --color-danger-soft: #fbe8e6;
+
+  /* Type scale */
+  --font-family: 'Manrope Variable', 'Roboto', system-ui, sans-serif;
+  --text-xs: 0.6875rem;
+  --text-sm: 0.8125rem;
+  --text-md: 0.9375rem;
+  --text-lg: 1.0625rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.625rem;
+  --text-3xl: 2rem;
+
+  /* Spacing: 4px base grid */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  /* Shape */
+  --radius-sm: 0.625rem;
+  --radius-md: 0.875rem;
+  --radius-lg: 1.125rem;
+  --radius-xl: 1.5rem;
+  --radius-pill: 999px;
+
+  /* Elevation */
+  --shadow-sm: 0 1px 2px rgb(7 59 104 / 5%);
+  --shadow-md: 0 8px 24px rgb(7 59 104 / 10%);
+  --shadow-dock: 0 10px 32px rgb(7 59 104 / 20%);
+
+  /* Motion */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --duration-fast: 140ms;
+  --duration-normal: 240ms;
+}

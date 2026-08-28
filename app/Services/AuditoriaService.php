@@ -24,7 +24,7 @@ class AuditoriaService
     {
         BitacoraAccion::query()->create([
             'bac_usr_id' => optional($request->user())->usr_id,
-            'bac_scl_id' => $request->session()->get('sucursal_activa_id'),
+            'bac_scl_id' => $request->hasSession() ? $request->session()->get('sucursal_activa_id') : null,
             'bac_accion' => $accion,
             'bac_entidad' => $entidad,
             'bac_entidad_id' => $entidadId,

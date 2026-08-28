@@ -45,8 +45,23 @@ class PosVentaService
             }
 
             $pedido = !empty($datos['pedido_id'])
-                ? PedidoPiso::query()->find((int) $datos['pedido_id'])
+                ? PedidoPiso::query()->lockForUpdate()->find((int) $datos['pedido_id'])
                 : null;
+            if (!empty($datos['pedido_id']) && !$pedido) {
+                throw ValidationException::withMessages([
+                    'pedido_id' => 'No se encontró el pedido seleccionado.',
+                ]);
+            }
+            if ($pedido && (string) $pedido->pdp_estatus !== 'pendiente_cobro') {
+                throw ValidationException::withMessages([
+                    'pedido_id' => 'El pedido ya no está pendiente de cobro.',
+                ]);
+            }
+            if ($pedido && (int) $pedido->pdp_scl_id !== $sucursalId) {
+                throw ValidationException::withMessages([
+                    'pedido_id' => 'El pedido pertenece a otra sucursal.',
+                ]);
+            }
             $preparacion = $this->prepararDetalleVenta($datos);
             $detalle = $preparacion['detalle'];
             // La cabecera es sólo una referencia para folio y compatibilidad.

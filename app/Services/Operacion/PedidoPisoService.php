@@ -7,10 +7,12 @@ use App\Models\PedidoPiso;
 use App\Models\PedidoPisoDetalle;
 use App\Models\ProductoSku;
 use App\Services\AuditoriaService;
-use InvalidArgumentException;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 
 class PedidoPisoService
 {
@@ -18,8 +20,7 @@ class PedidoPisoService
         private readonly AuditoriaService $auditoriaService,
         private readonly LineaDescuentoService $lineaDescuentoService,
         private readonly ProductoAlmacenResolverService $productoAlmacenResolverService,
-    ) {
-    }
+    ) {}
 
     public function listar(array $filtros = [])
     {
@@ -30,15 +31,15 @@ class PedidoPisoService
                 'usuario:usr_id,usr_nombre,usr_usuario',
                 'cliente:cli_id,cli_nombre,cli_apellido_paterno,cli_apellido_materno,cli_razon_social,cli_telefono,cli_email,cli_rfc,cli_descuento_default',
             ])
-            ->when(!empty($filtros['buscar']), function ($q) use ($filtros): void {
+            ->when(! empty($filtros['buscar']), function ($q) use ($filtros): void {
                 $buscar = trim((string) $filtros['buscar']);
                 $q->where(function ($sub) use ($buscar): void {
                     $sub->where('pdp_folio', 'like', "%{$buscar}%")
                         ->orWhere('pdp_observaciones', 'like', "%{$buscar}%");
                 });
             })
-            ->when(!empty($filtros['pdp_estatus']), fn ($q) => $q->where('pdp_estatus', $filtros['pdp_estatus']))
-            ->when(!empty($filtros['pdp_scl_id']), fn ($q) => $q->where('pdp_scl_id', (int) $filtros['pdp_scl_id']))
+            ->when(! empty($filtros['pdp_estatus']), fn ($q) => $q->where('pdp_estatus', $filtros['pdp_estatus']))
+            ->when(! empty($filtros['pdp_scl_id']), fn ($q) => $q->where('pdp_scl_id', (int) $filtros['pdp_scl_id']))
             ->orderByDesc('pdp_id')
             ->get();
     }
@@ -65,6 +66,57 @@ class PedidoPisoService
         return $this->guardarPedido($request, $datos);
     }
 
+    public function crearLoteMobile(Request $request, string $requestId, array $pedidos): Collection
+    {
+        $usuarioId = (int) optional($request->user())->usr_id;
+
+        try {
+            return DB::transaction(function () use ($request, $requestId, $pedidos, $usuarioId): Collection {
+                $existentes = $this->pedidosMobileExistentes($requestId, $usuarioId);
+                if ($existentes->isNotEmpty()) {
+                    return $existentes;
+                }
+
+                return collect($pedidos)
+                    ->map(function (array $datos) use ($request, $requestId): PedidoPiso {
+                        $datos['pdp_mobile_request_id'] = $requestId;
+
+                        return $this->guardarPedido($request, $datos);
+                    })
+                    ->values();
+            });
+        } catch (QueryException $exception) {
+            if (! $this->esColisionIdempotenciaMobile($exception)) {
+                throw $exception;
+            }
+
+            $existentes = $this->pedidosMobileExistentes($requestId, $usuarioId);
+            if ($existentes->isEmpty()) {
+                throw $exception;
+            }
+
+            return $existentes;
+        }
+    }
+
+    private function pedidosMobileExistentes(string $requestId, int $usuarioId): Collection
+    {
+        return PedidoPiso::query()
+            ->withDeleted()
+            ->where('pdp_mobile_request_id', $requestId)
+            ->where('pdp_usr_id', $usuarioId)
+            ->orderBy('pdp_id')
+            ->get();
+    }
+
+    private function esColisionIdempotenciaMobile(QueryException $exception): bool
+    {
+        $message = strtolower($exception->getMessage());
+
+        return str_contains($message, 'uk_pdp_mobile_request_almacen')
+            || (str_contains($message, 'pdp_mobile_request_id') && str_contains($message, 'pdp_alm_id'));
+    }
+
     public function actualizar(Request $request, int $pedidoId, array $datos): PedidoPiso
     {
         return $this->guardarPedido($request, $datos, $pedidoId);
@@ -73,7 +125,7 @@ class PedidoPisoService
     public function eliminar(Request $request, int $pedidoId): void
     {
         DB::transaction(function () use ($request, $pedidoId): void {
-            $pedido = PedidoPiso::query()->findOrFail($pedidoId);
+            $pedido = PedidoPiso::query()->lockForUpdate()->findOrFail($pedidoId);
 
             if ((string) $pedido->pdp_estatus !== 'pendiente_cobro') {
                 throw ValidationException::withMessages([
@@ -112,9 +164,14 @@ class PedidoPisoService
         });
     }
 
-    public function obtenerPorId(int $pedidoId): PedidoPiso
+    public function obtenerPorId(int $pedidoId, bool $incluirEliminados = false): PedidoPiso
     {
-        return PedidoPiso::query()
+        $query = PedidoPiso::query();
+        if ($incluirEliminados) {
+            $query->withDeleted();
+        }
+
+        return $query
             ->with([
                 'sucursal:scl_id,scl_nombre',
                 'almacen:alm_id,alm_nombre',
@@ -157,12 +214,13 @@ class PedidoPisoService
     {
         $resultado = $this->productoAlmacenResolverService->resolverSkuAlmacen($skuId, $sucursalId);
 
-        if (!empty($resultado['almacen_id'])) {
+        if (! empty($resultado['almacen_id'])) {
             $resultado['pdp_alm_id'] = (int) $resultado['almacen_id'];
         }
 
         return $resultado;
     }
+
     private function guardarPedido(Request $request, array $datos, ?int $pedidoId = null): PedidoPiso
     {
         return DB::transaction(function () use ($request, $datos, $pedidoId): PedidoPiso {
@@ -201,7 +259,7 @@ class PedidoPisoService
                     ? 0.0
                     : (float) ($item['ppd_descuento_cantidad'] ?? $cantidad);
                 $validacion = $this->validarSkuParaAlmacen($skuId, $sucursalId, $almacenId);
-                if (!$validacion['valido']) {
+                if (! $validacion['valido']) {
                     throw ValidationException::withMessages([
                         'partidas' => [$validacion['message']],
                     ]);
@@ -287,7 +345,7 @@ class PedidoPisoService
                 $pedido->update([
                     'pdp_subtotal' => round($subtotal, 2),
                     'pdp_total' => round($total, 2),
-                    'pdp_cli_id' => !empty($datos['pdp_cli_id']) ? (int) $datos['pdp_cli_id'] : null,
+                    'pdp_cli_id' => ! empty($datos['pdp_cli_id']) ? (int) $datos['pdp_cli_id'] : null,
                     'pdp_observaciones' => $datos['pdp_observaciones'] ?? null,
                     'pdp_updated_by_usr_id' => optional($request->user())->usr_id,
                 ]);
@@ -302,12 +360,18 @@ class PedidoPisoService
                         'ppd_updated_by_usr_id' => optional($request->user())->usr_id,
                     ]);
             } else {
+                Almacen::query()
+                    ->where('alm_id', (int) $datos['pdp_alm_id'])
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
                 $pedido = PedidoPiso::query()->create([
                     'pdp_folio' => $this->crearFolio((int) $datos['pdp_alm_id']),
+                    'pdp_mobile_request_id' => $datos['pdp_mobile_request_id'] ?? null,
                     'pdp_scl_id' => (int) $datos['pdp_scl_id'],
                     'pdp_alm_id' => (int) $datos['pdp_alm_id'],
                     'pdp_usr_id' => (int) optional($request->user())->usr_id,
-                    'pdp_cli_id' => !empty($datos['pdp_cli_id']) ? (int) $datos['pdp_cli_id'] : null,
+                    'pdp_cli_id' => ! empty($datos['pdp_cli_id']) ? (int) $datos['pdp_cli_id'] : null,
                     'pdp_estatus' => 'pendiente_cobro',
                     'pdp_subtotal' => round($subtotal, 2),
                     'pdp_total' => round($total, 2),
@@ -357,6 +421,7 @@ class PedidoPisoService
     private function skuPermiteDecimales(?ProductoSku $sku): bool
     {
         $codigoUnidad = strtoupper(trim((string) ($sku?->producto?->unidad?->umd_codigo ?? '')));
+
         return $codigoUnidad === 'M';
     }
 
@@ -372,7 +437,8 @@ class PedidoPisoService
 
         if (abs($cantidad - round($cantidad)) > 0.000001) {
             $productoNombre = (string) ($sku?->producto?->prd_nombre ?? $sku?->psk_nombre ?? 'Este producto');
-            return $productoNombre . ' solo permite cantidades enteras.';
+
+            return $productoNombre.' solo permite cantidades enteras.';
         }
 
         return null;
@@ -380,10 +446,10 @@ class PedidoPisoService
 
     private function crearFolio(int $almacenId): string
     {
-        $prefix = 'PED-' . str_pad((string) $almacenId, 3, '0', STR_PAD_LEFT) . '-';
+        $prefix = 'PED-'.str_pad((string) $almacenId, 3, '0', STR_PAD_LEFT).'-';
         $last = PedidoPiso::query()
             ->withDeleted()
-            ->where('pdp_folio', 'like', $prefix . '%')
+            ->where('pdp_folio', 'like', $prefix.'%')
             ->orderByDesc('pdp_id')
             ->value('pdp_folio');
 
@@ -394,7 +460,7 @@ class PedidoPisoService
         }
 
         do {
-            $folio = $prefix . str_pad((string) $next, 6, '0', STR_PAD_LEFT);
+            $folio = $prefix.str_pad((string) $next, 6, '0', STR_PAD_LEFT);
             $exists = PedidoPiso::query()
                 ->withDeleted()
                 ->where('pdp_folio', $folio)

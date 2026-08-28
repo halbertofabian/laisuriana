@@ -21,6 +21,7 @@ class PedidoPiso extends Model
 
     protected $fillable = [
         'pdp_folio',
+        'pdp_mobile_request_id',
         'pdp_scl_id',
         'pdp_alm_id',
         'pdp_usr_id',
@@ -68,5 +69,11 @@ class PedidoPiso extends Model
         return $this->hasMany(PedidoPisoDetalle::class, 'ppd_pdp_id', 'pdp_id')
             ->where('ppd_deleted', false)
             ->whereNull('ppd_deleted_at');
+    }
+
+    public function detalleConEliminados()
+    {
+        return $this->hasMany(PedidoPisoDetalle::class, 'ppd_pdp_id', 'pdp_id')
+            ->withDeleted();
     }
 }

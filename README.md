@@ -59,6 +59,10 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
 # laisuriana
 
+## Aplicación Android de vendedores
+
+El procedimiento para publicar y verificar el API móvil está en [`docs/despliegue-api-vendedor-android.md`](docs/despliegue-api-vendedor-android.md).
+
 ## Convención UX: autocomplete en formularios
 
 - Los formularios administrativos deben marcarse con `data-ls-autocomplete="admin"`.
