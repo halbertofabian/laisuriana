@@ -77,7 +77,9 @@ class PosCambioVentaService
             }
             $cambio = round(max(0, $pagado - $totalDiferencia), 2);
 
-            $almacenId = (int) ($datos['almacen_id'] ?? 0);
+            // La cabecera es una referencia para el folio. Cada partida define
+            // estrictamente su propio almacén de salida.
+            $almacenId = (int) ($detalleSalida->first()['almacen_id'] ?? 0);
             $sucursalId = (int) ($sesion['caja_scl_id'] ?? 0);
             if ($sucursalId <= 0) {
                 throw ValidationException::withMessages([
@@ -118,7 +120,7 @@ class PosCambioVentaService
             foreach ($devoluciones as $devolucion) {
                 $almacenEntradaId = $this->resolverAlmacenEntrada(
                     $ventaOrigen->psv_scl_id,
-                    $ventaOrigen->psv_alm_id,
+                    (int) ($devolucion['detalle']->pvd_alm_id ?: $ventaOrigen->psv_alm_id),
                     (string) $devolucion['condicion']
                 );
 
@@ -156,6 +158,7 @@ class PosCambioVentaService
                 PosVentaDetalle::query()->create([
                     'pvd_psv_id' => $venta->psv_id,
                     'pvd_psk_id' => $linea['psk_id'],
+                    'pvd_alm_id' => $linea['almacen_id'],
                     'pvd_cantidad' => $linea['cantidad'],
                     'pvd_precio_unitario' => $linea['precio'],
                     'pvd_descuento_porcentaje' => $linea['descuento_porcentaje'],
@@ -169,7 +172,7 @@ class PosCambioVentaService
                 $this->inventarioBaseService->registrarSalida($request, [
                     'min_psk_id' => $linea['psk_id'],
                     'min_scl_id' => $sucursalId,
-                    'min_alm_id' => $almacenId,
+                    'min_alm_id' => $linea['almacen_id'],
                     'min_cantidad' => $linea['cantidad'],
                     'min_documento_tipo' => 'venta_pos',
                     'min_fecha_movimiento' => now()->toDateTimeString(),

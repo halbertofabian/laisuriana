@@ -73,6 +73,7 @@ class ProductoService
                 });
             })
             ->when(!empty($filtros['estatus']), fn ($query) => $query->where('prd_estatus', $filtros['estatus']))
+            ->when(!empty($filtros['almacen_id']), fn ($query, $almacenId) => $query->whereHas('almacenesPermitidos', fn ($q) => $q->where('tbl_almacenes_alm.alm_id', (int) $almacenId)))
             ->orderBy('prd_nombre')
             ->get();
     }

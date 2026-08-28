@@ -31,6 +31,7 @@ class StorePosCambioRequest extends FormRequest
             'monto_tarjeta' => ['nullable', 'numeric', 'min:0'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.psk_id' => ['required', 'integer', 'exists:tbl_producto_skus_psk,psk_id'],
+            'items.*.almacen_id' => ['required', 'integer', 'exists:tbl_almacenes_alm,alm_id'],
             'items.*.cantidad' => ['required', 'numeric', 'gt:0'],
             'items.*.precio' => ['nullable', 'numeric', 'min:0'],
             'items.*.descuento' => ['nullable', 'numeric', 'min:0', 'max:100'],

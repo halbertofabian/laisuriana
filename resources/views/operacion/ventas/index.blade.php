@@ -27,7 +27,7 @@
                 </select>
             </div>
             <div class="col-md-2">
-                <label class="form-label">Almacén</label>
+                <label class="form-label">Almacén involucrado</label>
                 <select class="form-select" id="flt-almacen">
                     <option value="">Todos</option>
                     @foreach($almacenes as $almacen)
@@ -55,7 +55,7 @@
                         <th>Folio</th>
                         <th>Fecha</th>
                         <th>Caja</th>
-                        <th>Almacén</th>
+                        <th>Almacenes involucrados</th>
                         <th>Vendedor</th>
                         <th>Cliente</th>
                         <th>Método</th>
@@ -105,7 +105,7 @@
                 <td class="fw-semibold">${esc(r.psv_folio)}</td>
                 <td>${esc(r.psv_fecha_cobro || '')}</td>
                 <td>${esc(r.caj_nombre || '—')}</td>
-                <td>${esc(r.alm_nombre || '—')}</td>
+                <td>${esc(r.almacenes_involucrados || r.alm_nombre || '—')}</td>
                 <td>${esc(r.vendedor || '—')}</td>
                 <td>${esc((r.cliente || '').trim() || 'Público general')}</td>
                 <td>${esc((r.psv_metodo_pago || '').toUpperCase())}</td>
@@ -135,4 +135,3 @@
 })();
 </script>
 @endpush
-

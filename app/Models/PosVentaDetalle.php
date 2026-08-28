@@ -22,6 +22,7 @@ class PosVentaDetalle extends Model
     protected $fillable = [
         'pvd_psv_id',
         'pvd_psk_id',
+        'pvd_alm_id',
         'pvd_cantidad',
         'pvd_precio_unitario',
         'pvd_descuento_porcentaje',
@@ -51,6 +52,11 @@ class PosVentaDetalle extends Model
     public function sku()
     {
         return $this->belongsTo(ProductoSku::class, 'pvd_psk_id', 'psk_id');
+    }
+
+    public function almacen()
+    {
+        return $this->belongsTo(Almacen::class, 'pvd_alm_id', 'alm_id');
     }
 
     public function vendedor()

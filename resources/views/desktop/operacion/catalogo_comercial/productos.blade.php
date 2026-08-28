@@ -206,6 +206,10 @@
                 grid-template-columns: 1fr;
             }
         }
+        .desktop-product-filterbtn { display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 11px;border:1px solid var(--stroke-strong);border-radius:var(--r-md);background:var(--surface);color:var(--text);font:inherit;font-size:.8rem;font-weight:600;cursor:pointer; }
+        .desktop-product-filterbtn svg { width:15px;height:15px; }.desktop-product-filterbtn.is-active { border-color:var(--brand);color:var(--brand); }
+        .desktop-product-filterbtn__badge { display:none;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--brand);color:var(--on-brand);font-size:.68rem;font-weight:700; }.desktop-product-filterbtn__badge.is-visible { display:inline-flex; }
+        .desktop-drawer { position:fixed;inset:0;z-index:var(--z-drawer);display:none; }.desktop-drawer.is-open { display:block; }.desktop-drawer__scrim { position:absolute;inset:0;background:rgba(16,24,40,.28); }.desktop-drawer__panel { position:absolute;top:0;right:0;height:100%;width:min(380px,100%);display:flex;flex-direction:column;background:var(--surface);border-left:1px solid var(--stroke);box-shadow:var(--shadow-16); }.desktop-drawer__head,.desktop-drawer__foot { display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 16px;border-bottom:1px solid var(--stroke); }.desktop-drawer__foot { border-top:1px solid var(--stroke);border-bottom:0; }.desktop-drawer__body { flex:1;overflow:auto;padding:14px 16px; }.desktop-drawer__group { display:grid;gap:12px; }.desktop-drawer__title { font-size:.95rem;font-weight:600; }.desktop-drawer__close { border:0;background:transparent;font-size:1.2rem;cursor:pointer; }
     </style>
 @endpush
 
@@ -225,19 +229,7 @@
             Actualizar
         </button>
     </div>
-    <div class="desktop-toolbar__group">
-        <select class="desktop-toolbar__select" id="productos-estatus">
-            <option value="">Todos los estatus</option>
-            <option value="activo">Activos</option>
-            <option value="inactivo">Inactivos</option>
-        </select>
-        <select class="desktop-toolbar__select" id="productos-length">
-            <option value="25">25 por página</option>
-            <option value="50">50 por página</option>
-            <option value="100" selected>100 por página</option>
-        </select>
-        <input type="search" id="productos-search" class="desktop-toolbar__search" placeholder="Buscar producto, código, marca o proveedor">
-    </div>
+    <div class="desktop-toolbar__group"><button type="button" class="desktop-product-filterbtn" id="btn-productos-filtros" aria-haspopup="dialog" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M7 12h10M10 18h4"/></svg>Filtros <span class="desktop-product-filterbtn__badge" id="productos-filtros-badge"></span></button></div>
 @endsection
 
 @section('content')
@@ -261,6 +253,10 @@
             <div id="desktop-productos-pagination" class="desktop-pager"></div>
         </div>
     </section>
+
+    <aside class="desktop-drawer" id="desktop-productos-drawer" aria-hidden="true" role="dialog" aria-label="Filtros de productos">
+        <div class="desktop-drawer__scrim" data-close-productos-drawer></div><div class="desktop-drawer__panel"><div class="desktop-drawer__head"><div class="desktop-drawer__title">Filtros y ajustes</div><button type="button" class="desktop-drawer__close" data-close-productos-drawer aria-label="Cerrar">&times;</button></div><div class="desktop-drawer__body"><div class="desktop-drawer__group"><div class="desktop-field"><label>Buscar</label><input type="search" id="productos-search" placeholder="Producto, código, marca o proveedor"></div><div class="desktop-field"><label>Estatus</label><select id="productos-estatus"><option value="">Todos los estatus</option><option value="activo">Activos</option><option value="inactivo">Inactivos</option></select></div><div class="desktop-field"><label>Almacén</label><select id="productos-almacen"><option value="">Todos los almacenes</option>@foreach($opciones['almacenes'] as $almacen)<option value="{{ $almacen->alm_id }}">{{ $almacen->alm_nombre }}</option>@endforeach</select></div><div class="desktop-field"><label>Registros por página</label><select id="productos-length"><option value="25">25 por página</option><option value="50">50 por página</option><option value="100" selected>100 por página</option></select></div></div></div><div class="desktop-drawer__foot"><button type="button" class="desktop-btn desktop-btn--ghost" id="btn-limpiar-productos-filtros">Limpiar</button><button type="button" class="desktop-btn desktop-btn--primary" id="btn-aplicar-productos-filtros">Aplicar filtros</button></div></div>
+    </aside>
 
     <div class="desktop-modal" id="desktop-producto-modal" aria-hidden="true">
         <div class="desktop-modal__dialog" style="width:min(1200px, 100%);">
@@ -682,7 +678,8 @@
                         data: function () {
                             return {
                                 buscar: $('#productos-search').val(),
-                                estatus: $('#productos-estatus').val()
+                                estatus: $('#productos-estatus').val(),
+                                almacen_id: $('#productos-almacen').val()
                             };
                         },
                         dataSrc: 'data'
@@ -1134,11 +1131,25 @@
                 window.location.href = rutas.create;
             });
             $('#btn-recargar-productos').on('click', function () { reloadTable(true); });
-            $('#productos-estatus').on('change', function () { reloadTable(true); });
-            $('#productos-search').on('input', function () { reloadTable(true); });
+            function actualizarIndicadorFiltrosProductos() {
+                let count = 0;
+                if ($('#productos-search').val().trim()) count += 1;
+                if ($('#productos-estatus').val()) count += 1;
+                if ($('#productos-almacen').val()) count += 1;
+                if ($('#productos-length').val() !== '100') count += 1;
+                $('#productos-filtros-badge').text(count || '').toggleClass('is-visible', count > 0);
+                $('#btn-productos-filtros').toggleClass('is-active', count > 0);
+            }
+            function abrirDrawerProductos() { $('#desktop-productos-drawer').addClass('is-open').attr('aria-hidden', 'false'); $('#btn-productos-filtros').attr('aria-expanded', 'true'); }
+            function cerrarDrawerProductos() { $('#desktop-productos-drawer').removeClass('is-open').attr('aria-hidden', 'true'); $('#btn-productos-filtros').attr('aria-expanded', 'false'); }
+            $('#btn-productos-filtros').on('click', abrirDrawerProductos);
+            $(document).on('click', '[data-close-productos-drawer]', cerrarDrawerProductos);
+            $('#btn-aplicar-productos-filtros').on('click', function () { actualizarIndicadorFiltrosProductos(); reloadTable(true); cerrarDrawerProductos(); });
+            $('#btn-limpiar-productos-filtros').on('click', function () { $('#productos-search').val(''); $('#productos-estatus').val(''); $('#productos-almacen').val(''); $('#productos-length').val('100'); actualizarIndicadorFiltrosProductos(); reloadTable(true); });
             $('#productos-length').on('change', function () {
                 if (!productosTable) return;
                 productosTable.page.len(Number(this.value)).draw();
+                actualizarIndicadorFiltrosProductos();
             });
             $('#desktop-productos-pagination').on('click', '.desktop-pager__btn', function () {
                 if ($(this).is(':disabled') || !productosTable) return;

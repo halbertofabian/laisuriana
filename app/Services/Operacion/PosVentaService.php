@@ -37,7 +37,6 @@ class PosVentaService
                 ]);
             }
 
-            $almacenId = (int) $datos['almacen_id'];
             $sucursalId = (int) ($sesion['caja_scl_id'] ?? 0);
             if ($sucursalId <= 0) {
                 throw ValidationException::withMessages([
@@ -50,6 +49,14 @@ class PosVentaService
                 : null;
             $preparacion = $this->prepararDetalleVenta($datos);
             $detalle = $preparacion['detalle'];
+            // La cabecera es sólo una referencia para folio y compatibilidad.
+            // El almacén real se exige y se conserva en cada detalle.
+            $almacenId = (int) ($detalle->first()['almacen_id'] ?? 0);
+            if ($almacenId <= 0) {
+                throw ValidationException::withMessages([
+                    'items' => ['Cada producto debe indicar el almacén desde el que saldrá.'],
+                ]);
+            }
             $this->validarDetalleContraAlmacen($detalle, $sucursalId, $almacenId);
             $subtotal = $preparacion['subtotal'];
             $descuentoGlobalMonto = $this->calcularDescuentoGlobal($subtotal, (float) ($datos['descuento_global'] ?? 0));
@@ -74,7 +81,20 @@ class PosVentaService
                     ]);
                 }
 
-                $creditoCambioMonto = round(min((float) $credito['pcc_saldo_disponible'], $totalAntesCredito), 2);
+                $saldoDisponible = round((float) $credito['pcc_saldo_disponible'], 2);
+                if ($totalAntesCredito + 0.00001 < $saldoDisponible) {
+                    throw ValidationException::withMessages([
+                        'credito_cambio_folio' => sprintf(
+                            'El vale tiene un saldo de $%s y la venta suma $%s. Agrega productos adicionales por $%s; el carrito debe alcanzar al menos $%s para canjearlo completo.',
+                            number_format($saldoDisponible, 2),
+                            number_format($totalAntesCredito, 2),
+                            number_format($saldoDisponible - $totalAntesCredito, 2),
+                            number_format($saldoDisponible, 2),
+                        ),
+                    ]);
+                }
+
+                $creditoCambioMonto = $saldoDisponible;
             }
             $total = round(max(0, $totalAntesCredito - $creditoCambioMonto), 2);
             $metodoPago = $creditoCambioMonto > 0 && $total === 0.0
@@ -132,6 +152,7 @@ class PosVentaService
                 PosVentaDetalle::query()->create([
                     'pvd_psv_id' => $venta->psv_id,
                     'pvd_psk_id' => $linea['psk_id'],
+                    'pvd_alm_id' => $linea['almacen_id'],
                     'pvd_cantidad' => $linea['cantidad'],
                     'pvd_precio_unitario' => $linea['precio'],
                     'pvd_descuento_porcentaje' => $linea['descuento_porcentaje'],
@@ -146,7 +167,7 @@ class PosVentaService
                 $this->inventarioBaseService->registrarSalida($request, [
                     'min_psk_id' => $linea['psk_id'],
                     'min_scl_id' => $sucursalId,
-                    'min_alm_id' => $almacenId,
+                    'min_alm_id' => $linea['almacen_id'],
                     'min_cantidad' => $linea['cantidad'],
                     'min_documento_tipo' => 'venta_pos',
                     'min_fecha_movimiento' => now()->toDateTimeString(),
@@ -208,6 +229,7 @@ class PosVentaService
 
             return [
                 'psk_id' => $skuId,
+                'almacen_id' => (int) ($item['almacen_id'] ?? 0),
                 'usr_id' => $this->resolverVendedorLinea($item, $pedidoDetalles),
                 'cantidad' => $cantidad,
                 'precio' => $precio,
@@ -238,10 +260,16 @@ class PosVentaService
     public function validarDetalleContraAlmacen(iterable $detalle, int $sucursalId, int $almacenId): void
     {
         foreach ($detalle as $linea) {
+            $almacenLineaId = (int) ($linea['almacen_id'] ?? 0);
+            if ($almacenLineaId <= 0) {
+                throw ValidationException::withMessages([
+                    'items' => ['Cada producto debe indicar el almacén desde el que saldrá.'],
+                ]);
+            }
             $resultado = $this->productoAlmacenResolverService->validarSkuParaAlmacen(
                 (int) ($linea['psk_id'] ?? 0),
                 $sucursalId,
-                $almacenId
+                $almacenLineaId
             );
 
             if (!$resultado['valido']) {

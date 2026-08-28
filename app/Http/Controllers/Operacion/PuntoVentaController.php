@@ -674,6 +674,7 @@ class PuntoVentaController extends Controller
             'detalle.sku.producto.categoria:ctg_id,ctg_nombre',
             'detalle.sku.producto.descripcionCatalogo:dsc_id,dsc_nombre',
             'detalle.vendedor:usr_id,usr_nombre,usr_usuario',
+            'detalle.almacen:alm_id,alm_nombre',
             'cambioDevoluciones.sku:psk_id,psk_nombre',
         ]);
         $ticketConfig = PosTicketConfiguracion::query()->first();
@@ -766,7 +767,8 @@ class PuntoVentaController extends Controller
         foreach ($venta->detalle as $d) {
             $nombre = $this->nombreProductoTicket($d->sku);
             $vendedorLinea = trim((string) ($d->vendedor?->usr_usuario ?: $d->vendedor?->usr_nombre ?: ''));
-            $vendedorMostrado = $vendedorLinea !== '' ? $vendedorLinea : ($almacenNombre !== '' ? $almacenNombre : '—');
+            $almacenLinea = trim((string) ($d->almacen?->alm_nombre ?? ''));
+            $vendedorMostrado = $vendedorLinea !== '' ? $vendedorLinea : ($almacenLinea !== '' ? $almacenLinea : ($almacenNombre !== '' ? $almacenNombre : '—'));
             $html .= '<tr>';
             $html .= '<td width="46%">' . e($nombre) . '</td>';
             $html .= '<td width="24%">' . e($vendedorMostrado) . '</td>';
@@ -948,6 +950,7 @@ class PuntoVentaController extends Controller
             'detalle.sku.producto.categoria:ctg_id,ctg_nombre',
             'detalle.sku.producto.descripcionCatalogo:dsc_id,dsc_nombre',
             'detalle.vendedor:usr_id,usr_nombre,usr_usuario',
+            'detalle.almacen:alm_id,alm_nombre',
             'cambioDevoluciones.sku:psk_id,psk_nombre',
         ]);
 
@@ -1226,7 +1229,23 @@ class PuntoVentaController extends Controller
                 });
             })
             ->when($request->filled('caja_id'), fn ($q) => $q->where('psv.psv_caj_id', (int) $request->query('caja_id')))
-            ->when($request->filled('almacen_id'), fn ($q) => $q->where('psv.psv_alm_id', (int) $request->query('almacen_id')))
+            ->when($request->filled('almacen_id'), function ($q) use ($request): void {
+                $almacenId = (int) $request->query('almacen_id');
+
+                $q->where(function ($sub) use ($almacenId): void {
+                    // La cabecera conserva el almacén con el que se inició la venta para
+                    // compatibilidad histórica; los detalles son la fuente de verdad.
+                    $sub->where('psv.psv_alm_id', $almacenId)
+                        ->orWhereExists(function ($detalle) use ($almacenId): void {
+                            $detalle->selectRaw('1')
+                                ->from('tbl_pos_venta_detalle_pvd as pvd_alm')
+                                ->whereColumn('pvd_alm.pvd_psv_id', 'psv.psv_id')
+                                ->where('pvd_alm.pvd_alm_id', $almacenId)
+                                ->where('pvd_alm.pvd_deleted', false)
+                                ->whereNull('pvd_alm.pvd_deleted_at');
+                        });
+                });
+            })
             ->when($request->filled('fecha_desde'), fn ($q) => $q->whereDate('psv.psv_fecha_cobro', '>=', (string) $request->query('fecha_desde')))
             ->when($request->filled('fecha_hasta'), fn ($q) => $q->whereDate('psv.psv_fecha_cobro', '<=', (string) $request->query('fecha_hasta')))
             ->orderByDesc('psv.psv_id')
@@ -1243,6 +1262,29 @@ class PuntoVentaController extends Controller
                 'alm.alm_nombre',
                 DB::raw("TRIM(CONCAT(COALESCE(cli.cli_nombre,''),' ',COALESCE(cli.cli_apellido_paterno,''),' ',COALESCE(cli.cli_apellido_materno,''))) as cliente"),
             ]);
+
+        $almacenesPorVenta = collect();
+        if ($rows->isNotEmpty()) {
+            $almacenesPorVenta = DB::table('tbl_pos_venta_detalle_pvd as pvd')
+                ->join('tbl_almacenes_alm as alm_detalle', 'alm_detalle.alm_id', '=', 'pvd.pvd_alm_id')
+                ->whereIn('pvd.pvd_psv_id', $rows->pluck('psv_id'))
+                ->where('pvd.pvd_deleted', false)
+                ->whereNull('pvd.pvd_deleted_at')
+                ->orderBy('alm_detalle.alm_nombre')
+                ->get(['pvd.pvd_psv_id', 'pvd.pvd_alm_id', 'alm_detalle.alm_nombre'])
+                ->groupBy('pvd_psv_id')
+                ->map(fn ($detalles) => $detalles
+                    ->unique('pvd_alm_id')
+                    ->pluck('alm_nombre')
+                    ->values());
+        }
+
+        $rows->each(function ($venta) use ($almacenesPorVenta): void {
+            $almacenes = $almacenesPorVenta->get($venta->psv_id, collect());
+            $venta->almacenes_involucrados = $almacenes->isNotEmpty()
+                ? $almacenes->implode(' · ')
+                : ($venta->alm_nombre ?: '—');
+        });
 
         $rows = app(\App\Services\Operacion\VentaListadoVendedoresService::class)->agregar($rows);
 
@@ -1369,7 +1411,8 @@ class PuntoVentaController extends Controller
         foreach ($venta->detalle as $index => $d) {
             $nombre = $this->thermalAscii($this->nombreProductoTicket($d->sku));
             $vendedorLinea = $this->thermalAscii((string) ($d->vendedor?->usr_usuario ?: $d->vendedor?->usr_nombre ?: ''));
-            $meta = trim($vendedorLinea) !== '' ? $vendedorLinea : $almacenNombre;
+            $almacenLinea = $this->thermalAscii((string) ($d->almacen?->alm_nombre ?? ''));
+            $meta = trim($vendedorLinea) !== '' ? $vendedorLinea : ($almacenLinea !== '' ? $almacenLinea : $almacenNombre);
             $qty = number_format((float) $d->pvd_cantidad, 2, '.', ',');
             $importe = '$' . number_format((float) $d->pvd_importe, 2, '.', ',');
             $nombreLines = $this->wrapEscpos($nombre, 18);

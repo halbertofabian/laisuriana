@@ -4813,19 +4813,6 @@ function posApp() {
                 return false;
             }
 
-            if (this.ventaAlmacenId) {
-                const valido = await this.validarProductoContraAlmacen(item.psk_id, this.ventaAlmacenId, sucursalId);
-                if (!valido) {
-                    return false;
-                }
-
-                return {
-                    ok: true,
-                    almacen_id: Number(this.ventaAlmacenId),
-                    almacen: this.ventaAlmacenNombre || this.obtenerNombreAlmacen(this.ventaAlmacenId),
-                };
-            }
-
             try {
                 const res = await fetch(`${rutaPosResolverProductoAlmacen}?psk_id=${encodeURIComponent(item.psk_id)}&scl_id=${encodeURIComponent(sucursalId)}`, {
                     headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
@@ -5575,6 +5562,18 @@ function posApp() {
                     return;
                 }
 
+                const saldoDisponible = Number(credito.pcc_saldo_disponible || 0);
+                if (totalSeleccion + 0.00001 < saldoDisponible) {
+                    const faltante = saldoDisponible - totalSeleccion;
+                    this.creditoCambioSeleccionado = null;
+                    this.mensajeCreditoCambio = 'El total de productos debe ser igual o mayor al saldo del vale.';
+                    this.abrirModalAviso(
+                        'El vale no puede aplicarse todavía',
+                        `El vale tiene un saldo de ${this.fmt(saldoDisponible)} y la venta suma ${this.fmt(totalSeleccion)}. Agrega productos adicionales por ${this.fmt(faltante)}; el carrito debe alcanzar al menos ${this.fmt(saldoDisponible)} para canjearlo completo.`
+                    );
+                    return;
+                }
+
                 this.creditoCambioSeleccionado = {
                     id: Number(credito.pcc_id || 0),
                     folio: String(credito.pcc_folio || folio),
@@ -6252,25 +6251,21 @@ function posApp() {
             const resolucion = await this.resolverAlmacenParaProducto(item);
             if (!resolucion?.ok) return;
 
-            if (!this.ventaAlmacenId && resolucion.requiereSeleccion) {
+            if (resolucion.requiereSeleccion) {
                 this.abrirSelectorAlmacenVenta(
                     resolucion.almacenes || [],
-                    'Selecciona el almacén del primer producto',
-                    'Este producto puede salir de varios almacenes. Elige cuál usará este ticket desde la primera marcación.',
+                    'Selecciona el almacén del producto',
+                    'Este producto tiene más de un almacén asignado. Elige desde cuál saldrá esta partida y solicita corregir su configuración en catálogo.',
                     'primer_producto',
                     item
                 );
                 return;
             }
 
-            if (!this.ventaAlmacenId && Number(resolucion.almacen_id || 0) > 0) {
-                this.ventaAlmacenId = String(resolucion.almacen_id);
-                this.ventaAlmacenNombre = resolucion.almacen || this.obtenerNombreAlmacen(this.ventaAlmacenId);
-            }
-
             const vendedor = this.resolverVendedorManual();
             this.agregarItem({
                 pskId: item.psk_id,
+                almacenId: Number(resolucion.almacen_id || 0),
                 origen: 'manual',
                 pedidoDetalleId: null,
                 usrId: vendedor.usrId,
@@ -6324,6 +6319,7 @@ function posApp() {
         agregarItem(producto) {
             const existe = this.items.find(i =>
                 (i.pskId === producto.pskId || i.sku === producto.sku)
+                && Number(i.almacenId || 0) === Number(producto.almacenId || 0)
                 && Number(i.usrId || 0) === Number(producto.usrId || 0)
                 && String(i.origen || 'manual') === String(producto.origen || 'manual')
                 && Number(i.pedidoDetalleId || 0) === Number(producto.pedidoDetalleId || 0)
@@ -6812,15 +6808,6 @@ function posApp() {
                 );
                 return;
             }
-            if (!this.ventaAlmacenId) {
-                this.abrirSelectorAlmacenVenta(
-                    this.almacenesVenta,
-                    'Selecciona el almacén del ticket',
-                    'Este ticket no tiene un almacén definido. Elige uno para continuar con el cobro.',
-                    'ticket'
-                );
-                return;
-            }
             if (this.cambioActivo && Number(this.total || 0) === 0) {
                 this.confirmarCobro(true);
                 return;
@@ -6954,6 +6941,15 @@ function posApp() {
         async confirmarCobro(imprimir = true) {
             if (this.cobrandoVenta || !this.items.length) return;
             this.imprimirDespuesCobro = !!imprimir;
+            const saldoVale = Number(this.creditoCambioSeleccionado?.saldo_disponible || 0);
+            const totalVenta = Number(this.total || 0);
+            if (this.creditoCambioSeleccionado && totalVenta + 0.00001 < saldoVale) {
+                this.abrirModalAviso(
+                    'El vale no puede aplicarse todavía',
+                    `El vale tiene un saldo de ${this.fmt(saldoVale)} y la venta suma ${this.fmt(totalVenta)}. Agrega productos adicionales por ${this.fmt(saldoVale - totalVenta)}; el carrito debe alcanzar al menos ${this.fmt(saldoVale)} para canjearlo completo.`
+                );
+                return;
+            }
             if (this.tipoPagoSeleccionado === 'efectivo') {
                 this.aplicarPagoEfectivo();
             }
@@ -6996,6 +6992,7 @@ function posApp() {
                 monto_tarjeta: Number(montoTarjeta || 0),
                 items: this.items.map((i) => ({
                     psk_id: Number(i.pskId),
+                    almacen_id: Number(i.almacenId || 0),
                     origen: i.origen || 'manual',
                     pedido_detalle_id: i.pedidoDetalleId ? Number(i.pedidoDetalleId) : null,
                     usr_id: i.usrId ? Number(i.usrId) : null,
@@ -7009,7 +7006,7 @@ function posApp() {
             const payload = this.cambioActivo
                 ? {
                     ...payloadBase,
-                    almacen_id: Number(this.ventaAlmacenId),
+                    almacen_id: Number(this.items[0]?.almacenId || 0),
                     venta_origen_id: Number(this.cambioActual.venta_origen_id),
                     devoluciones: (this.cambioActual.devoluciones || []).map((d) => ({
                         pvd_id: Number(d.pvd_id),
@@ -7019,7 +7016,7 @@ function posApp() {
                 }
                 : {
                     ...payloadBase,
-                    almacen_id: Number(this.ventaAlmacenId),
+                    almacen_id: Number(this.items[0]?.almacenId || 0),
                     cliente_id: this.clienteSeleccionado?.cli_id ? Number(this.clienteSeleccionado.cli_id) : null,
                     pedido_id: this.pedidoCargado?.pdp_id ? Number(this.pedidoCargado.pdp_id) : null,
                     credito_cambio_folio: this.creditoCambioSeleccionado?.folio || null,
@@ -7041,7 +7038,7 @@ function posApp() {
                 if (!res.ok) {
                     const err = await res.json().catch(() => ({}));
                     const first = Object.values(err?.errors || {})[0];
-                    alert(first ? first[0] : (err?.message || 'No fue posible cobrar la venta.'));
+                    this.abrirModalAviso('No fue posible cobrar la venta', first ? first[0] : (err?.message || 'No fue posible cobrar la venta.'));
                     return;
                 }
                 const json = await res.json().catch(() => ({}));
@@ -7051,7 +7048,7 @@ function posApp() {
                 await this.cargarVentasDia();
                 if (ventaId > 0 && this.imprimirDespuesCobro) await this.abrirTicketVenta(ventaId);
             } catch (error) {
-                alert('Error de conexión al cobrar la venta.');
+                this.abrirModalAviso('Sin conexión', 'No fue posible cobrar la venta en este momento.');
             } finally {
                 this.cobrandoVenta = false;
             }
@@ -7064,8 +7061,6 @@ function posApp() {
         },
         seleccionarAlmacenYContinuar(almacen) {
             if (!almacen?.alm_id) return;
-            this.ventaAlmacenId = String(almacen.alm_id);
-            this.ventaAlmacenNombre = almacen.alm_nombre || this.obtenerNombreAlmacen(this.ventaAlmacenId);
             const contexto = this.modalAlmacenVentaContexto;
             const productoPendiente = this.productoPendienteAlmacen;
             this.cerrarModalAlmacenVenta();
@@ -7074,6 +7069,7 @@ function posApp() {
                 const vendedor = this.resolverVendedorManual();
                 this.agregarItem({
                     pskId: productoPendiente.psk_id,
+                    almacenId: Number(almacen.alm_id),
                     origen: 'manual',
                     pedidoDetalleId: null,
                     usrId: vendedor.usrId,

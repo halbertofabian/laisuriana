@@ -1149,11 +1149,11 @@
                                             <div class="col-md-4"><label class="form-label">Descripción</label><select class="form-select" name="prd_dsc_id" id="prd_dsc_id"><option value="">Selecciona una descripción</option>@foreach($opciones['descripciones'] as $item)<option value="{{ $item->dsc_id }}">{{ $item->dsc_nombre }}</option>@endforeach</select></div>
                                             <div class="col-md-4"><label class="form-label">Unidad de venta <span class="text-danger">*</span></label><select class="form-select" name="prd_umd_id" id="prd_umd_id" required><option value="">Selecciona una unidad</option>@foreach($opciones['unidades'] as $item)<option value="{{ $item->umd_id }}"{{ $item->umd_es_predeterminada ? ' data-predeterminada="1"' : '' }}>{{ $item->umd_nombre }} ({{ $item->umd_codigo }}){{ $item->umd_es_predeterminada ? ' ★' : '' }}</option>@endforeach</select></div>
                                             <div class="col-12">
-                                                <label class="form-label">Almacenes permitidos <span class="text-danger">*</span></label>
+                                                <label class="form-label">Almacén del producto <span class="text-danger">*</span></label>
                                                 <div id="prd-almacenes-checklist" class="cc-attr-grid">
                                                     @foreach($opciones['almacenes'] as $item)
                                                         <label class="cc-attr-option">
-                                                            <input class="form-check-input me-2" type="checkbox" name="almacen_ids[]" value="{{ $item->alm_id }}">
+                                                            <input class="form-check-input me-2" type="radio" name="almacen_ids[]" value="{{ $item->alm_id }}" required>
                                                             <span class="fw-semibold">{{ $item->alm_nombre }}</span>
                                                             <small class="d-block text-body-secondary">{{ $item->sucursal?->scl_nombre }}</small>
                                                         </label>
@@ -3950,7 +3950,7 @@
             actualizarSelectCategoria(d.prd_lna_id, d.prd_ctg_id);
             $('#prd_dsc_id').val(String(d.prd_dsc_id || ''));
             $('#prd_umd_id').val(String(d.prd_umd_id || ''));
-            $('#prd-almacenes-checklist input[type="checkbox"]').each(function () {
+            $('#prd-almacenes-checklist input[type="radio"]').each(function () {
                 const almacenId = parseInt($(this).val(), 10);
                 const checked = (d.almacen_ids || []).includes(almacenId);
                 $(this).prop('checked', checked);

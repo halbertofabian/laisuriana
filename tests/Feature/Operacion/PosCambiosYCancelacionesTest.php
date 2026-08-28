@@ -46,8 +46,9 @@ class PosCambiosYCancelacionesTest extends TestCase
                 'items' => [
                     [
                         'psk_id' => $sku->psk_id,
+                        'almacen_id' => $almacen->alm_id,
                         'cantidad' => 1,
-                        'precio' => 349.90,
+                        'precio' => 129.50,
                     ],
                 ],
             ]);
@@ -109,6 +110,7 @@ class PosCambiosYCancelacionesTest extends TestCase
                 'items' => [
                     [
                         'psk_id' => $skuMenor->psk_id,
+                        'almacen_id' => $almacen->alm_id,
                         'cantidad' => 1,
                         'precio' => 129.50,
                     ],
@@ -149,6 +151,7 @@ class PosCambiosYCancelacionesTest extends TestCase
                 'items' => [
                     [
                         'psk_id' => $skuNuevo->psk_id,
+                        'almacen_id' => $almacen->alm_id,
                         'cantidad' => 1,
                         'precio' => 349.90,
                     ],
@@ -219,6 +222,7 @@ class PosCambiosYCancelacionesTest extends TestCase
                 'items' => [
                     [
                         'psk_id' => $skuNuevo->psk_id,
+                        'almacen_id' => $almacen->alm_id,
                         'cantidad' => 1,
                         'precio' => 349.90,
                     ],
@@ -266,6 +270,7 @@ class PosCambiosYCancelacionesTest extends TestCase
                 'items' => [
                     [
                         'psk_id' => $skuNuevo->psk_id,
+                        'almacen_id' => $almacen->alm_id,
                         'cantidad' => 1,
                         'precio' => 349.90,
                     ],
@@ -325,6 +330,7 @@ class PosCambiosYCancelacionesTest extends TestCase
                 'items' => [
                     [
                         'psk_id' => $sku->psk_id,
+                        'almacen_id' => $almacenAlterno->alm_id,
                         'cantidad' => 1,
                         'precio' => 349.90,
                     ],
@@ -371,7 +377,7 @@ class PosCambiosYCancelacionesTest extends TestCase
         ]);
     }
 
-    public function test_puede_aplicar_parcialmente_un_vale_de_cambio_en_otra_venta_pos(): void
+    public function test_no_permite_canjear_un_vale_si_la_venta_es_menor_a_su_saldo(): void
     {
         [$admin, $sucursal, $almacen] = $this->prepararEscenarioPos();
         $skuDevuelto = ProductoSku::query()->where('psk_codigo', 'SKU-POLO-CH-AZM')->firstOrFail();
@@ -410,26 +416,23 @@ class PosCambiosYCancelacionesTest extends TestCase
                 'items' => [
                     [
                         'psk_id' => $skuNuevo->psk_id,
+                        'almacen_id' => $almacen->alm_id,
                         'cantidad' => 1,
                         'precio' => 129.50,
                     ],
                 ],
             ]);
 
-        $ventaResponse->assertOk();
+        $ventaResponse
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('credito_cambio_folio');
 
-        $ventaAplicada = PosVenta::query()->where('psv_id', (int) $ventaResponse->json('data.psv_id'))->firstOrFail();
         $credito = PosCreditoCambio::query()->where('pcc_folio', $folio)->firstOrFail();
 
-        $this->assertSame(0.0, (float) $ventaAplicada->psv_total);
-        $this->assertSame(129.5, (float) $ventaAplicada->psv_credito_cambio);
-        $this->assertSame('monedero_electronico', $ventaAplicada->psv_metodo_pago);
-        $this->assertSame(220.4, (float) $credito->pcc_saldo_disponible);
-        $this->assertSame('parcial', $credito->pcc_estatus);
-        $this->assertDatabaseHas('tbl_pos_creditos_cambio_aplicaciones_pca', [
+        $this->assertSame(349.9, (float) $credito->pcc_saldo_disponible);
+        $this->assertSame('disponible', $credito->pcc_estatus);
+        $this->assertDatabaseMissing('tbl_pos_creditos_cambio_aplicaciones_pca', [
             'pca_pcc_id' => $credito->pcc_id,
-            'pca_psv_id' => $ventaAplicada->psv_id,
-            'pca_monto_aplicado' => 129.50,
         ]);
     }
 
@@ -472,8 +475,9 @@ class PosCambiosYCancelacionesTest extends TestCase
                 'items' => [
                     [
                         'psk_id' => $skuNuevo->psk_id,
+                        'almacen_id' => $almacen->alm_id,
                         'cantidad' => 1,
-                        'precio' => 129.50,
+                        'precio' => 349.90,
                     ],
                 ],
             ]);
@@ -671,6 +675,7 @@ class PosCambiosYCancelacionesTest extends TestCase
                 'items' => [
                     [
                         'psk_id' => $sku->psk_id,
+                        'almacen_id' => $almacen->alm_id,
                         'cantidad' => 1,
                         'precio' => 129.50,
                     ],
@@ -799,6 +804,7 @@ class PosCambiosYCancelacionesTest extends TestCase
                 'items' => [
                     [
                         'psk_id' => $skuId,
+                        'almacen_id' => $almacenId,
                         'cantidad' => 1,
                         'precio' => $precio,
                     ],

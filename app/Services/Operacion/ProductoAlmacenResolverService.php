@@ -79,20 +79,14 @@ class ProductoAlmacenResolverService
             ->orderBy('alm.alm_nombre')
             ->get(['alm.alm_id', 'alm.alm_nombre']);
 
-        $almacenesDisponibles = $configurados->isNotEmpty()
-            ? $configurados
-            : Almacen::query()
-                ->where('alm_scl_id', $sucursalId)
-                ->where('alm_estatus', 'activo')
-                ->orderBy('alm_nombre')
-                ->get(['alm_id', 'alm_nombre']);
-
-        if ($almacenesDisponibles->isEmpty()) {
+        if ($configurados->isEmpty()) {
             return [
                 'valido' => false,
-                'message' => 'No hay un almacén disponible para este producto en la sucursal seleccionada.',
+                'message' => 'Este producto no tiene un almacén asignado. Solicita que se corrija su configuración en catálogo.',
             ];
         }
+
+        $almacenesDisponibles = $configurados;
 
         if ($almacenesDisponibles->count() > 1) {
             return [

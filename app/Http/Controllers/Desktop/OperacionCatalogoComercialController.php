@@ -174,6 +174,7 @@ class OperacionCatalogoComercialController extends Controller
         $registros = $this->catalogoBaseService->listar($tipo, [
             'buscar' => $request->query('buscar'),
             'estatus' => $request->query('estatus'),
+            'almacen_id' => $request->query('almacen_id'),
         ]);
 
         $data = $registros->map(function ($item) use ($tipo): array {

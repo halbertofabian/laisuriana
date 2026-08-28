@@ -39,7 +39,7 @@
                         <th>Folio</th>
                         <th>Fecha</th>
                         <th>Caja</th>
-                        <th>Almacén</th>
+                        <th>Almacenes involucrados</th>
                         <th>Vendedor</th>
                         <th>Cliente</th>
                         <th>Método</th>
@@ -104,7 +104,7 @@
                     <td><strong>${esc(row.psv_folio)}</strong></td>
                     <td>${fecha(row.psv_fecha_cobro)}</td>
                     <td>${esc(row.caj_nombre || '—')}</td>
-                    <td>${esc(row.alm_nombre || '—')}</td>
+                    <td>${esc(row.almacenes_involucrados || row.alm_nombre || '—')}</td>
                     <td>${esc(row.vendedor || '—')}</td>
                     <td>${esc((row.cliente || '').trim() || 'Público general')}</td>
                     <td>${esc((row.psv_metodo_pago || '').toUpperCase() || '—')}</td>
