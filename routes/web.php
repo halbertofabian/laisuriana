@@ -17,7 +17,7 @@ use App\Http\Controllers\Operacion\PedidoPisoController;
 use App\Http\Controllers\Operacion\PuntoVentaController;
 use App\Http\Controllers\Operacion\SucursalAlmacenController;
 use App\Http\Controllers\Operacion\TicketPersonalizacionController;
-use App\Http\Controllers\Reportes\ComisionController;
+use App\Http\Controllers\Reportes\ComisionV2Controller;
 use App\Http\Controllers\Reportes\ReporteController;
 use App\Http\Controllers\Seguridad\BitacoraController;
 use App\Http\Controllers\Seguridad\PermisoController;
@@ -81,8 +81,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/desktop/reportes/{reporte}/data', [ReporteController::class, 'data'])->name('reportes.data');
     Route::get('/desktop/reportes/{reporte}/exportar/{formato}', [ReporteController::class, 'exportar'])->name('reportes.exportar');
     Route::get('/desktop/reportes/{reporte}', [ReporteController::class, 'show'])->name('reportes.show');
-    Route::post('/desktop/reportes/ventas-comisiones/calcular', [ComisionController::class, 'calcular'])->name('reportes.comisiones.calcular');
-    Route::post('/desktop/reportes/ventas-comisiones/cerrar', [ComisionController::class, 'cerrar'])->name('reportes.comisiones.cerrar')->middleware('permiso:comisiones.cerrar');
+    Route::post('/desktop/reportes/ventas-comisiones/calcular', [ComisionV2Controller::class, 'aprobar'])->name('reportes.comisiones.calcular')->middleware('permiso:comisiones.aprobar');
+    Route::post('/desktop/reportes/ventas-comisiones/cerrar', [ComisionV2Controller::class, 'cerrar'])->name('reportes.comisiones.cerrar')->middleware('permiso:comisiones.cerrar');
     Route::get('/desktop/reportes/ventas/vendedores/data', [DashboardController::class, 'desktopReportesVentasVendedoresData'])->name('desktop.reportes.ventas.vendedores.data');
     Route::get('/desktop/reportes/ventas/vendedores/exportar/excel', [DashboardController::class, 'desktopReportesVentasVendedoresExportarExcel'])->name('desktop.reportes.ventas.vendedores.exportar.excel');
     Route::get('/desktop/reportes/ventas/vendedores/exportar/pdf', [DashboardController::class, 'desktopReportesVentasVendedoresExportarPdf'])->name('desktop.reportes.ventas.vendedores.exportar.pdf');
@@ -316,11 +316,17 @@ Route::middleware('auth')->group(function () {
         Route::put('/personalizar-ticket', [OperacionGestionConfiguracionesController::class, 'updatePersonalizarTicket'])
             ->name('ticket.update')
             ->middleware('permiso:caja.editar');
-        Route::get('/comisiones', [ComisionController::class, 'configuracion'])
+        Route::get('/comisiones', [ComisionV2Controller::class, 'configuracion'])
             ->name('comisiones.index')
             ->middleware('permiso:comisiones.configurar');
-        Route::put('/comisiones', [ComisionController::class, 'guardar'])
+        Route::put('/comisiones', [ComisionV2Controller::class, 'guardar'])
             ->name('comisiones.update')
+            ->middleware('permiso:comisiones.configurar');
+        Route::post('/comisiones/departamentos', [ComisionV2Controller::class, 'guardarDepartamento'])
+            ->name('comisiones.departamentos.store')
+            ->middleware('permiso:comisiones.configurar');
+        Route::patch('/comisiones/departamentos/{departamento}', [ComisionV2Controller::class, 'alternarDepartamento'])
+            ->name('comisiones.departamentos.estatus')
             ->middleware('permiso:comisiones.configurar');
     });
     Route::view('/mobile/descarga-apk', 'mobile.descarga-apk')->name('mobile.descarga-apk');

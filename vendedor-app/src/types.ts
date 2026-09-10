@@ -110,6 +110,12 @@ export interface UserSuggestion {
   nombre: string;
 }
 
+export interface CommissionProgress {
+  estado: 'sin_meta' | 'en_progreso' | 'meta_alcanzada' | 'cerrado';
+  porcentaje: number | null;
+  mensaje: string;
+}
+
 export type PrinterLanguage = 'escpos' | 'zpl' | 'cpcl';
 
 export type PrinterPaperWidth = '58' | '80';

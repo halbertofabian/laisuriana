@@ -1,343 +1,149 @@
 @extends('layouts.desktop')
-
-@section('title', 'Configuración de comisiones')
-
-@php
-    $cerrado = ($periodo?->cpe_estatus ?? null) === 'cerrado';
-    $bloqueado = $cerrado || $sucursalSoloLectura;
-    $sucursalSeleccionada = $sucursalesComision->firstWhere('scl_id', $sucursalSeleccionadaId);
-    $almacenesSeleccionados = old('almacen_ids', $periodo?->almacenes?->pluck('alm_id')->map(fn ($id) => (string) $id)->all() ?? []);
-    $pasoInicial = $errors->hasAny(['vendedores', 'vendedores.*']) ? 3 : ($errors->hasAny(['grupos', 'grupos.*']) ? 2 : 1);
-    $esRecalculo = $periodo?->cpe_estatus === 'calculado';
-    $puedeEjecutarCalculo = $esRecalculo ? $puedeRecalcular : $puedeCalcular;
-@endphp
+@section('title', 'Metas y comisiones')
 
 @push('desktop-styles')
-    <style>
-        .commission-shell { height: 100%; overflow: auto; background: var(--surface-alt); }
-        .commission-workspace { width: min(100%, 1040px); margin: 0 auto; padding: 20px; }
-        .commission-intro { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
-        .commission-intro h1 { margin: 0; font-size: 1.05rem; font-weight: 650; letter-spacing: -.01em; }
-        .commission-intro p { max-width: 620px; margin: 5px 0 0; color: var(--text-2); font-size: .8rem; line-height: 1.5; }
-        .commission-context { display: grid; grid-template-columns: minmax(190px, 1fr) minmax(170px, .8fr); gap: 10px; min-width: 390px; }
-        .commission-context .desktop-field { min-width: 0; }
-
-        .commission-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 12px; padding: 4px; border: 1px solid var(--stroke); border-radius: var(--r-md); background: var(--surface); box-shadow: var(--shadow-2); }
-        .commission-step { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 9px 11px; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text-2); text-align: left; cursor: pointer; }
-        .commission-step:hover { background: var(--surface-sunken); color: var(--text); }
-        .commission-step.is-active { background: var(--brand-soft); color: var(--brand); }
-        .commission-step__number { display: inline-flex; flex: 0 0 24px; align-items: center; justify-content: center; width: 24px; height: 24px; border: 1px solid var(--stroke-strong); border-radius: 50%; background: var(--surface); font-size: .72rem; font-weight: 700; }
-        .commission-step.is-active .commission-step__number { border-color: var(--brand); background: var(--brand); color: var(--on-brand); }
-        .commission-step__text { min-width: 0; }
-        .commission-step__title, .commission-step__meta { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .commission-step__title { font-size: .78rem; font-weight: 650; }
-        .commission-step__meta { margin-top: 1px; color: var(--text-3); font-size: .68rem; }
-
-        .commission-panel { border: 1px solid var(--stroke); border-radius: var(--r-md); background: var(--surface); box-shadow: var(--shadow-2); overflow: hidden; }
-        .commission-panel[hidden], .commission-group-panel[hidden] { display: none; }
-        .commission-panel__head { padding: 16px 18px; border-bottom: 1px solid var(--divider); }
-        .commission-panel__head h2 { margin: 0; font-size: .94rem; font-weight: 650; }
-        .commission-panel__head p { margin: 4px 0 0; color: var(--text-2); font-size: .76rem; line-height: 1.45; }
-        .commission-panel__body { padding: 18px; }
-        .commission-panel__foot { display: flex; align-items: center; gap: 10px; padding: 12px 18px; border-top: 1px solid var(--divider); background: var(--surface-alt); }
-        .commission-panel__foot-note { margin: 0 auto; color: var(--text-3); font-size: .72rem; }
-        .commission-panel__actions { display: flex; gap: 6px; margin-left: auto; }
-        .commission-block + .commission-block { margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--divider); }
-        .commission-block__head { margin-bottom: 12px; }
-        .commission-block__title { margin: 0; font-size: .84rem; font-weight: 650; }
-        .commission-block__hint { margin: 3px 0 0; color: var(--text-2); font-size: .73rem; line-height: 1.4; }
-
-        .commission-rule-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-        .commission-rule { padding: 13px; border: 1px solid var(--stroke); border-radius: var(--r-md); background: var(--surface-alt); }
-        .commission-rule__number { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; margin-bottom: 9px; border-radius: 50%; background: var(--surface-sunken); color: var(--text-2); font-size: .7rem; font-weight: 700; }
-        .commission-rule .desktop-field label { font-size: .76rem; }
-        .commission-rule__explain { min-height: 34px; margin-top: 7px; color: var(--text-2); font-size: .7rem; line-height: 1.35; }
-        .commission-checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-        .commission-check, .commission-line { display: flex; align-items: flex-start; gap: 8px; padding: 9px 10px; border: 1px solid var(--stroke); border-radius: var(--r-md); background: var(--surface); color: var(--text); font-size: .78rem; cursor: pointer; }
-        .commission-check:has(input:checked), .commission-line:has(input:checked) { border-color: var(--brand); background: var(--brand-soft); }
-        .commission-check input, .commission-line input { margin-top: 2px; }
-
-        .commission-group-tabs { display: inline-flex; gap: 2px; margin-bottom: 14px; padding: 2px; border-radius: var(--r-md); background: var(--surface-sunken); }
-        .commission-group-tab { height: 29px; padding: 0 14px; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text-2); font: inherit; font-size: .78rem; font-weight: 600; cursor: pointer; }
-        .commission-group-tab.is-active { background: var(--surface); color: var(--brand); box-shadow: var(--shadow-2); }
-        .commission-group-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 260px)); gap: 14px; margin-bottom: 18px; }
-        .commission-lines-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
-        .commission-lines-head strong { font-size: .78rem; }
-        .commission-count { color: var(--text-2); font-size: .72rem; }
-        .commission-line-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
-        .commission-line { min-height: 38px; font-size: .76rem; line-height: 1.3; }
-        .commission-help { display: flex; gap: 9px; margin-top: 15px; padding: 10px 11px; border-radius: var(--r-md); background: var(--surface-alt); color: var(--text-2); font-size: .72rem; line-height: 1.4; }
-        .commission-help svg { flex: 0 0 16px; width: 16px; height: 16px; margin-top: 1px; }
-
-        .commission-seller-tools { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
-        .commission-seller-tools input { width: min(100%, 320px); min-height: 32px; padding: 0 10px; border: 1px solid var(--stroke-strong); border-radius: var(--r-md); font: inherit; font-size: .78rem; color: var(--text); outline: none; }
-        .commission-seller-tools input:focus { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand); }
-        .commission-seller-summary { margin-left: auto; color: var(--text-2); font-size: .72rem; }
-        .commission-sellers { display: flex; flex-direction: column; border: 1px solid var(--stroke); border-radius: var(--r-md); overflow: hidden; }
-        .commission-seller + .commission-seller { border-top: 1px solid var(--divider); }
-        .commission-seller.is-disabled .commission-seller__main { background: var(--surface-alt); }
-        .commission-seller[hidden] { display: none; }
-        .commission-seller__main { display: grid; grid-template-columns: minmax(190px, 1.4fr) minmax(120px, .65fr) minmax(130px, .65fr) auto; align-items: center; gap: 12px; padding: 11px 12px; }
-        .commission-seller__identity { display: flex; align-items: center; gap: 10px; min-width: 0; }
-        .commission-seller__toggle { position: relative; display: inline-flex; flex: 0 0 34px; width: 34px; height: 20px; }
-        .commission-seller__toggle input { position: absolute; opacity: 0; }
-        .commission-seller__toggle span { width: 34px; height: 20px; border: 1px solid var(--stroke-strong); border-radius: 10px; background: var(--surface-sunken); transition: .15s ease; }
-        .commission-seller__toggle span::after { content: ''; display: block; width: 14px; height: 14px; margin: 2px; border-radius: 50%; background: var(--surface); box-shadow: var(--shadow-2); transition: .15s ease; }
-        .commission-seller__toggle input:checked + span { border-color: var(--brand); background: var(--brand); }
-        .commission-seller__toggle input:checked + span::after { transform: translateX(14px); }
-        .commission-seller__name { min-width: 0; }
-        .commission-seller__name strong, .commission-seller__name span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .commission-seller__name strong { font-size: .8rem; }
-        .commission-seller__name span { margin-top: 1px; color: var(--text-3); font-size: .7rem; }
-        .commission-seller__field label { display: block; margin-bottom: 4px; color: var(--text-2); font-size: .68rem; font-weight: 600; }
-        .commission-seller__field input, .commission-seller__field select { width: 100%; min-height: 32px; padding: 0 9px; border: 1px solid var(--stroke-strong); border-radius: var(--r-md); background: var(--surface); color: var(--text); font: inherit; font-size: .78rem; outline: none; }
-        .commission-seller__details-toggle { align-self: end; height: 32px; }
-        .commission-seller__details-toggle svg { transition: transform .15s ease; }
-        .commission-seller.is-expanded .commission-seller__details-toggle svg { transform: rotate(180deg); }
-        .commission-seller__advanced { display: none; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; padding: 12px 14px 14px 56px; border-top: 1px solid var(--divider); background: var(--surface-alt); }
-        .commission-seller.is-expanded .commission-seller__advanced { display: grid; }
-        .commission-no-results { padding: 26px 14px; color: var(--text-2); font-size: .78rem; text-align: center; }
-
-        @media (max-width: 920px) {
-            .commission-line-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-            .commission-seller__advanced { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        }
-        @media (max-width: 720px) {
-            .commission-workspace { padding: 14px; }
-            .commission-intro { flex-direction: column; }
-            .commission-context { width: 100%; min-width: 0; grid-template-columns: 1fr; }
-            .commission-step__meta { display: none; }
-            .commission-step { padding: 8px; }
-            .commission-rule-grid, .commission-checks, .commission-line-grid, .commission-group-fields { grid-template-columns: 1fr; }
-            .commission-seller__main, .commission-seller__advanced { grid-template-columns: 1fr; }
-            .commission-seller__advanced { padding-left: 14px; }
-            .commission-seller__details-toggle { width: 100%; }
-        }
-    </style>
+<style>
+    .commission-v2{display:flex;flex-direction:column;gap:16px;max-width:1180px;margin:0 auto}.commission-hero{padding:22px;border-radius:18px;color:#fff;background:linear-gradient(135deg,#0f6cbd,#17478f);box-shadow:var(--shadow-4)}
+    .commission-hero__top,.commission-row{display:flex;align-items:center;justify-content:space-between;gap:14px}.commission-hero h1{margin:0;font-size:1.42rem}.commission-hero p{margin:6px 0 0;opacity:.88}.commission-status{display:inline-flex;padding:7px 12px;border-radius:999px;font-size:.76rem;font-weight:800;text-transform:uppercase;background:rgba(255,255,255,.16)}
+    .commission-toolbar,.commission-wizard{background:var(--surface);border:1px solid var(--stroke);border-radius:var(--r-lg);box-shadow:var(--shadow-2)}.commission-toolbar{padding:14px 16px;display:flex;align-items:end;gap:12px;flex-wrap:wrap}.commission-toolbar .desktop-field{margin:0;min-width:190px}.commission-toolbar__aside{margin-left:auto;display:flex;align-items:center;gap:8px}
+    .commission-advanced{position:relative}.commission-advanced>summary{list-style:none;cursor:pointer}.commission-advanced>summary::-webkit-details-marker{display:none}.commission-advanced__panel{position:absolute;right:0;top:calc(100% + 8px);z-index:25;width:min(430px,90vw);padding:14px;border:1px solid var(--stroke);border-radius:14px;background:var(--surface);box-shadow:var(--shadow-8)}.commission-create{display:flex;gap:8px;align-items:end;padding-bottom:12px}.commission-create .desktop-field{margin:0;flex:1}.commission-manage__row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 4px;border-top:1px solid var(--divider)}
+    .commission-wizard{overflow:hidden}.commission-stepper{display:grid;grid-template-columns:repeat(4,1fr);padding:18px 20px;border-bottom:1px solid var(--divider);background:var(--surface-sunken)}.commission-stepper__item{position:relative;display:flex;align-items:center;gap:9px;border:0;background:transparent;color:var(--text-2);text-align:left;padding:0 8px;cursor:pointer}.commission-stepper__item:not(:last-child)::after{content:"";position:absolute;left:calc(100% - 12px);right:-12px;top:17px;height:2px;background:var(--stroke)}.commission-stepper__number{position:relative;z-index:1;width:34px;height:34px;display:grid;place-items:center;flex:none;border-radius:50%;border:2px solid var(--stroke-strong);background:var(--surface);font-weight:800}.commission-stepper__text strong,.commission-stepper__text small{display:block}.commission-stepper__text strong{font-size:.83rem}.commission-stepper__text small{margin-top:2px;font-size:.68rem;color:var(--text-3)}.commission-stepper__item.is-active{color:var(--brand)}.commission-stepper__item.is-active .commission-stepper__number,.commission-stepper__item.is-done .commission-stepper__number{border-color:var(--brand);background:var(--brand);color:#fff}.commission-stepper__item.is-done:not(:last-child)::after{background:var(--brand)}
+    .commission-step-panel[hidden]{display:none!important}.commission-step-panel{animation:commission-step-in .18s ease}.commission-step-panel__head{display:flex;gap:14px;align-items:flex-start;padding:24px 26px 17px;border-bottom:1px solid var(--divider)}.commission-step-panel__icon{width:42px;height:42px;display:grid;place-items:center;flex:none;border-radius:12px;background:var(--brand-soft);color:var(--brand);font-size:1.12rem}.commission-step-panel__head h2{margin:0;font-size:1.18rem}.commission-step-panel__head p{margin:5px 0 0;color:var(--text-2);font-size:.84rem;line-height:1.5}.commission-step-panel__body{padding:22px 26px}.commission-step-panel__footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 26px;border-top:1px solid var(--divider);background:var(--surface-sunken)}
+    .commission-choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.commission-choice{display:flex;align-items:center;gap:12px;padding:15px;border:1px solid var(--stroke);border-radius:12px;background:var(--surface);cursor:pointer;transition:.15s}.commission-choice:hover{border-color:var(--brand)}.commission-choice input{width:18px;height:18px}.commission-choice:has(input:checked){border-color:var(--brand);background:var(--brand-soft)}.commission-choice strong,.commission-choice small{display:block}.commission-choice small{margin-top:3px;color:var(--text-2);font-size:.74rem}
+    .commission-departments{display:flex;flex-direction:column;gap:13px}.commission-department{border:1px solid var(--stroke);border-radius:14px;overflow:hidden}.commission-department__top{display:flex;gap:12px;align-items:center;padding:15px;background:var(--surface-sunken)}.commission-department__top strong{flex:1}.commission-department__body{padding:16px;display:grid;gap:15px}.commission-department.is-disabled{opacity:.56}.commission-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.commission-lines-details{border:1px solid var(--stroke);border-radius:11px;padding:11px 13px}.commission-lines-details summary{cursor:pointer;color:var(--brand);font-size:.8rem;font-weight:700}.commission-lines{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}.commission-line{position:relative}.commission-line input{position:absolute;opacity:0;pointer-events:none}.commission-line span{display:block;padding:7px 10px;border:1px solid var(--stroke);border-radius:999px;color:var(--text-2);font-size:.76rem;cursor:pointer}.commission-line input:checked+span{border-color:var(--brand);background:var(--brand-soft);color:var(--brand);font-weight:700}
+    .commission-reference{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.commission-reference div,.commission-summary-card{padding:12px;border-radius:11px;background:var(--surface-sunken)}.commission-reference span,.commission-summary-card span{display:block;color:var(--text-2);font-size:.68rem;text-transform:uppercase}.commission-reference strong,.commission-summary-card strong{display:block;margin-top:4px;font-size:.9rem}.commission-help{padding:12px 14px;border-radius:10px;background:#eef6ff;color:#154f86;font-size:.79rem;line-height:1.5}.commission-note{color:var(--text-2);font-size:.77rem}.commission-danger-note{padding:12px;border-radius:10px;background:#fff4e5;color:#7a4a00;font-size:.8rem;line-height:1.5}
+    .commission-seller-tools{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.commission-seller-search{width:min(300px,100%);min-height:39px;padding:8px 10px;border:1px solid var(--stroke);border-radius:9px;background:var(--surface);color:var(--text)}.commission-sellers{overflow:auto;border:1px solid var(--stroke);border-radius:12px}.commission-table{width:100%;border-collapse:collapse;min-width:940px}.commission-table th{padding:10px;text-align:left;font-size:.7rem;text-transform:uppercase;color:var(--text-2);background:var(--surface-sunken);border-bottom:1px solid var(--stroke)}.commission-table td{padding:10px;border-bottom:1px solid var(--divider);vertical-align:middle;font-size:.82rem}.commission-table tr:last-child td{border-bottom:0}.commission-table input,.commission-table select{width:100%;min-height:36px;padding:7px 8px;border:1px solid var(--stroke);border-radius:8px;background:var(--surface);color:var(--text)}.commission-table .seller-toggle{width:auto}.commission-estimate__percent{min-width:130px}.commission-progress{height:7px;overflow:hidden;border-radius:999px;background:var(--surface-sunken);margin-top:4px}.commission-progress span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#0f6cbd,#16a36a)}.commission-empty{padding:24px;text-align:center;color:var(--text-2)}
+    .commission-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:18px}.commission-review-section+.commission-review-section{margin-top:20px}.commission-review-section h3{margin:0 0 10px;font-size:.92rem}.commission-final-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}.commission-error{display:none;margin:0 26px 18px;padding:10px 12px;border-radius:9px;background:#fff0f0;color:#a32b2b;font-size:.8rem}.commission-error.is-visible{display:block}
+    @keyframes commission-step-in{from{opacity:.6;transform:translateX(8px)}to{opacity:1;transform:none}}
+    @media(max-width:900px){.commission-stepper__text small{display:none}.commission-stepper__item{justify-content:center}.commission-summary{grid-template-columns:repeat(2,1fr)}.commission-reference{grid-template-columns:1fr}.commission-fields{grid-template-columns:1fr}}
+    @media(max-width:620px){.commission-choice-grid{grid-template-columns:1fr}.commission-stepper{padding:14px 5px}.commission-stepper__item{padding:0 2px;flex-direction:column;text-align:center;gap:5px}.commission-stepper__text strong{font-size:.68rem}.commission-stepper__item:not(:last-child)::after{top:17px;left:calc(50% + 18px);right:calc(-50% + 18px)}.commission-step-panel__head,.commission-step-panel__body{padding-left:16px;padding-right:16px}.commission-step-panel__footer{padding:14px 16px}.commission-summary{grid-template-columns:1fr 1fr}.commission-toolbar__aside{margin-left:0;width:100%;justify-content:flex-start}.commission-create{flex-wrap:wrap}}
+</style>
 @endpush
 
 @section('desktop-toolbar')
-    <div class="desktop-toolbar__group">
-        @include('desktop.operacion.gestion_configuraciones._subnav')
-        <span class="desktop-toolbar__divider"></span>
-        @unless($bloqueado)
-            <button type="submit" class="desktop-btn desktop-btn--primary" form="commission-config-form">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 3h11l3 3v15H5z"/><path d="M8 3v6h8V3M8 21v-7h8v7"/></svg>Guardar
-            </button>
-        @endunless
-        <a class="desktop-btn desktop-btn--ghost" href="{{ route('reportes.show', ['reporte' => 'ventas-comisiones', 'periodo' => $periodoTexto, 'sucursal_id' => $sucursalSeleccionadaId]) }}">Ver reporte</a>
-    </div>
-    <div class="desktop-toolbar__group">
-        @if($periodo && !$bloqueado && $puedeEjecutarCalculo)<button type="submit" class="desktop-btn desktop-btn--ghost" form="commission-calculate-form">{{ $esRecalculo ? 'Recalcular comisión' : 'Calcular comisión' }}</button>@endif
-        @if($periodo?->cpe_estatus === 'calculado' && !$sucursalSoloLectura && $puedeCerrar)<button type="submit" class="desktop-btn desktop-btn--ghost" form="commission-close-form" onclick="return confirm('¿Cerrar este periodo? Después no podrá recalcularse.');">Cerrar periodo</button>@endif
-        @if($periodo)<span class="desktop-status {{ $cerrado ? 'desktop-status--inactive' : 'desktop-status--active' }}">{{ ucfirst($periodo->cpe_estatus) }}</span>@endif
-    </div>
+<div class="page-head"><span class="page-head__title">Metas y comisiones</span><span class="page-head__sub">Asistente mensual paso a paso</span></div>
 @endsection
 
 @section('content')
-    <section class="desktop-pane">
-        <div class="commission-shell"><div class="commission-workspace">
-            <header class="commission-intro">
-                <div><h1>Preparar comisión mensual</h1><p>Completa los tres pasos en orden. La configuración se guarda para el mes seleccionado y después podrás calcular el reporte.</p></div>
-                <div class="commission-context">
-                    <div class="desktop-field">
-                        <label for="commission-branch-picker">Sucursal</label>
-                        <select id="commission-branch-picker">
-                            @foreach($sucursalesComision as $sucursal)
-                                <option value="{{ $sucursal->scl_id }}" @selected((int) $sucursal->scl_id === (int) $sucursalSeleccionadaId)>{{ $sucursal->scl_nombre }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="desktop-field"><label for="commission-period-picker">Mes a configurar</label><input type="month" id="commission-period-picker" value="{{ $periodoTexto }}"></div>
-                </div>
-            </header>
+@php
+    $estado=$periodo?->cmp_estatus??'sin configurar';
+    $bloqueado=$estado==='cerrado';
+    $primerError=collect($errors->keys())->first();
+    $pasoError=str_starts_with((string)$primerError,'almacen')?1:(str_starts_with((string)$primerError,'departamentos')?2:(str_starts_with((string)$primerError,'vendedores')?3:($errors->any()?4:null)));
+    $pasoInicial=$pasoError??($periodo?4:1);
+@endphp
+<div class="commission-v2" data-commission-wizard data-initial-step="{{ $pasoInicial }}">
+    <section class="commission-hero"><div class="commission-hero__top"><div><h1>Configura un periodo sin complicaciones</h1><p>Completa un paso a la vez. Nada se publica al vendedor hasta que apruebes las metas.</p></div><span class="commission-status">{{ str($estado)->headline() }}</span></div></section>
+    @if($errors->any())<div class="alert alert-danger"><strong>No se guardaron los cambios.</strong> Ve al paso marcado y revisa los campos indicados.</div>@endif
+    @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
 
-            @if($errors->any())<div class="alert alert-danger mb-3"><strong>Hay un dato pendiente.</strong> {{ $errors->first() }}</div>@endif
-            @if($cerrado)<div class="alert alert-info mb-3">Este periodo está cerrado. Puedes consultar la configuración, pero ya no modificarla.</div>@endif
-            @if($sucursalSoloLectura)<div class="alert alert-info mb-3"><strong>Vista de consulta:</strong> estás revisando {{ $sucursalSeleccionada?->scl_nombre }}. Para modificar o calcular sus comisiones, primero actívala como sucursal de trabajo.</div>@endif
-            @if($periodo?->cpe_estatus === 'borrador' && !$sucursalSoloLectura)
-                <div class="alert alert-warning mb-3">
-                    <strong>Pendiente de calcular.</strong> La configuración está guardada, pero el reporte no mostrará comisiones hasta generar el cálculo de este mes.
-                    @if($puedeEjecutarCalculo)
-                        <button type="submit" class="desktop-btn desktop-btn--primary ms-2" form="commission-calculate-form">Calcular comisión</button>
-                    @endif
-                </div>
-            @endif
-
-            <nav class="commission-steps" aria-label="Pasos de configuración">
-                <button type="button" class="commission-step" data-commission-step="1"><span class="commission-step__number">1</span><span class="commission-step__text"><span class="commission-step__title">Reglas generales</span><span class="commission-step__meta">Cómo se calcula</span></span></button>
-                <button type="button" class="commission-step" data-commission-step="2"><span class="commission-step__number">2</span><span class="commission-step__text"><span class="commission-step__title">Grupos y líneas</span><span class="commission-step__meta">Qué ventas participan</span></span></button>
-                <button type="button" class="commission-step" data-commission-step="3"><span class="commission-step__number">3</span><span class="commission-step__text"><span class="commission-step__title">Vendedores</span><span class="commission-step__meta">Quiénes reciben comisión</span></span></button>
-            </nav>
-
-            <form id="commission-config-form" method="POST" action="{{ route('desktop.operacion.gestion_configuraciones.comisiones.update') }}" @if($sucursalSoloLectura) onsubmit="return false;" @endif>
-                @csrf @method('PUT')
-                <input type="hidden" name="periodo" value="{{ $periodoTexto }}">
-
-                <section class="commission-panel" data-commission-panel="1">
-                    <div class="commission-panel__head"><h2>Define las reglas del mes</h2><p>Estos valores se aplicarán a todos los vendedores que actives en el paso 3.</p></div>
-                    <div class="commission-panel__body">
-                        <div class="commission-block">
-                            <div class="commission-block__head"><h3 class="commission-block__title">Cálculo de la comisión</h3><p class="commission-block__hint">La secuencia aparece en el mismo orden en que el sistema realiza el cálculo.</p></div>
-                            <div class="commission-rule-grid">
-                                <div class="commission-rule"><span class="commission-rule__number">1</span><div class="desktop-field"><label for="factor_comisionable">Parte de la venta que comisiona</label><div class="input-group"><input id="factor_comisionable" type="number" name="factor_comisionable" min="0" max="100" step="0.01" value="{{ old('factor_comisionable', $periodo?->cpe_factor_comisionable ?? 33) }}" required @disabled($bloqueado)><span class="input-group-text">%</span></div></div><div class="commission-rule__explain">De cada $100 vendidos, esta parte se considera para la comisión.</div></div>
-                                <div class="commission-rule"><span class="commission-rule__number">2</span><div class="desktop-field"><label for="cumplimiento_minimo">Meta mínima para comisionar</label><div class="input-group"><input id="cumplimiento_minimo" type="number" name="cumplimiento_minimo" min="0" step="0.01" value="{{ old('cumplimiento_minimo', $periodo?->cpe_cumplimiento_minimo ?? 100) }}" required @disabled($bloqueado)><span class="input-group-text">%</span></div></div><div class="commission-rule__explain">El vendedor comisiona al alcanzar este porcentaje de su cuota.</div></div>
-                                <div class="commission-rule"><span class="commission-rule__number">3</span><div class="desktop-field"><label for="tasa_general">Tasa de comisión normal</label><div class="input-group"><input id="tasa_general" type="number" name="tasa_general" min="0" max="100" step="0.0001" value="{{ old('tasa_general', $periodo?->cpe_tasa_general ?? 0.9) }}" required @disabled($bloqueado)><span class="input-group-text">%</span></div></div><div class="commission-rule__explain">Se aplica al importe comisionable si el vendedor alcanzó su meta.</div></div>
-                            </div>
-                        </div>
-                        <div class="commission-block">
-                            <div class="commission-block__head"><h3 class="commission-block__title">Almacenes que suman ventas</h3><p class="commission-block__hint">Marca los almacenes que forman parte de este reporte mensual.</p></div>
-                            <div class="commission-checks">@foreach($almacenes as $almacen)<label class="commission-check"><input type="checkbox" name="almacen_ids[]" value="{{ $almacen->alm_id }}" @checked(in_array((string) $almacen->alm_id, array_map('strval', $almacenesSeleccionados), true)) @disabled($bloqueado)><span>{{ $almacen->alm_nombre }}</span></label>@endforeach</div>
-                        </div>
-                    </div>
-                    <div class="commission-panel__foot"><span class="commission-panel__foot-note">Paso 1 de 3</span><div class="commission-panel__actions"><button type="button" class="desktop-btn desktop-btn--primary" data-commission-next="2">Continuar a grupos</button></div></div>
-                </section>
-
-                <section class="commission-panel" data-commission-panel="2" hidden>
-                    <div class="commission-panel__head"><h2>Organiza las ventas por grupo</h2><p>Configura un grupo a la vez. Cada línea puede pertenecer únicamente a Ropa o a Telas.</p></div>
-                    <div class="commission-panel__body">
-                        <div class="commission-group-tabs" role="tablist" aria-label="Grupos de comisión">
-                            @foreach($grupos as $grupo)<button type="button" class="commission-group-tab" data-commission-group-tab="{{ $grupo->cgr_id }}">{{ $grupo->cgr_nombre }}</button>@endforeach
-                        </div>
-
-                        @foreach($grupos as $grupo)
-                            @php
-                                $grupoConfig = $configGrupos->get($grupo->cgr_id);
-                                $lineasGuardadas = $periodo
-                                    ? collect($lineasPeriodo->get($grupo->cgr_id, []))->pluck('cpl_lna_id')
-                                    : $grupo->lineas->pluck('lna_id');
-                                $seleccionadas = old("grupos.{$grupo->cgr_id}.linea_ids", $lineasGuardadas->map(fn ($id) => (string) $id)->all());
-                            @endphp
-                            <div class="commission-group-panel" data-commission-group-panel="{{ $grupo->cgr_id }}" hidden>
-                                <div class="commission-group-fields">
-                                    <div class="desktop-field"><label>Vendedores promedio</label><input type="number" name="grupos[{{ $grupo->cgr_id }}][vendedores_promedio]" min="0.01" step="0.01" value="{{ old("grupos.{$grupo->cgr_id}.vendedores_promedio", $grupoConfig?->cpg_vendedores_promedio ?? 1) }}" required @disabled($bloqueado)><small>Se usa para repartir la meta del grupo.</small></div>
-                                    <div class="desktop-field"><label>Incremento de meta</label><div class="input-group"><input type="number" name="grupos[{{ $grupo->cgr_id }}][incremento_meta]" min="{{ $grupo->cgr_incremento_minimo }}" max="{{ $grupo->cgr_incremento_maximo }}" step="0.01" value="{{ old("grupos.{$grupo->cgr_id}.incremento_meta", $grupoConfig?->cpg_incremento_meta ?? $grupo->cgr_incremento_minimo) }}" required @disabled($bloqueado)><span class="input-group-text">%</span></div><small>Permitido: {{ number_format((float) $grupo->cgr_incremento_minimo, 0) }}% a {{ number_format((float) $grupo->cgr_incremento_maximo, 0) }}%.</small></div>
-                                </div>
-                                <div class="commission-lines-head"><strong>Líneas incluidas en {{ $grupo->cgr_nombre }}</strong><span class="commission-count" data-commission-group-count="{{ $grupo->cgr_id }}">0 seleccionadas</span></div>
-                                <div class="commission-line-grid">
-                                    @forelse($lineas as $linea)
-                                        <label class="commission-line"><input type="checkbox" name="grupos[{{ $grupo->cgr_id }}][linea_ids][]" value="{{ $linea->lna_id }}" @checked(in_array((string) $linea->lna_id, array_map('strval', (array) $seleccionadas), true)) @disabled($bloqueado)><span>{{ $linea->lna_nombre }}</span></label>
-                                    @empty
-                                        <span class="desktop-list__meta">No hay líneas activas.</span>
-                                    @endforelse
-                                </div>
-                            </div>
-                        @endforeach
-
-                        <div class="commission-help"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg><span>La meta se calcula con las ventas netas de las líneas seleccionadas, menos las ventas sin atención, divididas entre los vendedores promedio y más el incremento indicado.</span></div>
-                    </div>
-                    <div class="commission-panel__foot"><button type="button" class="desktop-btn desktop-btn--ghost" data-commission-next="1">Anterior</button><span class="commission-panel__foot-note">Paso 2 de 3</span><div class="commission-panel__actions"><button type="button" class="desktop-btn desktop-btn--primary" data-commission-next="3">Continuar a vendedores</button></div></div>
-                </section>
-
-                <section class="commission-panel" data-commission-panel="3" hidden>
-                    <div class="commission-panel__head"><h2>Selecciona a los vendedores</h2><p>Activa a quienes participan y asigna su número y grupo. Los cambios especiales están ocultos para mantener la lista simple.</p></div>
-                    <div class="commission-panel__body">
-                        <div class="commission-seller-tools"><input type="search" id="commission-seller-search" placeholder="Buscar por nombre o usuario…" aria-label="Buscar vendedor"><span class="commission-seller-summary"><strong data-commission-active-count>0</strong> vendedores activos</span></div>
-                        <div class="commission-sellers">
-                            @forelse($vendedores as $usuario)
-                                @php
-                                    $perfil = $perfiles->get($usuario->usr_id);
-                                    $perfilPeriodo = $vendedoresPeriodo->get($usuario->usr_id);
-                                    $ajuste = $perfil ? $ajustes->get($perfil->cve_id) : null;
-                                    $habilitado = (bool) old("vendedores.{$usuario->usr_id}.habilitado", $periodo ? (bool) $perfilPeriodo : $perfil?->cve_estatus === 'activo');
-                                    $tieneAjuste = (float) old("vendedores.{$usuario->usr_id}.ajuste_tasa", $ajuste?->cav_ajuste_tasa ?? 0) !== 0.0
-                                        || old("vendedores.{$usuario->usr_id}.tasa_final", $ajuste?->cav_tasa_final) !== null
-                                        || (float) old("vendedores.{$usuario->usr_id}.bono", $ajuste?->cav_bono ?? 0) !== 0.0
-                                        || filled(old("vendedores.{$usuario->usr_id}.motivo", $ajuste?->cav_motivo));
-                                @endphp
-                                <article class="commission-seller {{ $habilitado ? '' : 'is-disabled' }} {{ $tieneAjuste ? 'is-expanded' : '' }}" data-seller-row data-seller-search="{{ mb_strtolower($usuario->usr_nombre.' '.$usuario->usr_usuario) }}">
-                                    <div class="commission-seller__main">
-                                        <div class="commission-seller__identity">
-                                            <input type="hidden" name="vendedores[{{ $usuario->usr_id }}][habilitado]" value="0">
-                                            <label class="commission-seller__toggle" title="Incluir en comisiones"><input type="checkbox" name="vendedores[{{ $usuario->usr_id }}][habilitado]" value="1" data-seller-enabled @checked($habilitado) @disabled($bloqueado)><span aria-hidden="true"></span></label>
-                                            <div class="commission-seller__name"><strong>{{ $usuario->usr_nombre }}</strong><span>{{ $usuario->usr_usuario }}</span></div>
-                                        </div>
-                                        <div class="commission-seller__field"><label>No. de vendedor</label><input type="text" name="vendedores[{{ $usuario->usr_id }}][numero]" maxlength="40" value="{{ old("vendedores.{$usuario->usr_id}.numero", $perfilPeriodo?->cpv_numero_vendedor ?? $perfil?->cve_numero) }}" placeholder="Ej. 5" data-seller-field @disabled($bloqueado)></div>
-                                        <div class="commission-seller__field"><label>Grupo</label><select name="vendedores[{{ $usuario->usr_id }}][grupo_id]" data-seller-field @disabled($bloqueado)><option value="">Selecciona</option>@foreach($grupos as $grupo)<option value="{{ $grupo->cgr_id }}" @selected((string) old("vendedores.{$usuario->usr_id}.grupo_id", $perfilPeriodo?->cpv_cgr_id ?? $perfil?->cve_cgr_id) === (string) $grupo->cgr_id)>{{ $grupo->cgr_nombre }}</option>@endforeach</select></div>
-                                        <button type="button" class="desktop-btn desktop-btn--ghost commission-seller__details-toggle" data-seller-details aria-expanded="{{ $tieneAjuste ? 'true' : 'false' }}">Ajustes <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m7 10 5 5 5-5"/></svg></button>
-                                    </div>
-                                    <div class="commission-seller__advanced">
-                                        <div class="commission-seller__field"><label>Ajuste a la tasa (puntos)</label><input type="number" name="vendedores[{{ $usuario->usr_id }}][ajuste_tasa]" step="0.0001" value="{{ old("vendedores.{$usuario->usr_id}.ajuste_tasa", $ajuste?->cav_ajuste_tasa ?? 0) }}" data-seller-field @disabled($bloqueado)></div>
-                                        <div class="commission-seller__field"><label>Tasa final opcional (%)</label><input type="number" name="vendedores[{{ $usuario->usr_id }}][tasa_final]" min="0" step="0.0001" value="{{ old("vendedores.{$usuario->usr_id}.tasa_final", $ajuste?->cav_tasa_final) }}" placeholder="Automática" data-seller-field @disabled($bloqueado)></div>
-                                        <div class="commission-seller__field"><label>Bono adicional ($)</label><input type="number" name="vendedores[{{ $usuario->usr_id }}][bono]" min="0" step="0.01" value="{{ old("vendedores.{$usuario->usr_id}.bono", $ajuste?->cav_bono ?? 0) }}" data-seller-field @disabled($bloqueado)></div>
-                                        <div class="commission-seller__field"><label>Motivo del ajuste</label><input type="text" name="vendedores[{{ $usuario->usr_id }}][motivo]" maxlength="500" value="{{ old("vendedores.{$usuario->usr_id}.motivo", $ajuste?->cav_motivo) }}" placeholder="Ej. buen desempeño" data-seller-field @disabled($bloqueado)></div>
-                                    </div>
-                                </article>
-                            @empty
-                                <div class="commission-no-results">No hay usuarios activos asociados a la sucursal.</div>
-                            @endforelse
-                            <div class="commission-no-results" id="commission-seller-no-results" hidden>No encontramos vendedores con esa búsqueda.</div>
-                        </div>
-                    </div>
-                    <div class="commission-panel__foot"><button type="button" class="desktop-btn desktop-btn--ghost" data-commission-next="2">Anterior</button><span class="commission-panel__foot-note">Paso 3 de 3</span><div class="commission-panel__actions">@unless($bloqueado)<button type="submit" class="desktop-btn desktop-btn--primary">Guardar configuración</button>@endunless</div></div>
-                </section>
-            </form>
-        </div></div>
+    <section class="commission-toolbar">
+        <form method="GET" class="commission-row"><div class="desktop-field"><label for="commission-period">Mes que vas a configurar</label><input id="commission-period" type="month" name="periodo" value="{{ $periodoTexto }}"></div><button class="desktop-btn desktop-btn--primary" type="submit">Abrir mes</button></form>
+        <div class="commission-toolbar__aside">
+            @if($legacyCount>0)<a class="desktop-btn desktop-btn--ghost" href="{{ route('reportes.show',['reporte'=>'ventas-comisiones']) }}">Histórico anterior</a>@endif
+            <details class="commission-advanced"><summary class="desktop-btn desktop-btn--ghost">Opciones avanzadas</summary><div class="commission-advanced__panel">
+                <form method="POST" action="{{ route('desktop.operacion.gestion_configuraciones.comisiones.departamentos.store') }}" class="commission-create">@csrf<div class="desktop-field"><label for="new-department">Crear departamento</label><input id="new-department" name="nombre" maxlength="120" placeholder="Ej. Hogar" required></div><button class="desktop-btn desktop-btn--ghost" type="submit">Crear</button></form>
+                @foreach($departamentosCatalogo as $item)<div class="commission-manage__row"><span><strong>{{ $item->cmd_nombre }}</strong><br><small>{{ str($item->cmd_estatus)->headline() }}</small></span><form method="POST" action="{{ route('desktop.operacion.gestion_configuraciones.comisiones.departamentos.estatus',$item) }}">@csrf @method('PATCH')<input type="hidden" name="estatus" value="{{ $item->cmd_estatus==='activo'?'inactivo':'activo' }}"><button class="desktop-btn desktop-btn--ghost" type="submit">{{ $item->cmd_estatus==='activo'?'Retirar':'Activar' }}</button></form></div>@endforeach
+            </div></details>
+        </div>
     </section>
 
-    @if($periodo && !$bloqueado && $puedeEjecutarCalculo)<form id="commission-calculate-form" method="POST" action="{{ route('reportes.comisiones.calcular') }}" hidden>@csrf<input type="hidden" name="periodo" value="{{ $periodoTexto }}"></form>@endif
-    @if($periodo?->cpe_estatus === 'calculado' && !$sucursalSoloLectura && $puedeCerrar)<form id="commission-close-form" method="POST" action="{{ route('reportes.comisiones.cerrar') }}" hidden>@csrf<input type="hidden" name="periodo" value="{{ $periodoTexto }}"></form>@endif
+    @if($periodo&&$estado==='borrador')<form id="commission-approve" method="POST" action="{{ route('reportes.comisiones.calcular') }}">@csrf<input type="hidden" name="periodo" value="{{ $periodoTexto }}"></form>@endif
+    @if($periodo&&$estado==='aprobado')<form id="commission-close" method="POST" action="{{ route('reportes.comisiones.cerrar') }}" onsubmit="return confirm('¿Cerrar el periodo? Los resultados quedarán congelados y ya no podrán modificarse.');">@csrf<input type="hidden" name="periodo" value="{{ $periodoTexto }}"></form>@endif
+
+    <form id="commission-config" class="commission-wizard" method="POST" action="{{ route('desktop.operacion.gestion_configuraciones.comisiones.update') }}" data-ls-autocomplete="admin">
+        @csrf @method('PUT')<input type="hidden" name="periodo" value="{{ $periodoTexto }}">
+        <nav class="commission-stepper" aria-label="Pasos de configuración">
+            @foreach([[1,'Periodo','Almacenes'],[2,'Departamentos','Líneas y meta'],[3,'Equipo','Vendedores'],[4,'Revisión','Publicar o cerrar']] as [$numero,$titulo,$subtitulo])
+                <button class="commission-stepper__item" type="button" data-step-target="{{ $numero }}"><span class="commission-stepper__number">{{ $numero }}</span><span class="commission-stepper__text"><strong>{{ $titulo }}</strong><small>{{ $subtitulo }}</small></span></button>
+            @endforeach
+        </nav>
+
+        <section class="commission-step-panel" data-step-panel="1">
+            <header class="commission-step-panel__head"><span class="commission-step-panel__icon"><i class="ti tabler-building-store"></i></span><div><h2>¿Qué almacenes participan?</h2><p>Se sumarán únicamente las ventas registradas en los almacenes que selecciones.</p></div></header>
+            <div class="commission-step-panel__body"><div class="commission-choice-grid">@forelse($almacenes as $almacen)<label class="commission-choice"><input type="checkbox" name="almacen_ids[]" value="{{ $almacen->alm_id }}" @checked(in_array((string)$almacen->alm_id,array_map('strval',old('almacen_ids',$almacenesSeleccionados)),true)) @disabled($bloqueado)><span><strong>{{ $almacen->alm_nombre }}</strong><small>Incluir ventas de este almacén</small></span></label>@empty<div class="commission-empty">No hay almacenes activos.</div>@endforelse</div></div>
+            <p class="commission-error" data-step-error="1"></p>
+            <footer class="commission-step-panel__footer"><span class="commission-note">Paso 1 de 4</span><button class="desktop-btn desktop-btn--primary" type="button" data-next-step="2">Continuar</button></footer>
+        </section>
+
+        <section class="commission-step-panel" data-step-panel="2" hidden>
+            <header class="commission-step-panel__head"><span class="commission-step-panel__icon"><i class="ti tabler-category-2"></i></span><div><h2>Define departamentos y metas</h2><p>Activa solo los departamentos que participarán. La meta común se aplicará inicialmente a sus vendedores.</p></div></header>
+            <div class="commission-step-panel__body commission-departments">
+                @foreach($departamentos as $departamento)
+                    @php
+                        $config=$configDepartamentos->get($departamento->cmd_id);
+                        $habilitado=(bool)old("departamentos.{$departamento->cmd_id}.habilitado",$periodo?(bool)$config:$departamento->lineas->isNotEmpty());
+                        $seleccionadas=$periodo?collect($lineasPeriodo->get($departamento->cmd_id,[]))->pluck('cml_lna_id')->all():$departamento->lineas->pluck('lna_id')->all();
+                    @endphp
+                    <article class="commission-department" data-department>
+                        <div class="commission-department__top"><input type="hidden" name="departamentos[{{ $departamento->cmd_id }}][habilitado]" value="0"><input class="department-toggle" type="checkbox" name="departamentos[{{ $departamento->cmd_id }}][habilitado]" value="1" @checked($habilitado) @disabled($bloqueado)><strong>{{ $departamento->cmd_nombre }}</strong><span class="commission-note">{{ $config?->cpd_origen_meta==='historica'?'Con referencia histórica':'Meta manual inicial' }}</span></div>
+                        <div class="commission-department__body">
+                            <div class="commission-fields"><div class="desktop-field"><label>Meta común por vendedor ($)</label><input type="number" min="0" step="0.01" name="departamentos[{{ $departamento->cmd_id }}][meta_comun]" value="{{ old("departamentos.{$departamento->cmd_id}.meta_comun",$config?->cpd_meta_comun) }}" placeholder="Ej. 250000" @disabled($bloqueado)><small class="commission-note">En el primer año Administración captura esta cantidad.</small></div><div class="desktop-field"><label>Incremento sobre el histórico (%)</label><input type="number" min="0" max="100" step="0.01" name="departamentos[{{ $departamento->cmd_id }}][incremento_meta]" value="{{ old("departamentos.{$departamento->cmd_id}.incremento_meta",$config?->cpd_incremento_meta??0) }}" @disabled($bloqueado)><small class="commission-note">Se usará cuando ya exista el mismo mes del año anterior.</small></div></div>
+                            <details class="commission-lines-details"><summary><span data-line-count>Seleccionar líneas</span></summary><div class="commission-lines">@foreach($lineas as $linea)<label class="commission-line"><input type="checkbox" name="departamentos[{{ $departamento->cmd_id }}][linea_ids][]" value="{{ $linea->lna_id }}" @checked(in_array((string)$linea->lna_id,array_map('strval',old("departamentos.{$departamento->cmd_id}.linea_ids",$seleccionadas)),true)) @disabled($bloqueado)><span>{{ $linea->lna_nombre }}</span></label>@endforeach</div></details>
+                            @if($config)<div class="commission-reference"><div><span>Venta anterior</span><strong>${{ number_format((float)$config->cpd_ventas_historicas,2) }}</strong></div><div><span>Autoservicio excluido</span><strong>− ${{ number_format((float)$config->cpd_autoservicio_historico,2) }}</strong></div><div><span>Meta sugerida</span><strong>{{ $config->cpd_meta_sugerida!==null?'$'.number_format((float)$config->cpd_meta_sugerida,2):'Sin histórico' }}</strong></div></div>@endif
+                        </div>
+                    </article>
+                @endforeach
+                <div class="commission-help"><strong>¿Cómo se obtiene la meta futura?</strong><br>(Ventas del mismo mes anterior − autoservicio) ÷ vendedores del periodo, más el incremento definido.</div>
+            </div>
+            <p class="commission-error" data-step-error="2"></p>
+            <footer class="commission-step-panel__footer"><button class="desktop-btn desktop-btn--ghost" type="button" data-previous-step="1">Regresar</button><button class="desktop-btn desktop-btn--primary" type="button" data-next-step="3">Continuar</button></footer>
+        </section>
+
+        <section class="commission-step-panel" data-step-panel="3" hidden>
+            <header class="commission-step-panel__head"><span class="commission-step-panel__icon"><i class="ti tabler-users"></i></span><div><h2>Selecciona el equipo del mes</h2><p>Busca al vendedor, activa su participación y asigna departamento. La tasa normal es 0.9%.</p></div></header>
+            <div class="commission-step-panel__body">
+                <div class="commission-seller-tools"><span class="commission-note"><strong data-seller-count>0</strong> vendedores seleccionados</span><input id="commission-seller-search" class="commission-seller-search" type="search" placeholder="Buscar por nombre o usuario" aria-label="Buscar vendedor"></div>
+                <div class="commission-sellers"><table class="commission-table"><thead><tr><th>Participa</th><th>Vendedor</th><th>Número</th><th>Departamento</th><th>Meta individual</th><th>Tasa</th><th>Motivo de ajuste</th></tr></thead><tbody>
+                    @foreach($usuarios as $usuario)@php $p=$participantes->get($usuario->usr_id);$activo=(bool)old("vendedores.{$usuario->usr_id}.habilitado",(bool)$p); @endphp
+                    <tr data-seller-row><td><input class="seller-toggle" type="checkbox" name="vendedores[{{ $usuario->usr_id }}][habilitado]" value="1" @checked($activo) @disabled($bloqueado)></td><td><strong>{{ $usuario->usr_nombre }}</strong><br><span class="commission-note">{{ $usuario->usr_usuario }}</span></td><td><input name="vendedores[{{ $usuario->usr_id }}][numero]" value="{{ old("vendedores.{$usuario->usr_id}.numero",$p?->cpt_numero_vendedor) }}" maxlength="40" placeholder="Ej. 5" @disabled($bloqueado)></td><td><select name="vendedores[{{ $usuario->usr_id }}][departamento_id]" @disabled($bloqueado)><option value="">Selecciona</option>@foreach($departamentos as $departamento)<option value="{{ $departamento->cmd_id }}" @selected((string)old("vendedores.{$usuario->usr_id}.departamento_id",$p?->departamentoPeriodo?->cpd_cmd_id)===(string)$departamento->cmd_id)>{{ $departamento->cmd_nombre }}</option>@endforeach</select></td><td><input type="number" min="0" step="0.01" name="vendedores[{{ $usuario->usr_id }}][meta]" value="{{ old("vendedores.{$usuario->usr_id}.meta",$p?->cpt_meta_individual) }}" placeholder="Usar meta común" @disabled($bloqueado)></td><td><select name="vendedores[{{ $usuario->usr_id }}][tasa]" @disabled($bloqueado)>@foreach([0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1] as $tasa)<option value="{{ $tasa }}" @selected((float)old("vendedores.{$usuario->usr_id}.tasa",$p?->cpt_tasa_comision??0.9)===(float)$tasa)>{{ number_format($tasa,1) }}%</option>@endforeach</select></td><td><input name="vendedores[{{ $usuario->usr_id }}][motivo]" value="{{ old("vendedores.{$usuario->usr_id}.motivo",$p?->cpt_motivo_ajuste) }}" maxlength="500" placeholder="Solo si cambia meta o tasa" @disabled($bloqueado)></td></tr>
+                    @endforeach
+                </tbody></table></div>
+            </div>
+            <p class="commission-error" data-step-error="3"></p>
+            <footer class="commission-step-panel__footer"><button class="desktop-btn desktop-btn--ghost" type="button" data-previous-step="2">Regresar</button><button class="desktop-btn desktop-btn--primary" type="button" data-next-step="4">Revisar configuración</button></footer>
+        </section>
+
+        <section class="commission-step-panel" data-step-panel="4" hidden>
+            <header class="commission-step-panel__head"><span class="commission-step-panel__icon"><i class="ti tabler-clipboard-check"></i></span><div><h2>Revisa antes de publicar</h2><p>Confirma la configuración y consulta el avance. El vendedor nunca verá los importes de esta pantalla.</p></div></header>
+            <div class="commission-step-panel__body">
+                <div class="commission-summary"><div class="commission-summary-card"><span>Periodo</span><strong>{{ $periodoTexto }}</strong></div><div class="commission-summary-card"><span>Almacenes</span><strong data-summary-warehouses>0</strong></div><div class="commission-summary-card"><span>Departamentos</span><strong data-summary-departments>0</strong></div><div class="commission-summary-card"><span>Vendedores</span><strong data-summary-sellers>0</strong></div></div>
+                <div class="commission-review-section"><h3>{{ $bloqueado?'Resultado definitivo':'Avance y comisión estimada' }}</h3>
+                    @if($estimaciones->isEmpty())<div class="commission-empty">Primero guarda la configuración. Después podrás aprobarla y publicar el avance.</div>@else<div class="commission-sellers"><table class="commission-table"><thead><tr><th>Vendedor</th><th>Departamento</th><th>Ventas netas</th><th>Meta</th><th>Avance</th><th>Tasa</th><th>{{ $bloqueado?'Comisión final':'Comisión estimada' }}</th></tr></thead><tbody>@foreach($estimaciones as $estimacion)<tr><td><strong>{{ $estimacion->numero }}</strong> · {{ $estimacion->nombre }}</td><td>{{ $estimacion->departamento }}</td><td>${{ number_format($estimacion->ventas,2) }}</td><td>${{ number_format($estimacion->meta,2) }}</td><td class="commission-estimate__percent"><strong>{{ number_format($estimacion->cumplimiento,2) }}%</strong><div class="commission-progress"><span style="width:{{ min(100,max(0,$estimacion->cumplimiento)) }}%"></span></div></td><td>{{ number_format($estimacion->tasa,1) }}%</td><td><strong>${{ number_format($estimacion->comision,2) }}</strong></td></tr>@endforeach</tbody></table></div>@endif
+                </div>
+                @if($estado==='aprobado')<div class="commission-danger-note mt-3"><strong>Este periodo ya está publicado.</strong> Si guardas una corrección, explica el motivo. El sistema conservará el antes y el después en la bitácora.</div><div class="desktop-field mt-3"><label for="change-reason">Motivo de la corrección</label><textarea id="change-reason" name="motivo_cambio" rows="2" maxlength="1000" placeholder="Ej. Se corrigió la asignación del vendedor...">{{ old('motivo_cambio') }}</textarea></div>@endif
+                @if($bloqueado)<div class="commission-danger-note mt-3"><strong>Periodo cerrado.</strong> Los resultados están congelados y disponibles únicamente para consulta.</div>@endif
+            </div>
+            <p class="commission-error" data-step-error="4"></p>
+            <footer class="commission-step-panel__footer"><button class="desktop-btn desktop-btn--ghost" type="button" data-previous-step="3">Regresar</button><div class="commission-final-actions">
+                @unless($bloqueado)<button type="submit" class="desktop-btn desktop-btn--ghost">{{ $periodo?'Guardar cambios':'Guardar borrador' }}</button>@endunless
+                @if($periodo&&$estado==='borrador'&&$puedeAprobar)<button type="submit" form="commission-approve" class="desktop-btn desktop-btn--primary">Aprobar y publicar avance</button>@endif
+                @if($periodo&&$estado==='aprobado'&&$puedeCerrar)<button type="submit" form="commission-close" class="desktop-btn desktop-btn--danger">Cerrar periodo</button>@endif
+            </div></footer>
+        </section>
+    </form>
+</div>
 @endsection
 
 @push('desktop-scripts')
-    <script>
-        (function () {
-            const initialStep = {{ $pasoInicial }};
-            const steps = Array.from(document.querySelectorAll('[data-commission-step]'));
-            const panels = Array.from(document.querySelectorAll('[data-commission-panel]'));
-            function showStep(number, updateHash) {
-                steps.forEach(function (step) { const active = step.dataset.commissionStep === String(number); step.classList.toggle('is-active', active); step.setAttribute('aria-current', active ? 'step' : 'false'); });
-                panels.forEach(function (panel) { panel.hidden = panel.dataset.commissionPanel !== String(number); });
-                if (updateHash) history.replaceState(null, '', '#paso-' + number);
-                document.querySelector('.commission-shell')?.scrollTo({ top: 0, behavior: 'smooth' });
-            }
-            const requestedStep = Number((window.location.hash.match(/paso-(\d)/) || [])[1]);
-            showStep([1, 2, 3].includes(requestedStep) ? requestedStep : initialStep, false);
-            steps.forEach(function (step) { step.addEventListener('click', function () { showStep(this.dataset.commissionStep, true); }); });
-            document.querySelectorAll('[data-commission-next]').forEach(function (button) { button.addEventListener('click', function () { showStep(this.dataset.commissionNext, true); }); });
-
-            const branch = document.getElementById('commission-branch-picker');
-            branch?.addEventListener('change', function () { const url = new URL(window.location.href); url.searchParams.set('sucursal_id', this.value); url.hash = ''; window.location.href = url.toString(); });
-
-            const period = document.getElementById('commission-period-picker');
-            period?.addEventListener('change', function () { const url = new URL(window.location.href); url.searchParams.set('periodo', this.value); url.hash = ''; window.location.href = url.toString(); });
-
-            const groupTabs = Array.from(document.querySelectorAll('[data-commission-group-tab]'));
-            const groupPanels = Array.from(document.querySelectorAll('[data-commission-group-panel]'));
-            function showGroup(id) {
-                groupTabs.forEach(function (tab) { const active = tab.dataset.commissionGroupTab === String(id); tab.classList.toggle('is-active', active); tab.setAttribute('aria-selected', active ? 'true' : 'false'); });
-                groupPanels.forEach(function (panel) { panel.hidden = panel.dataset.commissionGroupPanel !== String(id); });
-            }
-            if (groupTabs.length) showGroup(groupTabs[0].dataset.commissionGroupTab);
-            groupTabs.forEach(function (tab) { tab.addEventListener('click', function () { showGroup(this.dataset.commissionGroupTab); }); });
-
-            function updateGroupCounts() {
-                document.querySelectorAll('[data-commission-group-count]').forEach(function (counter) { const id = counter.dataset.commissionGroupCount; const count = document.querySelectorAll('input[name^="grupos[' + id + ']"][name$="[linea_ids][]"]:checked').length; counter.textContent = count + (count === 1 ? ' seleccionada' : ' seleccionadas'); });
-            }
-            document.querySelectorAll('input[name^="grupos"][name$="[linea_ids][]"]').forEach(function (checkbox) {
-                checkbox.addEventListener('change', function () {
-                    if (this.checked) document.querySelectorAll('input[name^="grupos"][name$="[linea_ids][]"][value="' + this.value + '"]').forEach(function (other) { if (other !== checkbox) other.checked = false; });
-                    updateGroupCounts();
-                });
-            });
-            updateGroupCounts();
-
-            const sellerRows = Array.from(document.querySelectorAll('[data-seller-row]'));
-            function updateActiveCount() { const count = sellerRows.filter(function (row) { return row.querySelector('[data-seller-enabled]')?.checked; }).length; const target = document.querySelector('[data-commission-active-count]'); if (target) target.textContent = count; }
-            sellerRows.forEach(function (row) {
-                const enabled = row.querySelector('[data-seller-enabled]');
-                const fields = row.querySelectorAll('[data-seller-field]');
-                const sync = function () { row.classList.toggle('is-disabled', !enabled.checked); fields.forEach(function (field) { field.disabled = !enabled.checked; }); updateActiveCount(); };
-                if (enabled && !enabled.disabled) { enabled.addEventListener('change', sync); sync(); }
-                row.querySelector('[data-seller-details]')?.addEventListener('click', function () { const expanded = row.classList.toggle('is-expanded'); this.setAttribute('aria-expanded', expanded ? 'true' : 'false'); });
-            });
-            updateActiveCount();
-
-            document.getElementById('commission-seller-search')?.addEventListener('input', function () {
-                const query = this.value.trim().toLocaleLowerCase('es'); let visible = 0;
-                sellerRows.forEach(function (row) { const matches = !query || row.dataset.sellerSearch.includes(query); row.hidden = !matches; if (matches) visible++; });
-                const empty = document.getElementById('commission-seller-no-results'); if (empty) empty.hidden = visible > 0;
-            });
-        })();
-    </script>
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+    const wizard=document.querySelector('[data-commission-wizard]');if(!wizard)return;
+    const locked={{ $bloqueado?'true':'false' }};let current=Number(wizard.dataset.initialStep||1);
+    const form=document.getElementById('commission-config');const panels=Array.from(wizard.querySelectorAll('[data-step-panel]'));const targets=Array.from(wizard.querySelectorAll('[data-step-target]'));
+    const rows=Array.from(wizard.querySelectorAll('[data-seller-row]'));const departments=Array.from(wizard.querySelectorAll('[data-department]'));
+    function showStep(step){current=Math.max(1,Math.min(4,Number(step)));panels.forEach(p=>p.hidden=Number(p.dataset.stepPanel)!==current);targets.forEach(b=>{const n=Number(b.dataset.stepTarget);b.classList.toggle('is-active',n===current);b.classList.toggle('is-done',n<current);b.setAttribute('aria-current',n===current?'step':'false');});refreshSummary();form?.scrollIntoView({behavior:'smooth',block:'start'});}
+    function showError(step,message){const el=wizard.querySelector('[data-step-error="'+step+'"]');if(el){el.textContent=message;el.classList.add('is-visible');}}
+    function clearError(step){wizard.querySelector('[data-step-error="'+step+'"]')?.classList.remove('is-visible');}
+    function validate(step){clearError(step);if(locked)return true;if(step===1&&!wizard.querySelector('input[name="almacen_ids[]"]:checked')){showError(step,'Selecciona al menos un almacén para continuar.');return false;}if(step===2){const active=departments.filter(d=>d.querySelector('.department-toggle')?.checked);if(!active.length){showError(step,'Activa al menos un departamento.');return false;}if(active.some(d=>!d.querySelector('input[name*="[linea_ids]"]:checked'))){showError(step,'Cada departamento activo debe tener al menos una línea.');return false;}}if(step===3&&!rows.some(r=>r.querySelector('.seller-toggle')?.checked)){showError(step,'Selecciona al menos un vendedor para continuar.');return false;}return true;}
+    function refreshDepartment(card){const toggle=card.querySelector('.department-toggle');const enabled=!locked&&Boolean(toggle?.checked);card.classList.toggle('is-disabled',!toggle?.checked);card.querySelectorAll('.commission-department__body input').forEach(field=>field.disabled=!enabled);const count=card.querySelectorAll('input[name*="[linea_ids]"]:checked').length;const label=card.querySelector('[data-line-count]');if(label)label.textContent=count+' línea'+(count===1?' seleccionada':'s seleccionadas');}
+    function refreshSeller(row){const toggle=row.querySelector('.seller-toggle');const enabled=!locked&&Boolean(toggle?.checked);row.style.opacity=toggle?.checked?'1':'.48';row.querySelectorAll('input:not(.seller-toggle),select').forEach(field=>field.disabled=!enabled);refreshSummary();}
+    function refreshSummary(){const warehouses=wizard.querySelectorAll('input[name="almacen_ids[]"]:checked').length;const activeDepartments=departments.filter(d=>d.querySelector('.department-toggle')?.checked).length;const activeSellers=rows.filter(r=>r.querySelector('.seller-toggle')?.checked).length;wizard.querySelectorAll('[data-summary-warehouses]').forEach(e=>e.textContent=warehouses);wizard.querySelectorAll('[data-summary-departments]').forEach(e=>e.textContent=activeDepartments);wizard.querySelectorAll('[data-summary-sellers],[data-seller-count]').forEach(e=>e.textContent=activeSellers);}
+    targets.forEach(button=>button.addEventListener('click',()=>showStep(button.dataset.stepTarget)));wizard.querySelectorAll('[data-next-step]').forEach(button=>button.addEventListener('click',()=>{if(validate(current))showStep(button.dataset.nextStep);}));wizard.querySelectorAll('[data-previous-step]').forEach(button=>button.addEventListener('click',()=>showStep(button.dataset.previousStep)));
+    departments.forEach(card=>{card.querySelector('.department-toggle')?.addEventListener('change',()=>refreshDepartment(card));card.querySelectorAll('input[name*="[linea_ids]"]').forEach(input=>input.addEventListener('change',()=>refreshDepartment(card)));refreshDepartment(card);});
+    rows.forEach(row=>{row.querySelector('.seller-toggle')?.addEventListener('change',()=>refreshSeller(row));refreshSeller(row);});
+    document.getElementById('commission-seller-search')?.addEventListener('input',function(){const term=this.value.trim().toLocaleLowerCase('es');rows.forEach(row=>row.hidden=term!==''&&!row.innerText.toLocaleLowerCase('es').includes(term));});
+    showStep(current);
+});
+</script>
 @endpush

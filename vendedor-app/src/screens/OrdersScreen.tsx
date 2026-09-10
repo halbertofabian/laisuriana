@@ -6,7 +6,7 @@ import { Button } from '../components/Button';
 import { EmptyState, InlineNotice, SkeletonList } from '../components/Feedback';
 import { SearchField } from '../components/SearchField';
 import type { OrderDraft } from '../services/orderDraftStorage';
-import type { Order } from '../types';
+import type { CommissionProgress, Order } from '../types';
 
 const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
 
@@ -24,6 +24,7 @@ export function OrdersScreen({
   error,
   openingOrderId,
   branchName,
+  commissionProgress,
   draft,
   connectionState,
   onNewOrder,
@@ -38,6 +39,7 @@ export function OrdersScreen({
   error: string | null;
   openingOrderId: number | null;
   branchName: string;
+  commissionProgress: CommissionProgress | null;
   draft: OrderDraft | null;
   connectionState: 'synced' | 'syncing' | 'offline' | 'server-unavailable';
   onNewOrder: () => void;
@@ -81,6 +83,15 @@ export function OrdersScreen({
           </div>
           <button className={`sync-state sync-state--${connectionState}`} onClick={onRetry} disabled={connectionState === 'syncing'} aria-label="Actualizar pedidos"><i /> {connectionLabel}</button>
         </div>
+
+        <section className="commission-progress-card" aria-label="Mi avance de meta">
+          <div className="commission-progress-card__top">
+            <div><span>Mi meta del mes</span><strong>{commissionProgress?.mensaje ?? 'Tu meta aún no está disponible.'}</strong></div>
+            <b>{commissionProgress?.porcentaje == null ? '—' : `${commissionProgress.porcentaje.toFixed(1)}%`}</b>
+          </div>
+          <div className="commission-progress-card__track"><span style={{ width: `${commissionProgress?.porcentaje ?? 0}%` }} /></div>
+          <small>Solo tú puedes ver este avance. No mostramos importes.</small>
+        </section>
 
         {draft && (
           <div className="draft-card">

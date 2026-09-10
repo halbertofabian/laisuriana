@@ -31,6 +31,11 @@
             margin: 4px 2px 0;
         }
 
+        .goal-card { display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:16px; padding:17px 19px; background:var(--surface); border:1px solid var(--stroke); border-radius:var(--r-lg); box-shadow:var(--shadow-2); }
+        .goal-card__icon { width:42px; height:42px; display:grid; place-items:center; border-radius:13px; color:#0f6cbd; background:rgba(15,108,189,.1); }
+        .goal-card__icon svg { width:23px; height:23px; }.goal-card__body strong{display:block;font-size:.92rem}.goal-card__body p{margin:3px 0 9px;color:var(--text-2);font-size:.79rem}
+        .goal-card__track{height:9px;border-radius:999px;overflow:hidden;background:var(--surface-sunken)}.goal-card__track span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#0f6cbd,#16a36a)}.goal-card__value{font-size:1.4rem;font-weight:800;color:var(--brand)}
+
         .kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
         .kpi {
             display: flex; flex-direction: column; gap: 6px;
@@ -157,6 +162,16 @@
                     <span>Tickets del mes</span>
                 </div>
             </div>
+        </div>
+
+        <div class="goal-card">
+            <span class="goal-card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg></span>
+            <div class="goal-card__body">
+                <strong>Mi avance de meta</strong>
+                <p>{{ $avance_comision['mensaje'] }}</p>
+                <div class="goal-card__track"><span style="width:{{ $avance_comision['porcentaje'] ?? 0 }}%"></span></div>
+            </div>
+            <span class="goal-card__value">{{ $avance_comision['porcentaje'] !== null ? number_format($avance_comision['porcentaje'], 1).'%' : '—' }}</span>
         </div>
 
         <div>

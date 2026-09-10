@@ -1,4 +1,4 @@
-import type { AuthSession, AuthUser, CartLine, Customer, Order, OrderDetail, OrderStatus, Product, UserSuggestion, Warehouse } from '../types';
+import type { AuthSession, AuthUser, CartLine, CommissionProgress, Customer, Order, OrderDetail, OrderStatus, Product, UserSuggestion, Warehouse } from '../types';
 import { getAuthToken } from './sessionStorage';
 
 type ValidationErrors = Record<string, string[]>;
@@ -97,6 +97,13 @@ export const authApi = {
 
   async logout(token: string): Promise<void> {
     await request('/auth/logout', { method: 'POST' }, token);
+  },
+};
+
+export const commissionApi = {
+  async progress(branchId: number): Promise<CommissionProgress> {
+    const response = await authenticatedRequest<{ data: CommissionProgress }>(`/commission-progress?branch_id=${branchId}`);
+    return response.data;
   },
 };
 

@@ -2,6 +2,7 @@
 
 namespace App\Services\Reportes;
 
+use App\Models\ComisionV2Periodo;
 use App\Models\Sucursal;
 use App\Models\Usuario;
 use Carbon\Carbon;
@@ -12,7 +13,10 @@ use InvalidArgumentException;
 
 class ReporteConsultaService
 {
-    public function __construct(private readonly ?ComisionCalculoService $comisiones = null) {}
+    public function __construct(
+        private readonly ?ComisionCalculoService $comisiones = null,
+        private readonly ?ComisionV2Service $comisionesV2 = null,
+    ) {}
 
     public function catalogo(): array
     {
@@ -28,7 +32,7 @@ class ReporteConsultaService
                 $this->def('ventas-metodo-pago', 'Métodos de pago', 'Conciliación de efectivo, tarjeta, mixto y monedero.', 'tabler-credit-card', 'reportes.ventas.ver'),
                 $this->def('ventas-descuentos', 'Descuentos aplicados', 'Detalle de descuentos por vendedor, folio y producto.', 'tabler-discount-2', 'reportes.ventas.ver'),
                 $this->def('ventas-devoluciones', 'Devoluciones', 'Productos recibidos en cambios inmediatos o mediante vales de cambio.', 'tabler-package-import', 'reportes.ventas.ver'),
-                $this->def('ventas-comisiones', 'Comisiones por vendedor', 'Cumplimiento de meta, tasa y comisión mensual por vendedor.', 'tabler-report-money', 'comisiones.ver'),
+                $this->def('ventas-comisiones', 'Comisiones por vendedor', 'Cumplimiento de meta, tasa y comisión mensual por vendedor.', 'tabler-report-money', 'comisiones.historial'),
             ]],
             'caja' => ['titulo' => 'Caja', 'descripcion' => 'Control de efectivo, movimientos y conciliación.', 'reportes' => [
                 $this->def('caja-cortes', 'Cortes de caja', 'Resumen congelado de ventas, efectivo, gastos y retiros.', 'tabler-cash-banknote', 'reportes.caja.ver'),
@@ -75,7 +79,7 @@ class ReporteConsultaService
             'ventas-metodo-pago' => $this->ventasMetodosPago($sucursalId, $desde, $hasta, $filtros),
             'ventas-descuentos' => $this->ventasDescuentos($sucursalId, $desde, $hasta, $filtros, $exportar),
             'ventas-devoluciones' => $this->ventasDevoluciones($sucursalId, $desde, $hasta, $filtros, $exportar),
-            'ventas-comisiones' => ($this->comisiones ?? app(ComisionCalculoService::class))->reporte($sucursalId, $desde, $filtros),
+            'ventas-comisiones' => $this->reporteComisiones($sucursalId, $desde, $filtros),
             'caja-cortes', 'caja-diferencias' => $this->cortes($slug === 'caja-diferencias', $sucursalId, $desde, $hasta, $filtros, $exportar),
             'caja-gastos', 'caja-retiros' => $this->movimientosCaja($slug === 'caja-gastos' ? 'gasto' : 'retiro', $sucursalId, $desde, $hasta, $filtros, $exportar),
             'inventario-existencias', 'inventario-bajo-minimo', 'inventario-negativos' => $this->existencias(str_replace('inventario-', '', $slug), $sucursalId, $filtros, $exportar),
@@ -84,6 +88,18 @@ class ReporteConsultaService
         };
 
         return [...$def, 'sucursal_id' => $sucursalId, 'sucursal' => Sucursal::query()->whereKey($sucursalId)->value('scl_nombre') ?? 'Sucursal activa', 'desde' => $desde->toDateString(), 'hasta' => $hasta->toDateString(), 'generado_por' => $usuario->usr_nombre, ...$resultado];
+    }
+
+    private function reporteComisiones(int $sucursalId, Carbon $desde, array $filtros): array
+    {
+        $periodoV2 = ComisionV2Periodo::query()
+            ->where('cmp_scl_id', $sucursalId)
+            ->whereDate('cmp_periodo', $desde->copy()->startOfMonth()->toDateString())
+            ->first();
+
+        return $periodoV2
+            ? ($this->comisionesV2 ?? app(ComisionV2Service::class))->reporte($periodoV2, $filtros)
+            : ($this->comisiones ?? app(ComisionCalculoService::class))->reporte($sucursalId, $desde, $filtros);
     }
 
     private function ventasAgrupadas(string $tipo, int $sucursal, Carbon $desde, Carbon $hasta, array $f, bool $exportar): array

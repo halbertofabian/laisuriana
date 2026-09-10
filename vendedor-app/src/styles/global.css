@@ -144,6 +144,15 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgb(140 200 250 /
 .sync-state i { width: 7px; height: 7px; background: #6ed5a9; border-radius: 50%; box-shadow: 0 0 0 4px rgb(110 213 169 / 12%); }
 .sync-state--syncing i { background: #f4c66b; box-shadow: 0 0 0 4px rgb(244 198 107 / 12%); animation: sync-pulse 1s ease-in-out infinite; }
 .sync-state--offline i, .sync-state--server-unavailable i { background: #aab7c4; box-shadow: 0 0 0 4px rgb(170 183 196 / 12%); }
+.commission-progress-card { padding: 16px; border: 1px solid #cfe0f1; border-radius: var(--radius-lg); background: linear-gradient(145deg,#f5faff,#fff); box-shadow: var(--shadow-sm); }
+.commission-progress-card__top { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.commission-progress-card__top div { display: flex; flex-direction: column; gap: 3px; }
+.commission-progress-card__top span { color: var(--color-ink-tertiary); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.commission-progress-card__top strong { color: var(--color-ink); font-size: 14px; }
+.commission-progress-card__top b { color: #0f6cbd; font-size: 22px; }
+.commission-progress-card__track { height: 9px; margin: 13px 0 8px; overflow: hidden; border-radius: 999px; background: #e4edf5; }
+.commission-progress-card__track span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#0f6cbd,#19a26a); }
+.commission-progress-card small { color: var(--color-ink-tertiary); font-size: 10px; }
 @keyframes sync-pulse { 50% { opacity: .35; } }
 
 .draft-card { margin: calc(var(--space-2) * -1) 0 var(--space-4); display: grid; grid-template-columns: minmax(0, 1fr) 48px; align-items: stretch; border: 1px solid rgb(16 100 174 / 20%); border-radius: var(--radius-md); background: var(--color-surface); box-shadow: var(--shadow-sm); overflow: hidden; }

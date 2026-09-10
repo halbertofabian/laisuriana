@@ -87,6 +87,10 @@ class SeguridadBaseSeeder extends Seeder
             ['clave' => 'comisiones.recalcular', 'descripcion' => 'Recalcular periodos de comisión no cerrados', 'modulo' => 'reportes'],
             ['clave' => 'comisiones.cerrar', 'descripcion' => 'Cerrar periodos de comisión', 'modulo' => 'reportes'],
             ['clave' => 'comisiones.exportar', 'descripcion' => 'Exportar el reporte de comisiones', 'modulo' => 'reportes'],
+            ['clave' => 'comisiones.aprobar', 'descripcion' => 'Aprobar metas y equipos mensuales', 'modulo' => 'reportes'],
+            ['clave' => 'comisiones.estimar', 'descripcion' => 'Consultar avance y comisión estimada', 'modulo' => 'reportes'],
+            ['clave' => 'comisiones.historial', 'descripcion' => 'Consultar periodos históricos de comisiones', 'modulo' => 'reportes'],
+            ['clave' => 'comisiones.avance.propio', 'descripcion' => 'Consultar únicamente el avance de comisión propio', 'modulo' => 'reportes'],
         ];
 
         foreach ($permisosBase as $permiso) {
@@ -153,6 +157,7 @@ class SeguridadBaseSeeder extends Seeder
                     'pos.retiro_caja',
                     'pos.gasto_caja',
                     'pos.corte_caja',
+                    'comisiones.avance.propio',
                 ],
             ],
             'Cajero' => [
@@ -168,6 +173,7 @@ class SeguridadBaseSeeder extends Seeder
                     'pos.cambio_devolucion',
                     'pos.retiro_caja',
                     'pos.gasto_caja',
+                    'comisiones.avance.propio',
                 ],
             ],
             'Vendedor piso' => [
@@ -181,6 +187,7 @@ class SeguridadBaseSeeder extends Seeder
                     'pedido_piso.crear',
                     'cliente.ver',
                     'cliente.crear',
+                    'comisiones.avance.propio',
                 ],
             ],
         ];

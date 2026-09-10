@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Reportes\ReportesFiltroRequest;
 use App\Models\Almacen;
 use App\Models\Caja;
-use App\Models\ComisionGrupo;
+use App\Models\ComisionV2Departamento;
 use App\Models\Usuario;
 use App\Services\AuditoriaService;
 use App\Services\Reportes\ReporteConsultaService;
@@ -49,7 +49,9 @@ class ReporteController extends Controller
                 ->where('usr_estatus', 'activo')
                 ->orderBy('usr_nombre')
                 ->get(['usr_id', 'usr_nombre']),
-            'gruposComision' => ComisionGrupo::query()->where('cgr_estatus', 'activo')->where('cgr_deleted', false)->orderBy('cgr_nombre')->get(['cgr_id', 'cgr_nombre']),
+            'gruposComision' => ComisionV2Departamento::query()
+                ->where('cmd_estatus', 'activo')->where('cmd_deleted', false)->orderBy('cmd_nombre')
+                ->get(['cmd_id as cgr_id', 'cmd_nombre as cgr_nombre']),
             'sucursalesComision' => $sucursalesComision,
             'sucursalConsultaInicial' => $sucursalConsultaInicial,
             'sucursalActivaId' => $sucursalId,

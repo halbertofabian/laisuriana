@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\Mobile\AuthController;
 use App\Http\Controllers\Api\V1\Mobile\FloorOrderController;
 use App\Http\Controllers\Api\V1\Mobile\HealthController;
 use App\Http\Controllers\Api\V1\Mobile\OrderCatalogController;
+use App\Http\Controllers\Api\V1\Mobile\CommissionProgressController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('v1/mobile/health', HealthController::class)
@@ -34,3 +35,6 @@ Route::prefix('v1/mobile')
         Route::put('/floor-orders/{order}', [FloorOrderController::class, 'update']);
         Route::delete('/floor-orders/{order}', [FloorOrderController::class, 'destroy']);
     });
+
+Route::get('v1/mobile/commission-progress', CommissionProgressController::class)
+    ->middleware(['auth:sanctum', 'abilities:mobile:commission-progress']);

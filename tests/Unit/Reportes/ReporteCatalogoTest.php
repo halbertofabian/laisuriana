@@ -40,7 +40,7 @@ class ReporteCatalogoTest extends TestCase
             ['ventas-marca', 'reportes.ventas.ver'],
             ['ventas-modelo', 'reportes.ventas.ver'],
             ['ventas-devoluciones', 'reportes.ventas.ver'],
-            ['ventas-comisiones', 'comisiones.ver'],
+            ['ventas-comisiones', 'comisiones.historial'],
             ['caja-cortes', 'reportes.caja.ver'],
             ['caja-retiros', 'reportes.caja.ver'],
             ['inventario-movimientos', 'reportes.inventario.ver'],

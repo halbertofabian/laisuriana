@@ -174,13 +174,9 @@ class ComisionesDemoSeederTest extends TestCase
                 'periodo' => substr($filtros['desde'], 0, 7),
             ]))
             ->assertOk()
-            ->assertSee('commission-branch-picker', false)
-            ->assertSee('Casa Matriz')
-            ->assertSee('Vista de consulta:')
-            ->assertSee('Rosario')
-            ->assertDontSee('form="commission-config-form"', false)
-            ->assertDontSee('commission-calculate-form', false)
-            ->assertDontSee('commission-close-form', false);
+            ->assertSee('Configura un periodo sin complicaciones')
+            ->assertDontSee('Casa Matriz')
+            ->assertDontSee('Vista de consulta:');
 
         $this->actingAs($admin)
             ->withSession(['sucursal_activa_id' => $otraAsignada->scl_id])
@@ -210,7 +206,8 @@ class ComisionesDemoSeederTest extends TestCase
             ->get(route('desktop.operacion.gestion_configuraciones.comisiones.index', [
                 'sucursal_id' => $sinAcceso->scl_id,
             ]))
-            ->assertForbidden();
+            ->assertOk()
+            ->assertDontSee('Sucursal sin acceso');
     }
 
     private function prepararCatalogosExistentes(): array

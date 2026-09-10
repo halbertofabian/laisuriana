@@ -10,13 +10,13 @@ import { OrdersScreen } from './screens/OrdersScreen';
 import { PrinterSettingsScreen } from './screens/PrinterSettingsScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { TicketScreen } from './screens/TicketScreen';
-import { ApiError, authApi, floorOrderApi, SESSION_EXPIRED_EVENT } from './services/api';
+import { ApiError, authApi, commissionApi, floorOrderApi, SESSION_EXPIRED_EVENT } from './services/api';
 import { persistActiveBranchId, resolveActiveBranchId } from './services/branchStorage';
 import { clearOrderDraft, getOrderDraft, saveOrderDraft, type OrderDraft } from './services/orderDraftStorage';
 import { initialNetworkStatus, observeNetworkStatus } from './services/networkStatus';
 import { clearAuthToken, clearCachedAuthUser, getAuthToken, getCachedAuthUser, setCachedAuthUser } from './services/sessionStorage';
 import { getPrinterConfig, setPrinterConfig } from './services/printerStorage';
-import type { AuthSession, AuthUser, CartLine, Customer, Order, OrderDetail, PrinterConfig, Product, Screen, Warehouse } from './types';
+import type { AuthSession, AuthUser, CartLine, CommissionProgress, Customer, Order, OrderDetail, PrinterConfig, Product, Screen, Warehouse } from './types';
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('orders');
@@ -28,6 +28,7 @@ export default function App() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState<string | null>(null);
+  const [commissionProgress, setCommissionProgress] = useState<CommissionProgress | null>(null);
   const [openingOrderId, setOpeningOrderId] = useState<number | null>(null);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [customer, setCustomer] = useState<Customer>(PUBLIC_CUSTOMER);
@@ -69,6 +70,7 @@ export default function App() {
       setAuthUser(null);
       setActiveBranchId(null);
       setOrders([]);
+      setCommissionProgress(null);
       setCart([]);
       setCustomer(PUBLIC_CUSTOMER);
       setGeneratedOrders([]);
@@ -138,14 +140,25 @@ export default function App() {
     }
   }, [activeBranchId, networkStatus.connected]);
 
+  const loadCommissionProgress = useCallback(async () => {
+    if (!activeBranchId || !networkStatus.connected) return;
+    try {
+      setCommissionProgress(await commissionApi.progress(activeBranchId));
+    } catch (error) {
+      if (!(error instanceof ApiError && [401, 403].includes(error.status))) {
+        setCommissionProgress({ estado: 'sin_meta', porcentaje: null, mensaje: 'No pudimos actualizar tu avance.' });
+      }
+    }
+  }, [activeBranchId, networkStatus.connected]);
+
   useEffect(() => {
-    if (authUser && activeBranchId) void loadOrders();
-  }, [activeBranchId, authUser, loadOrders]);
+    if (authUser && activeBranchId) void Promise.all([loadOrders(), loadCommissionProgress()]);
+  }, [activeBranchId, authUser, loadCommissionProgress, loadOrders]);
 
   useEffect(() => {
     if (screen !== 'orders' || !authUser || !activeBranchId || !networkStatus.connected) return;
 
-    const refreshInBackground = () => void loadOrders(true);
+    const refreshInBackground = () => void Promise.all([loadOrders(true), loadCommissionProgress()]);
     const interval = window.setInterval(refreshInBackground, 30_000);
     const refreshWhenVisible = () => {
       if (document.visibilityState === 'visible') refreshInBackground();
@@ -156,7 +169,7 @@ export default function App() {
       window.clearInterval(interval);
       document.removeEventListener('visibilitychange', refreshWhenVisible);
     };
-  }, [activeBranchId, authUser, loadOrders, networkStatus.connected, screen]);
+  }, [activeBranchId, authUser, loadCommissionProgress, loadOrders, networkStatus.connected, screen]);
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
@@ -461,6 +474,7 @@ export default function App() {
   };
 
   const authenticated = (session: AuthSession) => {
+    setCommissionProgress(null);
     setAuthUser(session.usuario);
     setActiveBranchId(resolveActiveBranchId(session.usuario));
     setServerReachable(true);
@@ -474,6 +488,7 @@ export default function App() {
     persistActiveBranchId(authUser.id, branchId);
     setActiveBranchId(branchId);
     setOrders([]);
+    setCommissionProgress(null);
     draftEpoch.current += 1;
     setDraftActive(false);
     setSavedDraft(null);
@@ -497,6 +512,7 @@ export default function App() {
       setAuthUser(null);
       setActiveBranchId(null);
       setOrders([]);
+      setCommissionProgress(null);
       setCart([]);
       setDraftNotes('');
       setGeneratedOrders([]);
@@ -577,13 +593,14 @@ export default function App() {
       error={ordersError}
       openingOrderId={openingOrderId}
       branchName={branchName}
+      commissionProgress={commissionProgress}
       draft={savedDraft}
       connectionState={!networkStatus.connected ? 'offline' : serverReachable === false ? 'server-unavailable' : ordersLoading ? 'syncing' : 'synced'}
       onNewOrder={startOrder}
       onResumeDraft={() => { if (savedDraft) resumeDraft(savedDraft); }}
       onDiscardDraft={() => void discardDraft()}
       onProfile={() => setScreen('settings')}
-      onRetry={() => void loadOrders()}
+      onRetry={() => void Promise.all([loadOrders(), loadCommissionProgress()])}
       onOpenOrder={(order) => void openOrder(order)}
     />
   );

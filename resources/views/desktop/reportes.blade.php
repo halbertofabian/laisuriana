@@ -14,8 +14,10 @@
     $periodoSolicitado = (string) request('periodo', '');
     $periodoInicial = preg_match('/^\d{4}-\d{2}$/', $periodoSolicitado) ? $periodoSolicitado : now()->format('Y-m');
     $puedeConfigurarComision = auth()->user()?->tienePermiso('comisiones.configurar') ?? false;
-    $puedeCalcularComision = auth()->user()?->tienePermiso('comisiones.calcular') ?? false;
-    $puedeRecalcularComision = auth()->user()?->tienePermiso('comisiones.recalcular') ?? false;
+    /* El reporte es de consulta/exportación; aprobación y cierre viven en el módulo mensual. */
+    $puedeCalcularComision = false;
+    $puedeRecalcularComision = false;
+    $puedeCerrarComision = false;
     $puedeExportarReporte = auth()->user()?->tienePermiso($esComisiones ? 'comisiones.exportar' : 'reportes.exportar') ?? false;
 @endphp
 
@@ -222,7 +224,7 @@
                 @if($puedeCalcularComision || $puedeRecalcularComision)
                     <button type="submit" class="desktop-btn desktop-btn--ghost" id="rep-comisiones-calcular-btn" form="rep-comisiones-calcular" disabled>Calcular</button>
                 @endif
-                @if(auth()->user()?->tienePermiso('comisiones.cerrar'))
+                @if($puedeCerrarComision)
                     <button type="submit" class="desktop-btn desktop-btn--ghost" id="rep-comisiones-cerrar-btn" form="rep-comisiones-cerrar" onclick="return confirm('¿Cerrar este periodo? Después no podrá recalcularse.');">Cerrar periodo</button>
                 @endif
             @endif
@@ -454,6 +456,7 @@
                             <select id="filter-commission-status">
                                 <option value="">Todos</option>
                                 <option value="borrador">Borrador</option>
+                                <option value="aprobado">Aprobado</option>
                                 <option value="calculado">Calculado</option>
                                 <option value="cerrado">Cerrado</option>
                                 <option value="sin_configurar">Sin configurar</option>
@@ -486,7 +489,7 @@
         @if($puedeCalcularComision || $puedeRecalcularComision)
             <form id="rep-comisiones-calcular" method="POST" action="{{ route('reportes.comisiones.calcular') }}" hidden>@csrf<input type="hidden" name="periodo" value="{{ $periodoInicial }}" data-commission-action-period></form>
         @endif
-        @if(auth()->user()?->tienePermiso('comisiones.cerrar'))
+        @if($puedeCerrarComision)
             <form id="rep-comisiones-cerrar" method="POST" action="{{ route('reportes.comisiones.cerrar') }}" hidden>@csrf<input type="hidden" name="periodo" value="{{ $periodoInicial }}" data-commission-action-period></form>
         @endif
     @endif
@@ -792,9 +795,9 @@
                             const estado = document.getElementById('rep-comisiones-estado');
                             actualizarAccionesComision();
                             if (estado) {
-                                const etiquetas = { sin_configurar: 'Sin configurar', borrador: 'Borrador', calculado: 'Calculado', cerrado: 'Cerrado' };
+                                const etiquetas = { sin_configurar: 'Sin configurar', borrador: 'Borrador', aprobado: 'Aprobado', calculado: 'Calculado', cerrado: 'Cerrado' };
                                 estado.textContent = etiquetas[estadoComisionActual] || estadoComisionActual;
-                                estado.classList.toggle('desktop-status--active', estadoComisionActual === 'calculado' || estadoComisionActual === 'borrador');
+                                estado.classList.toggle('desktop-status--active', ['borrador', 'aprobado', 'calculado'].includes(estadoComisionActual));
                                 estado.classList.toggle('desktop-status--inactive', estadoComisionActual === 'sin_configurar' || estadoComisionActual === 'cerrado');
                             }
                         }

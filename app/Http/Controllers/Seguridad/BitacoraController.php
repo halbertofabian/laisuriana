@@ -128,6 +128,11 @@ class BitacoraController extends Controller
             'comisiones.exportar_csv' => 'Exportación de comisiones (CSV)',
             'comisiones.exportar_xlsx' => 'Exportación de comisiones (Excel)',
             'comisiones.exportar_pdf' => 'Exportación de comisiones (PDF)',
+            'comisiones.v2.configurar' => 'Configuración mensual de metas y comisiones',
+            'comisiones.v2.aprobar' => 'Aprobación mensual de metas',
+            'comisiones.v2.cerrar' => 'Cierre mensual de comisiones',
+            'comisiones.v2.departamento_crear' => 'Alta de departamento de comisiones',
+            'comisiones.v2.departamento_estado' => 'Cambio de estado de departamento de comisiones',
             default => ucwords(str_replace(['.', '_'], ' ', $accion)),
         };
     }
@@ -142,6 +147,8 @@ class BitacoraController extends Controller
             'tbl_usuarios_usr' => 'Usuario',
             'tbl_roles_rol' => 'Rol',
             'tbl_comision_periodos_cpe' => 'Periodo de comisiones',
+            'tbl_comision_v2_periodos_cmp' => 'Periodo mensual de metas y comisiones',
+            'tbl_comision_v2_departamentos_cmd' => 'Departamento de comisiones',
             'reporte' => 'Reporte',
             default => $entidad,
         };
@@ -179,6 +186,11 @@ class BitacoraController extends Controller
             'comisiones.exportar_csv' => "Se exportó el reporte de comisiones{$sufijoPeriodo} en formato CSV con {$cantidadResultados}.",
             'comisiones.exportar_xlsx' => "Se exportó el reporte de comisiones{$sufijoPeriodo} en formato Excel con {$cantidadResultados}.",
             'comisiones.exportar_pdf' => "Se exportó el reporte de comisiones{$sufijoPeriodo} en formato PDF con {$cantidadResultados}.",
+            'comisiones.v2.configurar' => (($payload['antes'] ?? null) === null ? 'Se creó' : 'Se modificó')." la configuración mensual de metas{$sufijoPeriodo}.",
+            'comisiones.v2.aprobar' => "Se aprobaron las metas y el equipo{$sufijoPeriodo}.",
+            'comisiones.v2.cerrar' => "Se cerró y congeló el resultado de comisiones{$sufijoPeriodo} para {$vendedores} vendedores.",
+            'comisiones.v2.departamento_crear' => 'Se creó un departamento para el módulo de metas y comisiones.',
+            'comisiones.v2.departamento_estado' => 'Se cambió el estado de un departamento del módulo de metas y comisiones.',
             default => $this->resumenEntidad($entidad, $entidadId),
         };
     }

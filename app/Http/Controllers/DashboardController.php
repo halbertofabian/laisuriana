@@ -15,6 +15,7 @@ use App\Models\ProductoSku;
 use App\Models\Rol;
 use App\Models\Sucursal;
 use App\Models\Usuario;
+use App\Services\Reportes\ComisionV2Service;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -35,6 +36,11 @@ class DashboardController extends Controller
 
     private function obtenerMetricasDashboard(): array
     {
+        $sucursalActivaId = (int) session()->get('sucursal_activa_id');
+        $avanceComision = auth()->check() && $sucursalActivaId > 0 && auth()->user()->tienePermiso('comisiones.avance.propio')
+            ? app(ComisionV2Service::class)->avancePropio((int) auth()->id(), $sucursalActivaId)
+            : ['estado' => 'sin_meta', 'porcentaje' => null, 'mensaje' => 'Tu meta aún no está disponible.'];
+
         $hoy = now()->startOfDay();
         $ayer = now()->subDay()->startOfDay();
         $semanaActual = now()->startOfWeek(Carbon::MONDAY);
@@ -183,6 +189,7 @@ class DashboardController extends Controller
             ],
             'productos_stock_bajo' => $productosStockBajo,
             'ventas_ultimos_7_dias' => $ventasUltimos7Dias,
+            'avance_comision' => $avanceComision,
         ];
     }
 

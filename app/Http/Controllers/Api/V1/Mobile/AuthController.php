@@ -47,7 +47,7 @@ class AuthController extends Controller
         }
 
         $usuario->tokens()->where('name', 'suriana-vendedor-android')->delete();
-        $token = $usuario->createToken('suriana-vendedor-android', ['mobile:orders'])->plainTextToken;
+        $token = $usuario->createToken('suriana-vendedor-android', ['mobile:orders', 'mobile:commission-progress'])->plainTextToken;
 
         return response()->json([
             'message' => 'Inicio de sesión exitoso.',
