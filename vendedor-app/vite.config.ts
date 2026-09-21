@@ -5,6 +5,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_');
   const apiBaseUrl = env.VITE_API_BASE_URL?.trim();
+  const base = env.VITE_PUBLIC_BASE?.trim() || '/';
 
   if (mode === 'production' || mode === 'production-test') {
     if (!apiBaseUrl) {
@@ -24,6 +25,7 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
+    base,
     plugins: [
       react(),
       VitePWA({
