@@ -15,7 +15,10 @@ use Illuminate\Validation\ValidationException;
 
 class ComisionV2Service
 {
-    public function __construct(private readonly ComisionV2MovimientoService $movimientos) {}
+    public function __construct(
+        private readonly ComisionV2MovimientoService $movimientos,
+        private readonly ?ComisionHistoricoService $historico = null,
+    ) {}
 
     public function guardar(array $datos, int $sucursalId, int $usuarioId): ComisionV2Periodo
     {
@@ -127,13 +130,15 @@ class ComisionV2Service
                 $fecha->copy()->subYear()->startOfMonth(),
                 $fecha->copy()->subYear()->endOfMonth(),
             );
+            $referencias = ($this->historico ?? app(ComisionHistoricoService::class))
+                ->resumirReferencia($periodo, $historicos, $fecha->copy()->subYear());
             foreach ($configuraciones as $departamentoId => $configPeriodo) {
-                $filas = $historicos->where('departamento_periodo_id', $configPeriodo->cpd_id);
+                $referencia = $referencias->get($configPeriodo->cpd_id);
                 $cantidad = ComisionV2Participante::query()->where('cpt_cpd_id', $configPeriodo->cpd_id)->count();
-                $ventas = round((float) $filas->sum('importe'), 2);
-                $autoservicio = round((float) $filas->whereNull('vendedor_id')->sum('importe'), 2);
+                $ventas = (float) ($referencia['ventas'] ?? 0);
+                $autoservicio = (float) ($referencia['autoservicio'] ?? 0);
                 $base = round($ventas - $autoservicio, 2);
-                $hayHistorico = $filas->isNotEmpty() && $base > 0 && $cantidad > 0;
+                $hayHistorico = $referencia !== null && $base > 0 && $cantidad > 0;
                 $sugerida = $hayHistorico
                     ? round(($base / $cantidad) * (1 + ((float) $configPeriodo->cpd_incremento_meta / 100)), 2)
                     : null;
@@ -421,9 +426,14 @@ class ComisionV2Service
 
     public function calcularFila(float $ventas, float $meta, float $factor, float $tasa): array
     {
+        $metaAlcanzada = $meta > 0 && $ventas >= $meta;
         $cumplimiento = $meta > 0 ? round(max(0, $ventas) / $meta * 100, 2) : 0.0;
+        // El redondeo visual no debe anunciar una meta que todavía no se alcanza.
+        if (! $metaAlcanzada) {
+            $cumplimiento = min(99.99, $cumplimiento);
+        }
         $base = round(max(0, $ventas) * ($factor / 100), 2);
-        $comision = $cumplimiento >= 100 ? round($base * ($tasa / 100), 2) : 0.0;
+        $comision = $metaAlcanzada ? round($base * ($tasa / 100), 2) : 0.0;
         return ['cumplimiento' => $cumplimiento, 'base_comisionable' => $base, 'comision' => $comision];
     }
 

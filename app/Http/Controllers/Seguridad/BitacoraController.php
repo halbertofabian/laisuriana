@@ -133,6 +133,7 @@ class BitacoraController extends Controller
             'comisiones.v2.cerrar' => 'Cierre mensual de comisiones',
             'comisiones.v2.departamento_crear' => 'Alta de departamento de comisiones',
             'comisiones.v2.departamento_estado' => 'Cambio de estado de departamento de comisiones',
+            'comisiones.historico.guardar' => 'Captura de ventas históricas para metas',
             default => ucwords(str_replace(['.', '_'], ' ', $accion)),
         };
     }
@@ -191,6 +192,9 @@ class BitacoraController extends Controller
             'comisiones.v2.cerrar' => "Se cerró y congeló el resultado de comisiones{$sufijoPeriodo} para {$vendedores} vendedores.",
             'comisiones.v2.departamento_crear' => 'Se creó un departamento para el módulo de metas y comisiones.',
             'comisiones.v2.departamento_estado' => 'Se cambió el estado de un departamento del módulo de metas y comisiones.',
+            'comisiones.historico.guardar' => ($payload['antes'] ?? null) === null
+                ? 'Se registró una referencia mensual de ventas históricas para metas.'
+                : 'Se corrigió una referencia de ventas históricas con motivo y detalle de los cambios.',
             default => $this->resumenEntidad($entidad, $entidadId),
         };
     }

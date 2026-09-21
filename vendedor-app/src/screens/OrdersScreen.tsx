@@ -87,7 +87,7 @@ export function OrdersScreen({
         <section className="commission-progress-card" aria-label="Mi avance de meta">
           <div className="commission-progress-card__top">
             <div><span>Mi meta del mes</span><strong>{commissionProgress?.mensaje ?? 'Tu meta aún no está disponible.'}</strong></div>
-            <b>{commissionProgress?.porcentaje == null ? '—' : `${commissionProgress.porcentaje.toFixed(1)}%`}</b>
+            <b>{commissionProgress?.porcentaje == null ? '—' : `${commissionProgress.porcentaje.toFixed(2)}%`}</b>
           </div>
           <div className="commission-progress-card__track"><span style={{ width: `${commissionProgress?.porcentaje ?? 0}%` }} /></div>
           <small>Solo tú puedes ver este avance. No mostramos importes.</small>

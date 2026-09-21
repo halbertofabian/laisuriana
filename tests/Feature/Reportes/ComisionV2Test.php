@@ -12,6 +12,7 @@ use App\Models\Usuario;
 use App\Models\UsuarioSucursal;
 use App\Models\UsuarioRol;
 use App\Services\Reportes\ComisionV2MovimientoService;
+use App\Services\Reportes\ComisionV2Service;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -210,6 +211,59 @@ class ComisionV2Test extends TestCase
             ->post(route('reportes.comisiones.calcular'), ['periodo' => now()->format('Y-m')])
             ->assertRedirect();
         $this->assertSame(2, (int) DB::table('tbl_comision_v2_periodo_departamentos_cpd')->value('cpd_vendedores_congelados'));
+    }
+
+    public function test_un_centavo_faltante_no_comisiona_ni_anuncia_meta_alcanzada_al_estimar_o_cerrar(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        $admin = Usuario::query()->where('usr_usuario', 'admin')->firstOrFail();
+        $sucursal = Sucursal::query()->firstOrFail();
+        $datos = $this->configuracion($admin, $sucursal);
+
+        $this->mock(ComisionV2MovimientoService::class, function ($mock) use ($admin, $datos): void {
+            $mock->shouldReceive('obtener')->andReturnUsing(function ($periodo, $desde) use ($admin, $datos) {
+                if ($desde->format('Y-m') !== $datos['periodo']) {
+                    return collect();
+                }
+
+                return collect([(object) [
+                    'vendedor_id' => $admin->usr_id,
+                    'departamento_periodo_id' => $periodo->departamentos()->value('cpd_id'),
+                    'almacen_id' => $datos['almacen_ids'][0],
+                    'almacen_nombre' => 'Almacén de prueba',
+                    'linea_id' => array_values($datos['departamentos'])[0]['linea_ids'][0],
+                    'linea_nombre' => 'Línea de prueba',
+                    'venta_bruta' => 999.99,
+                    'descuentos' => 0,
+                    'devoluciones' => 0,
+                    'importe' => 999.99,
+                ]]);
+            });
+        });
+
+        $service = app(ComisionV2Service::class);
+        $periodo = $service->guardar($datos, $sucursal->scl_id, $admin->usr_id);
+        $periodo = $service->aprobar($periodo, $admin->usr_id);
+
+        $estimacion = $service->estimacionAdministrativa($periodo)->sole();
+        $this->assertSame(0.0, $estimacion->comision);
+        $this->assertSame(99.99, $estimacion->cumplimiento);
+        $avance = $service->avancePropio($admin->usr_id, $sucursal->scl_id);
+        $this->assertSame('en_progreso', $avance['estado']);
+        $this->assertSame(99.99, $avance['porcentaje']);
+        $this->assertStringNotContainsString('Meta alcanzada', $avance['mensaje']);
+
+        $reporte = $service->reporte($periodo);
+        $this->assertSame('No generó comisión porque no alcanzó el 100% de la meta.', $reporte['detalles']['1']['resumen']['explicacion_tasa']);
+
+        $service->cerrar($periodo, $admin->usr_id);
+        $resultado = $periodo->resultados()->sole();
+        $this->assertSame(0.0, (float) $resultado->cmr_comision);
+        $this->assertSame(99.99, (float) $resultado->cmr_cumplimiento);
+        $avanceCerrado = $service->avancePropio($admin->usr_id, $sucursal->scl_id);
+        $this->assertSame('cerrado', $avanceCerrado['estado']);
+        $this->assertSame(99.99, $avanceCerrado['porcentaje']);
+        $this->assertStringNotContainsString('Meta alcanzada', $avanceCerrado['mensaje']);
     }
 
     private function configuracion(Usuario $vendedor, Sucursal $sucursal): array

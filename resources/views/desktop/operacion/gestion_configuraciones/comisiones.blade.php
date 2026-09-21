@@ -40,6 +40,7 @@
     <section class="commission-toolbar">
         <form method="GET" class="commission-row"><div class="desktop-field"><label for="commission-period">Mes que vas a configurar</label><input id="commission-period" type="month" name="periodo" value="{{ $periodoTexto }}"></div><button class="desktop-btn desktop-btn--primary" type="submit">Abrir mes</button></form>
         <div class="commission-toolbar__aside">
+            <a class="desktop-btn desktop-btn--ghost" href="{{ route('desktop.operacion.gestion_configuraciones.comisiones.historico.index') }}">Capturar ventas históricas</a>
             @if($legacyCount>0)<a class="desktop-btn desktop-btn--ghost" href="{{ route('reportes.show',['reporte'=>'ventas-comisiones']) }}">Histórico anterior</a>@endif
             <details class="commission-advanced"><summary class="desktop-btn desktop-btn--ghost">Opciones avanzadas</summary><div class="commission-advanced__panel">
                 <form method="POST" action="{{ route('desktop.operacion.gestion_configuraciones.comisiones.departamentos.store') }}" class="commission-create">@csrf<div class="desktop-field"><label for="new-department">Crear departamento</label><input id="new-department" name="nombre" maxlength="120" placeholder="Ej. Hogar" required></div><button class="desktop-btn desktop-btn--ghost" type="submit">Crear</button></form>

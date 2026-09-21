@@ -171,7 +171,7 @@
                 <p>{{ $avance_comision['mensaje'] }}</p>
                 <div class="goal-card__track"><span style="width:{{ $avance_comision['porcentaje'] ?? 0 }}%"></span></div>
             </div>
-            <span class="goal-card__value">{{ $avance_comision['porcentaje'] !== null ? number_format($avance_comision['porcentaje'], 1).'%' : '—' }}</span>
+            <span class="goal-card__value">{{ $avance_comision['porcentaje'] !== null ? number_format($avance_comision['porcentaje'], 2).'%' : '—' }}</span>
         </div>
 
         <div>

@@ -18,6 +18,7 @@ use App\Http\Controllers\Operacion\PuntoVentaController;
 use App\Http\Controllers\Operacion\SucursalAlmacenController;
 use App\Http\Controllers\Operacion\TicketPersonalizacionController;
 use App\Http\Controllers\Reportes\ComisionV2Controller;
+use App\Http\Controllers\Reportes\ComisionHistoricoController;
 use App\Http\Controllers\Reportes\ReporteController;
 use App\Http\Controllers\Seguridad\BitacoraController;
 use App\Http\Controllers\Seguridad\PermisoController;
@@ -321,6 +322,12 @@ Route::middleware('auth')->group(function () {
             ->middleware('permiso:comisiones.configurar');
         Route::put('/comisiones', [ComisionV2Controller::class, 'guardar'])
             ->name('comisiones.update')
+            ->middleware('permiso:comisiones.configurar');
+        Route::get('/comisiones/historico-ventas', [ComisionHistoricoController::class, 'index'])
+            ->name('comisiones.historico.index')
+            ->middleware('permiso:comisiones.configurar');
+        Route::post('/comisiones/historico-ventas', [ComisionHistoricoController::class, 'store'])
+            ->name('comisiones.historico.store')
             ->middleware('permiso:comisiones.configurar');
         Route::post('/comisiones/departamentos', [ComisionV2Controller::class, 'guardarDepartamento'])
             ->name('comisiones.departamentos.store')
