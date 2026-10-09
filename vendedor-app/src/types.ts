@@ -24,6 +24,11 @@ export interface CartLine extends Product {
   discountType: 'none' | 'percentage' | 'amount';
   discountValue: number;
   discountQuantity: number;
+  /**
+   * Solo productos por metro: texto capturado que aún no se confirma.
+   * Una línea por metro con quantity 0 está pendiente y nunca se envía al API.
+   */
+  meterInput?: string;
 }
 
 export interface Customer {

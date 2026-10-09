@@ -1,5 +1,5 @@
 @php
-    $apkUrl = asset('downloads/lasuriana-app-release.apk');
+    $apkUrl = asset('downloads/Suriana-Vendedor-0.2.0.apk');
     $qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=' . urlencode($apkUrl);
 @endphp
 <!doctype html>
@@ -20,7 +20,9 @@
 </head>
 <body>
     <div class="card">
-        <h1>Descargar App Android (APK)</h1>
+        <h1>Suriana Vendedor para Android</h1>
+        <p><strong>Versión 0.2.0 · Código 2</strong></p>
+        <p>Conectada a producción. Firma de pruebas, compatible con Suriana Vendedor 0.1.0 de prueba.</p>
         <p>Escanea este QR con tu celular para abrir el enlace de descarga.</p>
         <img src="{{ $qrUrl }}" alt="QR de descarga APK">
         <div>

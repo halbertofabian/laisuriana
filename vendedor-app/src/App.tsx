@@ -1,12 +1,13 @@
 import { App as CapacitorApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { RefreshCw } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Button } from './components/Button';
-import { CatalogScreen, PUBLIC_CUSTOMER } from './screens/CatalogScreen';
+import { PUBLIC_CUSTOMER } from './components/CustomerSheet';
+import { CatalogScreen } from './screens/CatalogScreen';
 import { CartScreen } from './screens/CartScreen';
 import { LoginScreen } from './screens/LoginScreen';
-import { OrdersScreen } from './screens/OrdersScreen';
+import { OrdersScreen, type OrdersView } from './screens/OrdersScreen';
 import { PrinterSettingsScreen } from './screens/PrinterSettingsScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { TicketScreen } from './screens/TicketScreen';
@@ -16,6 +17,7 @@ import { clearOrderDraft, getOrderDraft, saveOrderDraft, type OrderDraft } from 
 import { initialNetworkStatus, observeNetworkStatus } from './services/networkStatus';
 import { clearAuthToken, clearCachedAuthUser, getAuthToken, getCachedAuthUser, setCachedAuthUser } from './services/sessionStorage';
 import { getPrinterConfig, setPrinterConfig } from './services/printerStorage';
+import { addQuantity, firstIncompleteLine, isMeterProduct, roundMoney, roundQuantity } from './services/quantity';
 import type { AuthSession, AuthUser, CartLine, CommissionProgress, Customer, Order, OrderDetail, PrinterConfig, Product, Screen, Warehouse } from './types';
 
 export default function App() {
@@ -43,6 +45,9 @@ export default function App() {
   const [serverReachable, setServerReachable] = useState<boolean | null>(null);
   const [printerConfig, setActivePrinterConfig] = useState<PrinterConfig | null>(() => getPrinterConfig());
   const [printerReturnScreen, setPrinterReturnScreen] = useState<'settings' | 'ticket'>('settings');
+  const [catalogQuery, setCatalogQuery] = useState('');
+  const [ordersView, setOrdersView] = useState<OrdersView>({ filter: 'pending', query: '', searchOpen: false });
+  const [cartFocus, setCartFocus] = useState<{ cartKey: string; id: number } | null>(null);
   const draftEpoch = useRef(0);
 
   useEffect(() => {
@@ -212,6 +217,11 @@ export default function App() {
     };
   }, [editingOrder, loadOrders, printerReturnScreen, screen]);
 
+  // Pedidos, catálogo y carrito manejan su propio desplazamiento; las demás pantallas abren arriba.
+  useLayoutEffect(() => {
+    if (!['orders', 'catalog', 'cart'].includes(screen)) window.scrollTo(0, 0);
+  }, [screen]);
+
   useEffect(() => {
     if (!authUser || !activeBranchId) {
       setSavedDraft(null);
@@ -255,27 +265,79 @@ export default function App() {
     return () => window.clearTimeout(timeout);
   }, [activeBranchId, authUser, cart, customer, draftActive, draftNotes, draftRequestId, editingOrder]);
 
+  const withQuantity = (item: CartLine, quantity: number): CartLine => ({
+    ...item,
+    quantity,
+    discountQuantity: item.discountType === 'none' ? 0 : quantity,
+    discountValue: item.discountType === 'amount'
+      ? Math.min(item.discountValue, roundMoney(item.price * quantity))
+      : item.discountValue,
+  });
+
   const setQuantity = (line: CartLine, quantity: number) => {
     setCart((current) => {
-      if (quantity <= 0) return current.filter((item) => item.cartKey !== line.cartKey);
-      return current.map((item) => item.cartKey === line.cartKey ? {
-        ...item,
-        quantity,
-        discountQuantity: item.discountType === 'none' ? 0 : quantity,
-        discountValue: item.discountType === 'amount'
-          ? Math.min(item.discountValue, Math.round(item.price * quantity * 100) / 100)
-          : item.discountValue,
-      } : item);
+      const normalized = Number.isFinite(quantity) ? roundQuantity(quantity) : 0;
+      if (normalized <= 0) return current.filter((item) => item.cartKey !== line.cartKey);
+      return current.map((item) => item.cartKey === line.cartKey ? withQuantity(item, normalized) : item);
     });
   };
 
+  /** Guarda el texto que el vendedor escribe en metros sin convertirlo todavía en cantidad. */
+  const setMeterInput = (line: CartLine, text: string | undefined) => {
+    setCart((current) => current.map((item) => {
+      if (item.cartKey !== line.cartKey) return item;
+      const { meterInput: _previous, ...rest } = item;
+      return text === undefined ? rest : { ...rest, meterInput: text };
+    }));
+  };
+
+  const confirmMeters = (line: CartLine, quantity: number) => {
+    setCart((current) => current.map((item) => {
+      if (item.cartKey !== line.cartKey) return item;
+      const { meterInput: _confirmed, ...rest } = item;
+      return withQuantity(rest, roundQuantity(quantity));
+    }));
+  };
+
+  /**
+   * Por metro: abre en el carrito la línea existente de ese producto y almacén o crea una pendiente,
+   * sin cantidad inventada; la cantidad se captura y confirma en el carrito.
+   */
+  const openMeterLine = (product: Product, warehouse: Warehouse) => {
+    const existing = cart.find((line) => line.id === product.id && line.warehouseId === warehouse.id && line.discountType === 'none')
+      ?? cart.find((line) => line.id === product.id && line.warehouseId === warehouse.id);
+    const cartKey = existing?.cartKey ?? `${product.id}:${warehouse.id}`;
+
+    if (!existing) {
+      setCart((current) => [...current, {
+        ...product,
+        cartKey,
+        warehouseId: warehouse.id,
+        warehouseName: warehouse.name,
+        quantity: 0,
+        discountType: 'none',
+        discountValue: 0,
+        discountQuantity: 0,
+        meterInput: '',
+      }]);
+    }
+    setCartFocus({ cartKey, id: Date.now() });
+    setScreen('cart');
+  };
+
   const addProduct = (product: Product, warehouse: Warehouse) => {
+    if (isMeterProduct(product)) {
+      openMeterLine(product, warehouse);
+      return;
+    }
+
     const cartKey = `${product.id}:${warehouse.id}`;
+    const step = product.allowsDecimal ? 0.01 : 1;
     setCart((current) => {
       const existing = current.find((line) => line.id === product.id && line.warehouseId === warehouse.id && line.discountType === 'none');
       if (existing) {
         return current.map((line) => line.cartKey === existing.cartKey
-          ? { ...line, quantity: Math.round((line.quantity + (product.allowsDecimal ? 0.01 : 1)) * 100) / 100 }
+          ? { ...line, quantity: addQuantity(line.quantity, step) }
           : line);
       }
 
@@ -284,7 +346,7 @@ export default function App() {
         cartKey,
         warehouseId: warehouse.id,
         warehouseName: warehouse.name,
-        quantity: product.allowsDecimal ? 0.01 : 1,
+        quantity: step,
         discountType: 'none',
         discountValue: 0,
         discountQuantity: 0,
@@ -342,6 +404,7 @@ export default function App() {
 
   const resumeDraft = (draft: OrderDraft) => {
     draftEpoch.current += 1;
+    setCatalogQuery('');
     setCart(draft.cart);
     setCustomer(draft.customer);
     setDraftNotes(draft.notes);
@@ -363,6 +426,7 @@ export default function App() {
     setDraftNotes('');
     setDraftRequestId(crypto.randomUUID());
     setEditingOrder(null);
+    setCatalogQuery('');
     setDraftActive(true);
     setScreen('catalog');
   };
@@ -385,6 +449,8 @@ export default function App() {
     const activeBranch = authUser?.sucursales.find((branch) => branch.id === activeBranchId);
     const userId = authUser?.id;
     if (!activeBranch || !userId) throw new ApiError(422, 'Tu usuario no tiene una sucursal asignada.');
+    const incomplete = firstIncompleteLine(cart);
+    if (incomplete) throw new ApiError(422, `Falta confirmar los metros de ${incomplete.name}.`);
 
     if (editingOrder) {
       const updated = await floorOrderApi.update(editingOrder.id, editingOrder.branchId, customer.id, notes, cart);
@@ -439,6 +505,7 @@ export default function App() {
   const editOrder = (order: OrderDetail) => {
     const toneBySku: Product['tone'][] = ['sage', 'sand', 'clay', 'slate'];
     draftEpoch.current += 1;
+    setCatalogQuery('');
     setEditingOrder(order);
     setDraftNotes(order.notes ?? '');
     setDraftRequestId(crypto.randomUUID());
@@ -560,7 +627,7 @@ export default function App() {
   }
 
   if (screen === 'settings') {
-    return <SettingsScreen user={authUser} activeBranchId={activeBranch?.id ?? 0} branchName={branchName} printerConfig={printerConfig} onBranch={selectBranch} onPrinter={() => openPrinterSettings('settings')} onBack={() => setScreen('orders')} onLogout={logout} />;
+    return <SettingsScreen user={authUser} activeBranchId={activeBranch?.id ?? 0} branchName={branchName} printerConfig={printerConfig} hasDraft={savedDraft !== null || cart.length > 0} onBranch={selectBranch} onPrinter={() => openPrinterSettings('settings')} onBack={() => setScreen('orders')} onLogout={logout} />;
   }
   if (screen === 'catalog') {
     return (
@@ -576,12 +643,33 @@ export default function App() {
         onCustomer={setCustomer}
         onAdd={addProduct}
         onQuantity={setQuantity}
+        query={catalogQuery}
+        onQuery={setCatalogQuery}
         online={networkStatus.connected}
       />
     );
   }
   if (screen === 'cart') {
-    return <CartScreen cart={cart} customer={customer} editingFolio={editingOrder?.folio} notes={draftNotes} requestId={draftRequestId} online={networkStatus.connected} onNotes={setDraftNotes} onBack={() => setScreen('catalog')} onQuantity={setQuantity} onDiscount={setLineDiscount} onSubmit={submitOrder} />;
+    return (
+      <CartScreen
+        cart={cart}
+        customer={customer}
+        editingFolio={editingOrder?.folio}
+        notes={draftNotes}
+        requestId={draftRequestId}
+        online={networkStatus.connected}
+        focusRequest={cartFocus}
+        onFocusHandled={() => setCartFocus(null)}
+        onNotes={setDraftNotes}
+        onBack={() => setScreen('catalog')}
+        onCustomer={setCustomer}
+        onQuantity={setQuantity}
+        onMeterInput={setMeterInput}
+        onConfirmMeters={confirmMeters}
+        onDiscount={setLineDiscount}
+        onSubmit={submitOrder}
+      />
+    );
   }
   if (screen === 'ticket' && generatedOrders.length > 0) {
     return <TicketScreen orders={generatedOrders} mode={ticketMode} canEdit={authUser.permisos.crear_pedidos} canCancel={authUser.permisos.cancelar_pedidos} printerConfig={printerConfig} onEdit={editOrder} onCancel={cancelOrder} onConfigurePrinter={() => openPrinterSettings('ticket')} onDone={() => { setEditingOrder(null); setScreen('orders'); void loadOrders(); }} />;
@@ -595,6 +683,8 @@ export default function App() {
       branchName={branchName}
       commissionProgress={commissionProgress}
       draft={savedDraft}
+      view={ordersView}
+      onView={setOrdersView}
       connectionState={!networkStatus.connected ? 'offline' : serverReachable === false ? 'server-unavailable' : ordersLoading ? 'syncing' : 'synced'}
       onNewOrder={startOrder}
       onResumeDraft={() => { if (savedDraft) resumeDraft(savedDraft); }}

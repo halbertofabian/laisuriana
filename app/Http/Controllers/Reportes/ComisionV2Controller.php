@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Reportes;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Reportes\GuardarConfiguracionComisionV2Request;
+use App\Http\Requests\Reportes\VistaPreviaComisionV2Request;
 use App\Models\Almacen;
 use App\Models\ComisionV2Departamento;
 use App\Models\ComisionV2Periodo;
@@ -51,6 +52,15 @@ class ComisionV2Controller extends Controller
             : collect();
         $configDepartamentos = $periodo?->departamentos?->keyBy('cpd_cmd_id') ?? collect();
         $participantes = $periodo?->participantes?->keyBy('cpt_usr_id') ?? collect();
+        // Solo se muestra como ajuste la meta que difiere de la común; las demás siguen a la meta común.
+        $metasIndividuales = $participantes->map(function ($participante) use ($periodo) {
+            $metaComun = $periodo->departamentos->firstWhere('cpd_id', $participante->cpt_cpd_id)?->cpd_meta_comun;
+            $meta = (float) $participante->cpt_meta_individual;
+
+            return $meta > 0 && ($metaComun === null || abs($meta - (float) $metaComun) > 0.009) ? $meta : null;
+        });
+        $mes = Carbon::createFromFormat('Y-m', $periodoTexto)->startOfMonth();
+        $puedeEstimar = $request->user()?->tienePermiso('comisiones.estimar') ?? false;
 
         return view('desktop.operacion.gestion_configuraciones.comisiones', [
             'activeSubmenu' => 'comisiones',
@@ -66,7 +76,14 @@ class ComisionV2Controller extends Controller
             'lineasPeriodo' => $lineasPeriodo,
             'configDepartamentos' => $configDepartamentos,
             'participantes' => $participantes,
-            'estimaciones' => $periodo && ($request->user()?->tienePermiso('comisiones.estimar') ?? false)
+            'metasIndividuales' => $metasIndividuales,
+            'modosGuardados' => $configDepartamentos->map(fn ($config) => $this->modoGuardado($config)),
+            'vistaGuardada' => $this->vistaGuardada($periodo, $metasIndividuales),
+            'mesTexto' => $mes->copy()->locale('es')->isoFormat('MMMM [de] YYYY'),
+            'referenciaPeriodo' => $mes->copy()->subYear()->format('Y-m'),
+            'referenciaTexto' => $mes->copy()->subYear()->locale('es')->isoFormat('MMMM [de] YYYY'),
+            'puedeEstimar' => $puedeEstimar,
+            'estimaciones' => $periodo && $puedeEstimar
                 ? $this->comisiones->estimacionAdministrativa($periodo)
                 : collect(),
             'puedeAprobar' => $request->user()?->tienePermiso('comisiones.aprobar') ?? false,
@@ -92,6 +109,21 @@ class ComisionV2Controller extends Controller
         ]);
         return redirect()->route('desktop.operacion.gestion_configuraciones.comisiones.index', ['periodo' => $periodo->cmp_periodo->format('Y-m')])
             ->with('success', $periodo->cmp_estatus === 'aprobado' ? 'Cambios guardados y estimados actualizados.' : 'Borrador guardado. Revisa el resumen antes de aprobarlo.');
+    }
+
+    public function vistaPrevia(VistaPreviaComisionV2Request $request)
+    {
+        $datos = $request->validated();
+        $sucursalId = $this->sucursalActiva($request);
+        $cerrado = ComisionV2Periodo::query()
+            ->where('cmp_scl_id', $sucursalId)
+            ->whereDate('cmp_periodo', Carbon::createFromFormat('Y-m', $datos['periodo'])->startOfMonth()->toDateString())
+            ->where('cmp_estatus', 'cerrado')->exists();
+        if ($cerrado) {
+            throw ValidationException::withMessages(['periodo' => 'El periodo está cerrado; consulta sus resultados definitivos.']);
+        }
+
+        return response()->json($this->comisiones->vistaPrevia($datos, $sucursalId));
     }
 
     public function aprobar(Request $request)
@@ -161,6 +193,69 @@ class ComisionV2Controller extends Controller
             'despues' => ['nombre' => $departamento->cmd_nombre, 'estatus' => $departamento->cmd_estatus],
         ]);
         return back()->with('success', 'Estado del departamento actualizado.');
+    }
+
+    /** Periodos guardados antes de elegir modo: una meta distinta de la sugerida fue manual. */
+    private function modoGuardado($config): string
+    {
+        if ($config->cpd_origen_meta === 'manual') {
+            return $config->cpd_meta_comun !== null ? 'manual' : 'historica';
+        }
+        $sugerida = $config->cpd_meta_sugerida;
+        $comun = $config->cpd_meta_comun;
+
+        return $comun !== null && ($sugerida === null || abs((float) $comun - (float) $sugerida) > 0.009) ? 'manual' : 'historica';
+    }
+
+    /** Valores guardados con la misma forma que la vista previa, para consultar periodos cerrados. */
+    private function vistaGuardada(?ComisionV2Periodo $periodo, $metasIndividuales): ?array
+    {
+        if (! $periodo) {
+            return null;
+        }
+
+        return [
+            'periodo' => $periodo->cmp_periodo->format('Y-m'),
+            'guardada' => true,
+            'departamentos' => $periodo->departamentos->mapWithKeys(function ($config) use ($periodo, $metasIndividuales) {
+                $base = (float) $config->cpd_base_historica;
+                $modo = $this->modoGuardado($config);
+                $comun = $config->cpd_meta_comun !== null ? (float) $config->cpd_meta_comun : null;
+
+                return [$config->cpd_cmd_id => [
+                    'estado' => $base > 0 ? 'guardada' : 'sin_base',
+                    'origen' => null,
+                    'ventas' => (float) $config->cpd_ventas_historicas,
+                    'autoservicio' => (float) $config->cpd_autoservicio_historico,
+                    'base' => $base,
+                    'combinaciones' => [],
+                    'faltantes' => 0,
+                    'vendedores' => (int) $config->cpd_vendedores_congelados,
+                    'promedio' => $base > 0 && $config->cpd_vendedores_congelados > 0 ? round($base / $config->cpd_vendedores_congelados, 2) : null,
+                    'modo' => $modo,
+                    'incremento' => (float) $config->cpd_incremento_meta,
+                    'sugerida' => $config->cpd_meta_sugerida !== null ? (float) $config->cpd_meta_sugerida : null,
+                    'meta_manual' => $modo === 'manual' ? $comun : null,
+                    'meta_comun' => $comun,
+                    'falta' => $comun === null ? ($modo === 'manual' ? 'meta_manual' : ($base > 0 ? 'vendedores' : 'base')) : null,
+                    'ajustes' => $periodo->participantes->where('cpt_cpd_id', $config->cpd_id)
+                        ->filter(fn ($p) => $metasIndividuales->get($p->cpt_usr_id) !== null)->count(),
+                    'guardado' => null,
+                ]];
+            })->all(),
+            'vendedores' => $periodo->participantes->mapWithKeys(function ($participante) use ($periodo, $metasIndividuales) {
+                $comun = $periodo->departamentos->firstWhere('cpd_id', $participante->cpt_cpd_id)?->cpd_meta_comun;
+                $individual = $metasIndividuales->get($participante->cpt_usr_id);
+
+                return [$participante->cpt_usr_id => [
+                    'meta' => (float) $participante->cpt_meta_individual ?: null,
+                    'origen' => $individual !== null ? 'individual' : ($comun !== null ? 'comun' : 'sin_meta'),
+                    'meta_comun' => $comun !== null ? (float) $comun : null,
+                    'requiere_motivo' => $this->comisiones->requiereMotivoAjuste((float) ($individual ?? 0), $comun !== null ? (float) $comun : null, (float) $participante->cpt_tasa_comision),
+                ]];
+            })->all(),
+            'lineas_repetidas' => [],
+        ];
     }
 
     private function snapshotPeriodo(?ComisionV2Periodo $periodo): ?array

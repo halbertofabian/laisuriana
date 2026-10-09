@@ -57,6 +57,7 @@ class AlmacenService
                 'alm_tal_id' => $datos['alm_tal_id'],
                 'alm_nombre' => $datos['alm_nombre'],
                 'alm_clave' => $this->generarClaveInterna((int) $datos['alm_scl_id'], (string) $datos['alm_nombre']),
+                'alm_permite_facturar' => (bool) ($datos['alm_permite_facturar'] ?? false),
                 'alm_estatus' => $datos['alm_estatus'],
                 'alm_created_by_usr_id' => optional($request->user())->usr_id,
                 'alm_updated_by_usr_id' => optional($request->user())->usr_id,
@@ -87,6 +88,7 @@ class AlmacenService
 
             $almacen->update([
                 'alm_scl_id' => $datos['alm_scl_id'],
+                'alm_permite_facturar' => (bool) ($datos['alm_permite_facturar'] ?? $almacen->alm_permite_facturar),
                 'alm_tal_id' => $datos['alm_tal_id'],
                 'alm_nombre' => $datos['alm_nombre'],
                 'alm_estatus' => $datos['alm_estatus'],

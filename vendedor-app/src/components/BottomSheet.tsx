@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 
 interface BottomSheetProps {
@@ -10,6 +10,13 @@ interface BottomSheetProps {
 }
 
 export function BottomSheet({ open, title, description, children, onClose }: BottomSheetProps) {
+  useEffect(() => {
+    if (!open) return;
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [onClose, open]);
+
   if (!open) return null;
 
   return (

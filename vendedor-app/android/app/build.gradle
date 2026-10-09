@@ -18,8 +18,8 @@ if (hasAnyReleaseCredential && !hasReleaseKeystore) {
 if (!hasReleaseKeystore && releaseRequested) {
     logger.warn('Suriana Vendedor: Release se generará sin firma; no debe distribuirse.')
 }
-def surianaVersionCode = (project.findProperty('SURIANA_VERSION_CODE') ?: '1').toInteger()
-def surianaVersionName = project.findProperty('SURIANA_VERSION_NAME') ?: '0.1.0'
+def surianaVersionCode = (project.findProperty('SURIANA_VERSION_CODE') ?: '2').toInteger()
+def surianaVersionName = project.findProperty('SURIANA_VERSION_NAME') ?: '0.2.0'
 
 android {
     namespace "mx.lasuriana.vendedor"

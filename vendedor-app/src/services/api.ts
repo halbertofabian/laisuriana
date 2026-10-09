@@ -1,4 +1,5 @@
 import type { AuthSession, AuthUser, CartLine, CommissionProgress, Customer, Order, OrderDetail, OrderStatus, Product, UserSuggestion, Warehouse } from '../types';
+import { countItems } from './quantity';
 import { getAuthToken } from './sessionStorage';
 
 type ValidationErrors = Record<string, string[]>;
@@ -246,7 +247,7 @@ function mapOrderDetail(order: ApiOrderDetail): OrderDetail {
     id: order.id,
     folio: order.folio,
     customer: order.customer,
-    itemCount: order.lines.reduce((sum, line) => sum + Number(line.quantity), 0),
+    itemCount: countItems(order.lines.map((line) => ({ unitCode: line.unit_code, quantity: Number(line.quantity) }))),
     total: Number(order.total),
     time: orderTime(order.created_at),
     status: order.status,

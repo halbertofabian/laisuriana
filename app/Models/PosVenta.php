@@ -75,6 +75,11 @@ class PosVenta extends Model
         return $this->belongsTo(Almacen::class, 'psv_alm_id', 'alm_id');
     }
 
+    public function facturacion()
+    {
+        return $this->hasOne(Facturacion::class, 'fac_psv_id', 'psv_id');
+    }
+
     public function caja()
     {
         return $this->belongsTo(Caja::class, 'psv_caj_id', 'caj_id');

@@ -66,6 +66,16 @@ El permiso requerido es `comisiones.configurar`. No se permiten duplicados; las 
 
 Validación de esta integración: 16 pruebas y 128 aserciones de Comisiones V2 e histórico. Se verificaron visualmente escritorio y móvil, el resumen en vivo y la validación del importe de autoservicio. La migración crea únicamente la tabla de referencias históricas.
 
+### Configuración guiada (octubre de 2026)
+
+La pantalla de metas consulta la referencia histórica en vivo (`POST comisiones/vista-previa`, permiso `comisiones.configurar`) con la selección en captura, sin guardar. La vista previa y el guardado usan los mismos métodos de `ComisionV2Service` (`metaSugerida`, `resolverMetaComun`, `requiereMotivoAjuste`) y la misma consulta de movimientos, por lo que no pueden divergir.
+
+- Estados de la referencia por departamento: completa, parcial (hay combinaciones de almacén y línea sin ventas del sistema ni captura), base insuficiente y falta de alcance. La parcial se sigue calculando con lo disponible, como antes, pero se muestra cada faltante con acceso directo a su captura.
+- Fuente: ventas del sistema, capturas manuales o ambas; cada captura indica cuánto del sistema sustituye.
+- Modo de meta por departamento (`cpd_origen_meta`): `historica` usa la sugerida y no exige borrar importes anteriores; `manual` usa la meta escrita, que tiene prioridad. Los periodos guardados antes se interpretan así: una meta común distinta de la sugerida fue manual.
+- Ajustes individuales: el formulario muestra vacía la meta que sigue a la común y conserva las metas distintas. Al cambiar incremento, equipo, líneas o almacenes, la vista previa indica la meta guardada, la nueva y cuántos ajustes se conservan. El motivo se exige por vendedor cuando la meta difiere de la común o la tasa difiere de 0.9%.
+- Resultados: por vendedor se muestran venta neta, meta, avance, base comisionable, tasa, comisión y la causa de una comisión cero (meta no alcanzada con el faltante, tasa 0%, sin meta o sin ventas). Se distingue estimado de definitivo.
+
 Si inflación e incremento se capturan por separado, hay dos alternativas pendientes:
 
 ```text

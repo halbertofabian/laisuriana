@@ -114,7 +114,7 @@ export function PrinterSettingsScreen({
 
   return (
     <main className="screen screen--with-action screen-enter">
-      <AppHeader title="Impresora" eyebrow="CONFIGURACIÓN" onBack={onBack} />
+      <AppHeader title="Impresora" onBack={onBack} />
       <section className="screen-content printer-settings">
         <div className="printer-intro">
           <span className="printer-intro__icon"><Printer size={27} /></span>
@@ -140,7 +140,7 @@ export function PrinterSettingsScreen({
         {status?.permissionGranted && status.enabled && (
           <>
             <div className="printer-section-heading">
-              <div><span>IMPRESORAS EMPAREJADAS</span><small>{devices.length} disponibles</small></div>
+              <div><span>Impresoras emparejadas</span><small>{devices.length} disponibles</small></div>
               <button onClick={() => void loadDevices()} aria-label="Actualizar impresoras"><RefreshCw size={18} className={loading ? 'spin' : ''} /></button>
             </div>
             {devices.length > 0 ? (
@@ -167,7 +167,7 @@ export function PrinterSettingsScreen({
 
         {config && (
           <div className="printer-options">
-            <p className="settings-label">FORMATO DE IMPRESIÓN</p>
+            <p className="settings-label">Formato de impresión</p>
             <div className="printer-profile-list">
               {profiles.map((profile) => (
                 <button key={profile.id} className={config.language === profile.id ? 'selected' : ''} onClick={() => updateProfile(profile.id)}>
@@ -176,7 +176,7 @@ export function PrinterSettingsScreen({
                 </button>
               ))}
             </div>
-            <p className="settings-label">ANCHO DEL PAPEL</p>
+            <p className="settings-label">Ancho del papel</p>
             <div className="paper-width-picker">
               {(['58', '80'] as PrinterPaperWidth[]).map((width) => (
                 <button key={width} className={config.paperWidth === width ? 'selected' : ''} onClick={() => updateWidth(width)}>

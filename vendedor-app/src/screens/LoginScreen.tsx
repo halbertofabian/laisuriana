@@ -10,6 +10,7 @@ export function LoginScreen({ message, onAuthenticated }: { message?: string | n
   const [selectedUser, setSelectedUser] = useState<UserSuggestion | null>(null);
   const [suggestions, setSuggestions] = useState<UserSuggestion[]>([]);
   const [searching, setSearching] = useState(false);
+  const [searchedQuery, setSearchedQuery] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -30,6 +31,7 @@ export function LoginScreen({ message, onAuthenticated }: { message?: string | n
       try {
         const results = await authApi.searchUsers(normalized, controller.signal);
         setSuggestions(results);
+        setSearchedQuery(normalized);
         setError(null);
       } catch (requestError) {
         if (!controller.signal.aborted) {
@@ -86,9 +88,8 @@ export function LoginScreen({ message, onAuthenticated }: { message?: string | n
       </div>
       <section className="login-panel">
         <div className="login-panel__intro">
-          <span className="eyebrow">VENTAS DE PISO</span>
           <h1>Bienvenido</h1>
-          <p>Busca tu usuario para comenzar.</p>
+          <p>Escribe tu usuario y elige tu nombre.</p>
         </div>
         {message && <div className="login-session-notice" role="status">{message}</div>}
         <form onSubmit={submit} className="form-stack">
@@ -99,6 +100,13 @@ export function LoginScreen({ message, onAuthenticated }: { message?: string | n
               <input
                 value={query}
                 onChange={(event) => changeUser(event.target.value)}
+                onKeyDown={(event) => {
+                  // Con una sola coincidencia, Enter la elige y pasa a la contraseña.
+                  if (event.key === 'Enter' && !selectedUser && suggestions.length === 1) {
+                    event.preventDefault();
+                    chooseUser(suggestions[0]);
+                  }
+                }}
                 autoComplete="off"
                 autoCapitalize="none"
                 spellCheck={false}
@@ -122,6 +130,10 @@ export function LoginScreen({ message, onAuthenticated }: { message?: string | n
             </div>
           )}
 
+          {!selectedUser && !searching && !error && suggestions.length === 0 && query.trim().length >= 2 && searchedQuery === query.trim() && (
+            <span className="field-hint" role="status">No encontramos ese usuario. Revisa cómo está escrito.</span>
+          )}
+          {!selectedUser && query.trim().length === 1 && <span className="field-hint">Escribe al menos dos letras.</span>}
           {error && !selectedUser && <span className="login-general-error" role="alert">{error}</span>}
 
           {selectedUser && (
@@ -155,7 +167,6 @@ export function LoginScreen({ message, onAuthenticated }: { message?: string | n
           <Button type="submit" full loading={submitting} disabled={!selectedUser || !password}>Entrar</Button>
         </form>
       </section>
-      <p className="login-screen__branch">Conexión segura · iSuriana</p>
     </main>
   );
 }

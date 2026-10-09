@@ -1,4 +1,4 @@
-import { Bluetooth, Check, ChevronRight, CircleX, Copy, Pencil, Printer, ReceiptText, Share2, Trash2 } from 'lucide-react';
+import { Bluetooth, Check, CircleX, Copy, Pencil, Printer, ReceiptText, Share2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { AppHeader } from '../components/AppHeader';
 import { BottomSheet } from '../components/BottomSheet';
@@ -7,6 +7,7 @@ import { Code128Barcode } from '../components/Code128Barcode';
 import { InlineNotice } from '../components/Feedback';
 import { ApiError, floorOrderApi } from '../services/api';
 import { bluetoothPrinter, printerErrorMessage, printerProfileNames } from '../services/bluetoothPrinter';
+import { formatMeters, formatQuantity, isMeterProduct } from '../services/quantity';
 import type { OrderDetail, PrinterConfig } from '../types';
 
 const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
@@ -40,7 +41,6 @@ export function TicketScreen({
   onDone: () => void;
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
-  const [printerSheet, setPrinterSheet] = useState(false);
   const [printedIds, setPrintedIds] = useState<number[]>([]);
   const [printing, setPrinting] = useState(false);
   const [printError, setPrintError] = useState<string | null>(null);
@@ -48,14 +48,12 @@ export function TicketScreen({
   const [cancelSheet, setCancelSheet] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
-  const [actionsSheet, setActionsSheet] = useState(false);
   const automaticPrintStarted = useRef(false);
   const order = orders[Math.min(activeIndex, orders.length - 1)];
   const pending = order.status === 'pending';
   const printed = printedIds.includes(order.id);
-  const itemLabel = `${order.itemCount} ${order.itemCount === 1 ? 'artículo' : 'artículos'}`;
 
-  const printOrders = async (ordersToPrint: OrderDetail[], closeSheetAfter = true, verifyStatus = true) => {
+  const printOrders = async (ordersToPrint: OrderDetail[], verifyStatus = true) => {
     if (!printerConfig) return;
     setPrinting(true);
     setPrintError(null);
@@ -71,7 +69,6 @@ export function TicketScreen({
         await bluetoothPrinter.printTicket(printerConfig, { order: ticketOrder });
         setPrintedIds((current) => current.includes(ticketOrder.id) ? current : [...current, ticketOrder.id]);
       }
-      if (closeSheetAfter) window.setTimeout(() => setPrinterSheet(false), 850);
     } catch (error) {
       setPrintError(error instanceof ApiError ? error.message : printerErrorMessage(error));
     } finally {
@@ -82,7 +79,7 @@ export function TicketScreen({
   useEffect(() => {
     if (mode !== 'generated' || !printerConfig || automaticPrintStarted.current) return;
     automaticPrintStarted.current = true;
-    void printOrders(orders, false, false);
+    void printOrders(orders, false);
   }, [mode, printerConfig, orders]);
 
   const share = async () => {
@@ -117,48 +114,35 @@ export function TicketScreen({
     }
   };
 
-  const shareFromActions = async () => {
-    setActionsSheet(false);
-    await share();
-  };
-
-  const headerTitle = order.status === 'paid'
-    ? 'Pedido cobrado'
+  const printLabel = orders.length > 1 ? `Imprimir ${orders.length} tickets` : printed ? 'Reimprimir ticket' : 'Imprimir ticket';
+  const headerTitle = mode === 'generated'
+    ? (orders.length > 1 ? 'Pedidos generados' : 'Pedido generado')
+    : mode === 'updated' ? 'Pedido actualizado' : 'Detalle del pedido';
+  const status = order.status === 'paid'
+    ? { tone: 'success', title: 'Pagado', text: 'Ya se cobró en caja. No es necesario volver a presentarlo.' }
     : order.status === 'cancelled'
-      ? 'Pedido cancelado'
-      : mode === 'detail'
-        ? 'Detalle del pedido'
-        : mode === 'updated' ? 'Pedido actualizado' : (orders.length > 1 ? 'Pedidos generados' : 'Pedido generado');
-  const mainTitle = order.status === 'paid'
-    ? 'Pago confirmado'
-    : order.status === 'cancelled'
-      ? 'Pedido cancelado'
-      : mode === 'updated' ? 'Cambios guardados' : 'Listo para pagar';
-  const mainDescription = order.status === 'paid'
-    ? 'Este pedido ya fue cobrado en caja.'
-    : order.status === 'cancelled'
-      ? 'Este folio ya no está disponible para cobro.'
+      ? { tone: 'danger', title: 'Cancelado', text: 'Este folio ya no se puede cobrar ni imprimir.' }
       : mode === 'updated'
-        ? 'El folio se conserva y ya contiene la información corregida.'
-        : orders.length > 1
-          ? `Se generaron ${orders.length} tickets, uno por almacén.`
-          : 'Entrega este ticket al cliente para que pase a caja.';
+        ? { tone: 'success', title: 'Cambios guardados', text: 'Se conserva el mismo folio. Imprime de nuevo si el cliente tiene el ticket anterior.' }
+        : mode === 'generated'
+          ? { tone: 'success', title: 'Listo para cobrar', text: orders.length > 1 ? `Se generó un ticket por almacén (${orders.length}). Entrega todos al cliente.` : 'Entrega el ticket al cliente para que pague en caja.' }
+          : { tone: 'pending', title: 'Pendiente de pago', text: 'El cliente debe presentar este folio en caja.' };
 
   return (
-    <main className="screen screen--with-action screen-enter">
-      <AppHeader title={headerTitle} onMore={pending ? () => setActionsSheet(true) : undefined} />
+    <main className="screen screen-enter">
+      <AppHeader title={headerTitle} onBack={onDone} />
       <section className="screen-content ticket-content">
-        <div className={order.status === 'cancelled' ? 'cancelled-mark' : order.status === 'paid' || mode !== 'detail' ? 'success-mark' : 'detail-mark'}>{order.status === 'cancelled' ? <CircleX size={31} /> : order.status === 'paid' || mode !== 'detail' ? <Check size={31} strokeWidth={2.6} /> : <ReceiptText size={29} />}</div>
-        <h2>{mainTitle}</h2>
-        <p>{mainDescription}</p>
+        <div className={`ticket-banner ticket-banner--${status.tone}`} role="status">
+          {order.status === 'cancelled' ? <CircleX size={20} aria-hidden="true" /> : status.tone === 'pending' ? <ReceiptText size={20} aria-hidden="true" /> : <Check size={20} aria-hidden="true" />}
+          <div><strong>{status.title}</strong><span>{status.text}</span></div>
+        </div>
 
         {orders.length > 1 && (
-          <div className="ticket-switcher" aria-label="Tickets generados">
+          <div className="ticket-switcher" role="group" aria-label="Tickets generados">
             {orders.map((item, index) => (
-              <button key={item.id} className={index === activeIndex ? 'active' : ''} onClick={() => { setActiveIndex(index); setPrinterSheet(false); setActionsSheet(false); }}>
-                <span>{index + 1}</span>
-                <div><strong>{item.folio}</strong><small>{item.warehouse}</small></div>
-                {printedIds.includes(item.id) ? <Check size={17} /> : <ChevronRight size={17} />}
+              <button key={item.id} className={index === activeIndex ? 'active' : ''} aria-pressed={index === activeIndex} onClick={() => setActiveIndex(index)}>
+                <strong>{item.folio}</strong>
+                <small>{item.warehouse}{printedIds.includes(item.id) ? ' · impreso' : ''}</small>
               </button>
             ))}
           </div>
@@ -166,65 +150,62 @@ export function TicketScreen({
 
         <article className={`ticket-card${pending ? '' : ' ticket-card--inactive'}`}>
           <div className="ticket-card__top">
-            <span>FOLIO DE PEDIDO</span>
             <strong>{order.folio}</strong>
-            <small>{orderDate(order)}</small>
-            {!pending && <em className={`ticket-status ticket-status--${order.status}`}>{order.status === 'paid' ? 'PAGADO' : 'CANCELADO'}</em>}
+            <small>{orderDate(order)} · {order.warehouse}</small>
           </div>
           <Code128Barcode value={order.folio} />
           <div className="ticket-card__details">
             <div><span>Cliente</span><strong>{order.customer}</strong></div>
-            <div><span>Almacén</span><strong>{order.warehouse}</strong></div>
-            <div><span>Productos</span><strong>{itemLabel}</strong></div>
           </div>
+          {order.lines.length > 0 && (
+            <ul className="ticket-lines" aria-label="Productos">
+              {order.lines.map((line) => (
+                <li key={line.id}>
+                  <span>
+                    <strong>{line.name}</strong>
+                    <small>
+                      {isMeterProduct(line) ? `${formatMeters(line.quantity)} m` : formatQuantity(line.quantity)} × {money.format(line.price)}
+                      {line.discount > 0 ? ` · descuento −${money.format(line.discount)}` : ''}
+                    </small>
+                  </span>
+                  <b>{money.format(line.total)}</b>
+                </li>
+              ))}
+            </ul>
+          )}
           <div className="ticket-card__total"><span>Total</span><strong>{money.format(order.total)}</strong></div>
         </article>
 
-        {pending && printedIds.length > 0 && <div className="print-success"><Check size={17} /> {printedIds.length === orders.length && orders.length > 1 ? `${orders.length} tickets enviados a la impresora` : 'Ticket enviado a la impresora'}</div>}
-        {printError && <InlineNotice type="warning">{printError} El pedido sigue guardado y puedes reintentar.</InlineNotice>}
-        {pending && shared && <div className="print-success"><Copy size={17} /> Folio compartido</div>}
-        {pending ? (
+        {pending && (
           <div className="ticket-actions">
-            <Button full loading={printing} onClick={() => setPrinterSheet(true)} icon={<Printer size={20} />}>{orders.length > 1 ? `Imprimir ${orders.length} tickets` : printed ? 'Reimprimir ticket' : 'Imprimir ticket'}</Button>
-            {canEdit && orders.length === 1 && <Button full variant="secondary" onClick={() => onEdit(order)} icon={<Pencil size={18} />}>Editar pedido</Button>}
+            {pending && printedIds.length > 0 && !printing && !printError && (
+              <p className="print-success" role="status"><Check size={16} aria-hidden="true" /> {printedIds.length > 1 ? `${printedIds.length} tickets enviados a la impresora` : 'Ticket enviado a la impresora'}</p>
+            )}
+            {printError && <InlineNotice type="warning">{printError} El pedido sigue guardado; puedes reintentar.</InlineNotice>}
+            {printerConfig ? (
+              <>
+                <Button full loading={printing} onClick={() => void printOrders(orders.length > 1 ? orders : [order])} icon={<Printer size={20} />}>{printLabel}</Button>
+                <button className="printer-line" onClick={onConfigurePrinter}>
+                  <Bluetooth size={14} aria-hidden="true" />{printerConfig.name} · {printerProfileNames[printerConfig.language]} · {printerConfig.paperWidth} mm<span>Cambiar</span>
+                </button>
+              </>
+            ) : (
+              <Button full onClick={onConfigurePrinter} icon={<Printer size={20} />}>Configurar impresora</Button>
+            )}
+            <div className="ticket-actions__row">
+              {canEdit && orders.length === 1 && <Button variant="secondary" onClick={() => onEdit(order)} icon={<Pencil size={18} />}>Editar</Button>}
+              <Button variant="secondary" onClick={() => void share()} icon={shared ? <Copy size={18} /> : <Share2 size={18} />}>{shared ? 'Compartido' : 'Compartir'}</Button>
+            </div>
+            {canCancel && <button className="text-danger-button" onClick={() => setCancelSheet(true)}>Cancelar pedido</button>}
           </div>
-        ) : (
-          <InlineNotice type={order.status === 'paid' ? 'success' : 'warning'}>{order.status === 'paid' ? 'No es necesario volver a presentar este folio en caja.' : 'La impresión y el uso de este folio están deshabilitados.'}</InlineNotice>
         )}
+        <Button full variant="quiet" className="ticket-done" onClick={onDone}>Volver a pedidos</Button>
       </section>
-      <div className="sticky-action sticky-action--plain">
-        <Button full variant="quiet" onClick={onDone}>Volver a pedidos</Button>
-      </div>
-
-      <BottomSheet open={printerSheet} onClose={() => setPrinterSheet(false)} title={orders.length > 1 ? 'Imprimir tickets' : 'Imprimir ticket'} description={orders.length > 1 ? `Enviar ${orders.length} tickets a la impresora.` : `Enviar ${order.folio} a la impresora.`}>
-        {printerConfig ? (
-          <button className="printer-option" onClick={onConfigurePrinter}>
-            <span className="printer-option__icon"><Printer size={22} /></span>
-            <span><strong>{printerConfig.name}</strong><small><Bluetooth size={14} /> {printerProfileNames[printerConfig.language]} · {printerConfig.paperWidth} mm</small></span>
-            <span className="radio-selected"><i /></span>
-          </button>
-        ) : (
-          <div className="printer-sheet-empty"><span><Bluetooth size={22} /></span><strong>Sin impresora configurada</strong><p>Elige una impresora antes de imprimir.</p></div>
-        )}
-        {printError && <div className="inline-notice inline-notice--error" role="alert">{printError}</div>}
-        <div className="sheet-actions">
-          {printerConfig && <Button full onClick={() => void printOrders(orders.length > 1 ? orders : [order])} loading={printing}>{orders.length > 1 ? 'Imprimir todos' : 'Imprimir ahora'}</Button>}
-          <Button full variant="secondary" onClick={onConfigurePrinter}>{printerConfig ? 'Cambiar impresora' : 'Configurar impresora'}</Button>
-        </div>
-      </BottomSheet>
-
-      <BottomSheet open={actionsSheet} onClose={() => setActionsSheet(false)} title="Más acciones" description={order.folio}>
-        <div className="sheet-actions">
-          {pending && <Button full variant="secondary" onClick={() => void shareFromActions()} icon={<Share2 size={19} />}>Compartir folio</Button>}
-          {canCancel && order.status === 'pending' && <Button full variant="danger" onClick={() => { setActionsSheet(false); setCancelSheet(true); }} icon={<Trash2 size={18} />}>Cancelar pedido</Button>}
-        </div>
-      </BottomSheet>
 
       <BottomSheet open={cancelSheet} onClose={() => setCancelSheet(false)} title="¿Cancelar este pedido?" description={`El folio ${order.folio} dejará de estar disponible para cobro.`}>
-        <InlineNotice type="warning">Esta acción solo está disponible mientras el pedido siga pendiente.</InlineNotice>
         {cancelError && <InlineNotice type="warning">{cancelError}</InlineNotice>}
         <div className="sheet-actions">
-          <Button full variant="danger" loading={cancelling} onClick={() => void cancel()}>Sí, cancelar pedido</Button>
+          <Button full variant="danger" loading={cancelling} onClick={() => void cancel()}>Cancelar pedido</Button>
           <Button full variant="quiet" onClick={() => setCancelSheet(false)}>Conservar pedido</Button>
         </div>
       </BottomSheet>

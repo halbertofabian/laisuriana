@@ -28,6 +28,7 @@ class GuardarHistoricoVentasRequest extends FormRequest
             'referencia' => ['required', 'string', 'max:250'],
             'observaciones' => ['nullable', 'string', 'max:1000'],
             'motivo' => ['required_with:id', 'nullable', 'string', 'max:500'],
+            'volver' => ['nullable', 'date_format:Y-m'],
         ];
     }
 

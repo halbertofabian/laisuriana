@@ -15,6 +15,10 @@ use Illuminate\Validation\ValidationException;
 
 class ComisionV2Service
 {
+    public const TASA_ORDINARIA = 0.9;
+
+    public const FACTOR_COMISIONABLE = 33;
+
     public function __construct(
         private readonly ComisionV2MovimientoService $movimientos,
         private readonly ?ComisionHistoricoService $historico = null,
@@ -54,7 +58,7 @@ class ComisionV2Service
                 'cmp_estatus' => 'borrador',
             ]);
             $periodo->fill([
-                'cmp_factor_comisionable' => 33,
+                'cmp_factor_comisionable' => self::FACTOR_COMISIONABLE,
                 'cmp_ultimo_motivo_cambio' => trim((string) ($datos['motivo_cambio'] ?? '')) ?: null,
                 'cmp_updated_by_usr_id' => $usuarioId,
             ])->save();
@@ -74,14 +78,15 @@ class ComisionV2Service
                 if (! $departamento) {
                     continue;
                 }
+                $modo = $this->modoMeta($config);
                 $configPeriodo = ComisionV2PeriodoDepartamento::query()->create([
                     'cpd_cmp_id' => $periodo->cmp_id,
                     'cpd_cmd_id' => $departamento->cmd_id,
                     'cpd_departamento_nombre' => $departamento->cmd_nombre,
-                    'cpd_origen_meta' => 'manual',
+                    'cpd_origen_meta' => $modo,
                     'cpd_vendedores_congelados' => 0,
                     'cpd_incremento_meta' => (float) ($config['incremento_meta'] ?? 0),
-                    'cpd_meta_comun' => $config['meta_comun'] ?? null,
+                    'cpd_meta_comun' => $modo === 'manual' ? $this->importePositivo($config['meta_comun'] ?? null) : null,
                 ]);
                 $configuraciones[(int) $departamentoId] = $configPeriodo;
                 $lineaIds = collect($config['linea_ids'] ?? [])->map(fn ($id) => (int) $id)->unique()->values()->all();
@@ -103,6 +108,7 @@ class ComisionV2Service
                 ->where('usc.usc_estatus', 'activo')->where('usc.usc_deleted', false)->whereNull('usc.usc_deleted_at')
                 ->where('usr.usr_estatus', 'activo')->where('usr.usr_deleted', false)
                 ->get(['usr.usr_id', 'usr.usr_nombre'])->keyBy('usr_id');
+            $equipo = [];
             foreach ((array) ($datos['vendedores'] ?? []) as $usuarioFilaId => $fila) {
                 if (! ($fila['habilitado'] ?? false)) {
                     continue;
@@ -112,16 +118,7 @@ class ComisionV2Service
                 if (! $usuario || ! $configPeriodo) {
                     throw ValidationException::withMessages(['vendedores' => 'Todos los vendedores deben estar activos, pertenecer a la sucursal y tener departamento.']);
                 }
-                ComisionV2Participante::query()->create([
-                    'cpt_cmp_id' => $periodo->cmp_id,
-                    'cpt_cpd_id' => $configPeriodo->cpd_id,
-                    'cpt_usr_id' => (int) $usuarioFilaId,
-                    'cpt_numero_vendedor' => trim((string) $fila['numero']),
-                    'cpt_nombre_vendedor' => $usuario->usr_nombre,
-                    'cpt_meta_individual' => (float) ($fila['meta'] ?? 0),
-                    'cpt_tasa_comision' => (float) ($fila['tasa'] ?? 0.9),
-                    'cpt_motivo_ajuste' => trim((string) ($fila['motivo'] ?? '')) ?: null,
-                ]);
+                $equipo[(int) $usuarioFilaId] = [$fila, $usuario, $configPeriodo];
             }
 
             $periodo->load('almacenes');
@@ -132,49 +129,223 @@ class ComisionV2Service
             );
             $referencias = ($this->historico ?? app(ComisionHistoricoService::class))
                 ->resumirReferencia($periodo, $historicos, $fecha->copy()->subYear());
-            foreach ($configuraciones as $departamentoId => $configPeriodo) {
+            $metasComunes = [];
+            foreach ($configuraciones as $configPeriodo) {
                 $referencia = $referencias->get($configPeriodo->cpd_id);
-                $cantidad = ComisionV2Participante::query()->where('cpt_cpd_id', $configPeriodo->cpd_id)->count();
+                $cantidad = collect($equipo)->filter(fn ($fila) => $fila[2]->cpd_id === $configPeriodo->cpd_id)->count();
                 $ventas = (float) ($referencia['ventas'] ?? 0);
                 $autoservicio = (float) ($referencia['autoservicio'] ?? 0);
                 $base = round($ventas - $autoservicio, 2);
-                $hayHistorico = $referencia !== null && $base > 0 && $cantidad > 0;
-                $sugerida = $hayHistorico
-                    ? round(($base / $cantidad) * (1 + ((float) $configPeriodo->cpd_incremento_meta / 100)), 2)
-                    : null;
-                $metaComun = (float) ($configPeriodo->cpd_meta_comun ?? 0);
-                if ($metaComun <= 0 && $sugerida !== null) {
-                    $metaComun = $sugerida;
-                }
+                $sugerida = $this->metaSugerida($base, $cantidad, (float) $configPeriodo->cpd_incremento_meta);
+                $metaComun = $this->resolverMetaComun(
+                    $configPeriodo->cpd_origen_meta,
+                    $configPeriodo->cpd_meta_comun !== null ? (float) $configPeriodo->cpd_meta_comun : null,
+                    $sugerida,
+                );
+                $metasComunes[$configPeriodo->cpd_id] = $metaComun;
                 $configPeriodo->update([
-                    'cpd_origen_meta' => $hayHistorico ? 'historica' : 'manual',
-                    'cpd_periodo_referencia' => $hayHistorico ? $fecha->copy()->subYear() : null,
+                    'cpd_periodo_referencia' => $base > 0 ? $fecha->copy()->subYear() : null,
                     'cpd_ventas_historicas' => $ventas,
                     'cpd_autoservicio_historico' => $autoservicio,
                     'cpd_base_historica' => $base,
                     'cpd_vendedores_congelados' => $cantidad,
                     'cpd_meta_sugerida' => $sugerida,
-                    'cpd_meta_comun' => $metaComun > 0 ? $metaComun : null,
+                    'cpd_meta_comun' => $metaComun,
                 ]);
-                if ($metaComun > 0) {
-                    $ajustesSinMotivo = ComisionV2Participante::query()
-                        ->where('cpt_cpd_id', $configPeriodo->cpd_id)
-                        ->where('cpt_meta_individual', '>', 0)
-                        ->whereRaw('ABS(cpt_meta_individual - ?) > 0.009', [$metaComun])
-                        ->where(fn ($query) => $query->whereNull('cpt_motivo_ajuste')->orWhere('cpt_motivo_ajuste', ''))
-                        ->exists();
-                    if ($ajustesSinMotivo) {
-                        throw ValidationException::withMessages(['vendedores' => "Explica los ajustes individuales respecto a la meta de {$configPeriodo->cpd_departamento_nombre}."]);
-                    }
-                    ComisionV2Participante::query()
-                        ->where('cpt_cpd_id', $configPeriodo->cpd_id)
-                        ->where('cpt_meta_individual', '<=', 0)
-                        ->update(['cpt_meta_individual' => $metaComun, 'cpt_updated_at' => now()]);
+            }
+
+            $errores = [];
+            foreach ($equipo as $usuarioFilaId => [$fila, $usuario, $configPeriodo]) {
+                $metaComun = $metasComunes[$configPeriodo->cpd_id];
+                $metaIndividual = (float) ($fila['meta'] ?? 0);
+                $tasa = (float) ($fila['tasa'] ?? self::TASA_ORDINARIA);
+                $motivo = trim((string) ($fila['motivo'] ?? '')) ?: null;
+                if ($motivo === null && $this->requiereMotivoAjuste($metaIndividual, $metaComun, $tasa)) {
+                    $errores["vendedores.$usuarioFilaId.motivo"] = "Explica el ajuste de meta o tasa de {$usuario->usr_nombre}.";
                 }
+                ComisionV2Participante::query()->create([
+                    'cpt_cmp_id' => $periodo->cmp_id,
+                    'cpt_cpd_id' => $configPeriodo->cpd_id,
+                    'cpt_usr_id' => $usuarioFilaId,
+                    'cpt_numero_vendedor' => trim((string) $fila['numero']),
+                    'cpt_nombre_vendedor' => $usuario->usr_nombre,
+                    'cpt_meta_individual' => $metaIndividual > 0 ? $metaIndividual : ($metaComun ?? 0),
+                    'cpt_tasa_comision' => $tasa,
+                    'cpt_motivo_ajuste' => $motivo,
+                ]);
+            }
+            if ($errores !== []) {
+                throw ValidationException::withMessages($errores);
             }
 
             return $periodo->fresh(['almacenes', 'departamentos.participantes', 'participantes']);
         });
+    }
+
+    /**
+     * Calcula, sin guardar, la referencia histórica y las metas que produciría la selección.
+     * Usa las mismas reglas que guardar() para que la vista previa no diverja del resultado.
+     */
+    public function vistaPrevia(array $datos, int $sucursalId): array
+    {
+        $fecha = Carbon::createFromFormat('Y-m', $datos['periodo'])->startOfMonth();
+        $mesReferencia = $fecha->copy()->subYear();
+        $almacenIds = DB::table('tbl_almacenes_alm')
+            ->whereIn('alm_id', array_map('intval', (array) ($datos['almacen_ids'] ?? [])))
+            ->where('alm_scl_id', $sucursalId)
+            ->where('alm_estatus', 'activo')
+            ->where('alm_deleted', false)
+            ->pluck('alm_id')->map(fn ($id) => (int) $id)->all();
+        $catalogo = ComisionV2Departamento::query()->where('cmd_estatus', 'activo')->get()->keyBy('cmd_id');
+        $guardado = ComisionV2Periodo::query()
+            ->with(['departamentos', 'participantes'])
+            ->where('cmp_scl_id', $sucursalId)
+            ->whereDate('cmp_periodo', $fecha->toDateString())
+            ->first();
+
+        $departamentos = [];
+        $lineaGrupos = [];
+        $lineasRepetidas = [];
+        foreach ((array) ($datos['departamentos'] ?? []) as $departamentoId => $config) {
+            if (! ($config['habilitado'] ?? false) || ! $catalogo->has((int) $departamentoId)) {
+                continue;
+            }
+            foreach ((array) ($config['linea_ids'] ?? []) as $lineaId) {
+                if (isset($lineaGrupos[(int) $lineaId])) {
+                    $lineasRepetidas[] = (int) $lineaId;
+                    continue;
+                }
+                $lineaGrupos[(int) $lineaId] = (int) $departamentoId;
+            }
+            $departamentos[(int) $departamentoId] = $config;
+        }
+
+        $movimientos = $this->movimientos->obtenerPorLineas(
+            $sucursalId,
+            $almacenIds,
+            $lineaGrupos,
+            $mesReferencia->copy()->startOfMonth(),
+            $mesReferencia->copy()->endOfMonth(),
+        );
+        $referencias = ($this->historico ?? app(ComisionHistoricoService::class))
+            ->referencia($sucursalId, $mesReferencia, $almacenIds, $lineaGrupos, $movimientos);
+        $vendedores = collect((array) ($datos['vendedores'] ?? []))->filter(fn ($fila) => (bool) ($fila['habilitado'] ?? false));
+
+        $resultado = [];
+        foreach ($departamentos as $departamentoId => $config) {
+            $referencia = $referencias->get($departamentoId);
+            $equipo = $vendedores->filter(fn ($fila) => (int) ($fila['departamento_id'] ?? 0) === $departamentoId);
+            $cantidad = $equipo->count();
+            $modo = $this->modoMeta($config);
+            $incremento = (float) ($config['incremento_meta'] ?? 0);
+            $base = (float) ($referencia['base'] ?? 0);
+            $sugerida = $this->metaSugerida($base, $cantidad, $incremento);
+            $metaManual = $this->importePositivo($config['meta_comun'] ?? null);
+            $metaComun = $this->resolverMetaComun($modo, $metaManual, $sugerida);
+            $estado = match (true) {
+                $referencia === null || $almacenIds === [] => 'sin_alcance',
+                $base <= 0 => 'sin_base',
+                $referencia['faltantes'] > 0 => 'parcial',
+                default => 'completa',
+            };
+            $falta = match (true) {
+                $modo === 'manual' => $metaManual === null ? 'meta_manual' : null,
+                $estado === 'sin_alcance' => 'alcance',
+                $estado === 'sin_base' => 'base',
+                $cantidad === 0 => 'vendedores',
+                default => null,
+            };
+            $configGuardada = $guardado?->departamentos->firstWhere('cpd_cmd_id', $departamentoId);
+            $resultado[$departamentoId] = [
+                'estado' => $estado,
+                'origen' => $referencia['origen'] ?? null,
+                'ventas' => (float) ($referencia['ventas'] ?? 0),
+                'autoservicio' => (float) ($referencia['autoservicio'] ?? 0),
+                'base' => $base,
+                'ventas_sistema' => (float) ($referencia['ventas_sistema'] ?? 0),
+                'ventas_manual' => (float) ($referencia['ventas_manual'] ?? 0),
+                'combinaciones' => $referencia['combinaciones'] ?? [],
+                'faltantes' => (int) ($referencia['faltantes'] ?? 0),
+                'vendedores' => $cantidad,
+                'promedio' => $base > 0 && $cantidad > 0 ? round($base / $cantidad, 2) : null,
+                'modo' => $modo,
+                'incremento' => $incremento,
+                'sugerida' => $sugerida,
+                'meta_manual' => $metaManual,
+                'meta_comun' => $metaComun,
+                'falta' => $falta,
+                'ajustes' => $equipo->filter(fn ($fila) => (float) ($fila['meta'] ?? 0) > 0)->count(),
+                'guardado' => $configGuardada ? [
+                    'meta_comun' => $configGuardada->cpd_meta_comun !== null ? (float) $configGuardada->cpd_meta_comun : null,
+                    'meta_sugerida' => $configGuardada->cpd_meta_sugerida !== null ? (float) $configGuardada->cpd_meta_sugerida : null,
+                    'modo' => $configGuardada->cpd_origen_meta,
+                ] : null,
+            ];
+        }
+
+        $equipoResultado = [];
+        foreach ($vendedores as $usuarioId => $fila) {
+            $metaComun = $resultado[(int) ($fila['departamento_id'] ?? 0)]['meta_comun'] ?? null;
+            $metaIndividual = (float) ($fila['meta'] ?? 0);
+            $tasa = (float) ($fila['tasa'] ?? self::TASA_ORDINARIA);
+            $equipoResultado[$usuarioId] = [
+                'meta' => $metaIndividual > 0 ? round($metaIndividual, 2) : $metaComun,
+                'origen' => $metaIndividual > 0 ? 'individual' : ($metaComun !== null ? 'comun' : 'sin_meta'),
+                'meta_comun' => $metaComun,
+                'requiere_motivo' => $this->requiereMotivoAjuste($metaIndividual, $metaComun, $tasa),
+            ];
+        }
+
+        return [
+            'periodo' => $fecha->format('Y-m'),
+            'referencia' => $mesReferencia->format('Y-m'),
+            'departamentos' => $resultado,
+            'vendedores' => $equipoResultado,
+            'lineas_repetidas' => DB::table('tbl_lineas_lna')->whereIn('lna_id', array_unique($lineasRepetidas))->pluck('lna_nombre')->all(),
+        ];
+    }
+
+    /** Meta sugerida = base histórica ÷ vendedores participantes × (1 + incremento / 100). */
+    public function metaSugerida(float $base, int $vendedores, float $incremento): ?float
+    {
+        if ($base <= 0 || $vendedores <= 0) {
+            return null;
+        }
+
+        return round(($base / $vendedores) * (1 + ($incremento / 100)), 2);
+    }
+
+    /** La meta manual tiene prioridad; con histórico se usa la sugerida. */
+    public function resolverMetaComun(string $modo, ?float $metaManual, ?float $sugerida): ?float
+    {
+        if ($modo === 'manual') {
+            return $metaManual !== null && $metaManual > 0 ? round($metaManual, 2) : null;
+        }
+
+        return $sugerida;
+    }
+
+    /** Una tasa distinta de la ordinaria o una meta distinta de la común exigen motivo. */
+    public function requiereMotivoAjuste(float $metaIndividual, ?float $metaComun, float $tasa): bool
+    {
+        return abs($tasa - self::TASA_ORDINARIA) > 0.00001
+            || ($metaIndividual > 0 && $metaComun !== null && $metaComun > 0 && abs($metaIndividual - $metaComun) > 0.009);
+    }
+
+    public function modoMeta(array $config): string
+    {
+        $modo = $config['modo_meta'] ?? null;
+        if (in_array($modo, ['historica', 'manual'], true)) {
+            return $modo;
+        }
+
+        // Compatibilidad: antes una meta común capturada equivalía a meta manual.
+        return $this->importePositivo($config['meta_comun'] ?? null) !== null ? 'manual' : 'historica';
+    }
+
+    private function importePositivo(mixed $valor): ?float
+    {
+        return is_numeric($valor) && (float) $valor > 0 ? round((float) $valor, 2) : null;
     }
 
     public function aprobar(ComisionV2Periodo $periodo, int $usuarioId): ComisionV2Periodo
@@ -217,7 +388,7 @@ class ComisionV2Service
     {
         if ($periodo->cmp_estatus === 'cerrado') {
             return $periodo->resultados()->orderBy('cmr_departamento_nombre')->orderBy('cmr_numero_vendedor')->get()
-                ->map(fn ($r) => (object) [
+                ->map(fn ($r) => (object) ([
                     'usuario_id' => (int) $r->cmr_usr_id,
                     'numero' => $r->cmr_numero_vendedor,
                     'nombre' => $r->cmr_nombre_vendedor,
@@ -225,10 +396,11 @@ class ComisionV2Service
                     'ventas' => (float) $r->cmr_ventas_netas,
                     'meta' => (float) $r->cmr_meta_individual,
                     'cumplimiento' => (float) $r->cmr_cumplimiento,
+                    'base_comisionable' => (float) $r->cmr_base_comisionable,
                     'tasa' => (float) $r->cmr_tasa_comision,
                     'comision' => (float) $r->cmr_comision,
                     'definitivo' => true,
-                ]);
+                ] + $this->explicarResultado((float) $r->cmr_ventas_netas, (float) $r->cmr_meta_individual, (float) $r->cmr_tasa_comision, (float) $r->cmr_comision)));
         }
 
         $periodo->load(['almacenes', 'departamentos', 'participantes.departamentoPeriodo']);
@@ -239,7 +411,7 @@ class ComisionV2Service
                 ->where('vendedor_id', $participante->cpt_usr_id)
                 ->sum('importe'), 2);
             $calculo = $this->calcularFila($ventas, (float) $participante->cpt_meta_individual, (float) $periodo->cmp_factor_comisionable, (float) $participante->cpt_tasa_comision);
-            return (object) [
+            return (object) ([
                 'usuario_id' => (int) $participante->cpt_usr_id,
                 'numero' => $participante->cpt_numero_vendedor,
                 'nombre' => $participante->cpt_nombre_vendedor,
@@ -247,10 +419,11 @@ class ComisionV2Service
                 'ventas' => $ventas,
                 'meta' => (float) $participante->cpt_meta_individual,
                 'cumplimiento' => $calculo['cumplimiento'],
+                'base_comisionable' => $calculo['base_comisionable'],
                 'tasa' => (float) $participante->cpt_tasa_comision,
                 'comision' => $calculo['comision'],
                 'definitivo' => false,
-            ];
+            ] + $this->explicarResultado($ventas, (float) $participante->cpt_meta_individual, (float) $participante->cpt_tasa_comision, $calculo['comision']));
         })->sortBy([['departamento', 'asc'], ['numero', 'asc']])->values();
     }
 
@@ -424,9 +597,29 @@ class ComisionV2Service
         return $this->formatearAvance((float) ($estimacion?->cumplimiento ?? 0), false);
     }
 
+    /**
+     * Motivo legible del resultado. Usa la misma regla de elegibilidad que calcularFila().
+     *
+     * @return array{meta_alcanzada: bool, motivo: string, explicacion: string}
+     */
+    public function explicarResultado(float $ventas, float $meta, float $tasa, float $comision): array
+    {
+        $alcanzada = $this->metaAlcanzada($ventas, $meta);
+        [$motivo, $explicacion] = match (true) {
+            $meta <= 0 => ['sin_meta', 'Sin meta asignada: no puede generar comisión.'],
+            $ventas <= 0 => ['sin_ventas', 'Sin ventas netas en el periodo.'],
+            ! $alcanzada => ['meta_no_alcanzada', 'No alcanzó la meta: le faltan $'.number_format(round($meta - $ventas, 2), 2).'.'],
+            $tasa <= 0 => ['tasa_cero', 'Alcanzó la meta, pero su tasa es 0%.'],
+            $comision <= 0 => ['comision_cero', 'Alcanzó la meta; el importe redondeado es $0.00.'],
+            default => ['comisiona', 'Alcanzó la meta: tasa aplicada al 33% de sus ventas netas.'],
+        };
+
+        return ['meta_alcanzada' => $alcanzada, 'motivo' => $motivo, 'explicacion' => $explicacion];
+    }
+
     public function calcularFila(float $ventas, float $meta, float $factor, float $tasa): array
     {
-        $metaAlcanzada = $meta > 0 && $ventas >= $meta;
+        $metaAlcanzada = $this->metaAlcanzada($ventas, $meta);
         $cumplimiento = $meta > 0 ? round(max(0, $ventas) / $meta * 100, 2) : 0.0;
         // El redondeo visual no debe anunciar una meta que todavía no se alcanza.
         if (! $metaAlcanzada) {
@@ -435,6 +628,12 @@ class ComisionV2Service
         $base = round(max(0, $ventas) * ($factor / 100), 2);
         $comision = $metaAlcanzada ? round($base * ($tasa / 100), 2) : 0.0;
         return ['cumplimiento' => $cumplimiento, 'base_comisionable' => $base, 'comision' => $comision];
+    }
+
+    /** Solo hay derecho a comisión con meta positiva y ventas netas mayores o iguales a la meta. */
+    private function metaAlcanzada(float $ventas, float $meta): bool
+    {
+        return $meta > 0 && $ventas >= $meta;
     }
 
     private function avanceNoDisponible(): array

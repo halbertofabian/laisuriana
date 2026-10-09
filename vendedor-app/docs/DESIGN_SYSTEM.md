@@ -80,13 +80,13 @@ Todos los pares principales mantienen contraste legible. El estado nunca depende
 - Una tarjeta agrupa una entidad; no se anidan tarjetas.
 - Los listados usan divisores y una sola acción de apertura.
 - La fila completa es el objetivo táctil.
-- El menú contextual contiene acciones infrecuentes.
+- Las acciones secundarias quedan visibles bajo la principal; no se encadena un menú con una confirmación.
 
 ### Selectores
 
 - Control segmentado sólo para dos o tres vistas locales.
-- Bottom sheet para seleccionar cliente, sucursal o impresora.
-- Radio visible cuando la selección es única.
+- Bottom sheet para seleccionar cliente, sucursal o almacén.
+- La opción actual se marca con ✓ y texto; si tocar una opción ya ejecuta la acción, la fila lleva flecha y no radio.
 
 ### Mensajes
 
@@ -113,6 +113,7 @@ Todos los pares principales mantienen contraste legible. El estado nunca depende
 
 - Interacción rápida: 140 ms.
 - Entrada de pantalla o sheet: 240 ms.
+- La entrada de pantalla anima sólo la opacidad: un `transform` persistente convierte la pantalla en contenedor de los elementos `fixed` y las barras inferiores dejan de estar fijas.
 - Curva estándar: `cubic-bezier(0.2, 0, 0, 1)`.
 - Se respeta `prefers-reduced-motion`.
 

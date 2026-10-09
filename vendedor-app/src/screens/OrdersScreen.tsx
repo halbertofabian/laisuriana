@@ -1,4 +1,4 @@
-import { ChevronRight, CirclePlus, Clock3, FilePenLine, LoaderCircle, RefreshCw, Search, SlidersHorizontal, Trash2 } from 'lucide-react';
+import { ChevronRight, CirclePlus, FilePenLine, LoaderCircle, RefreshCw, Search, Trash2, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { AppHeader } from '../components/AppHeader';
 import { BottomSheet } from '../components/BottomSheet';
@@ -6,9 +6,19 @@ import { Button } from '../components/Button';
 import { EmptyState, InlineNotice, SkeletonList } from '../components/Feedback';
 import { SearchField } from '../components/SearchField';
 import type { OrderDraft } from '../services/orderDraftStorage';
-import type { CommissionProgress, Order } from '../types';
+import { countItems, meterLineState } from '../services/quantity';
+import { useScrollMemory } from '../services/scrollMemory';
+import type { CommissionProgress, Order, OrderStatus } from '../types';
 
 const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
+const statusLabel: Record<OrderStatus, string> = { pending: 'Pendiente', paid: 'Pagado', cancelled: 'Cancelado' };
+
+/** Filtro y búsqueda de la lista; viven en App para conservarlos al abrir un pedido y volver. */
+export interface OrdersView {
+  filter: 'pending' | 'all';
+  query: string;
+  searchOpen: boolean;
+}
 
 function orderDate(order: Order): string {
   if (!order.createdAt) return order.time;
@@ -27,6 +37,8 @@ export function OrdersScreen({
   commissionProgress,
   draft,
   connectionState,
+  view,
+  onView,
   onNewOrder,
   onResumeDraft,
   onDiscardDraft,
@@ -42,6 +54,8 @@ export function OrdersScreen({
   commissionProgress: CommissionProgress | null;
   draft: OrderDraft | null;
   connectionState: 'synced' | 'syncing' | 'offline' | 'server-unavailable';
+  view: OrdersView;
+  onView: (view: OrdersView) => void;
   onNewOrder: () => void;
   onResumeDraft: () => void;
   onDiscardDraft: () => void;
@@ -49,19 +63,22 @@ export function OrdersScreen({
   onOpenOrder: (order: Order) => void;
   onRetry: () => void;
 }) {
-  const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState<'pending' | 'all'>('pending');
-  const [searchOpen, setSearchOpen] = useState(false);
   const [discardOpen, setDiscardOpen] = useState(false);
+  const { filter, query, searchOpen } = view;
+  useScrollMemory('orders', { ready: !loading });
 
   const filtered = useMemo(() => orders.filter((order) => {
     const matchesFilter = filter === 'all' || order.status === 'pending';
-    const normalized = query.toLowerCase();
+    const normalized = query.trim().toLowerCase();
     return matchesFilter && (`${order.folio} ${order.customer}`.toLowerCase().includes(normalized));
   }), [filter, orders, query]);
   const todayKey = new Date().toDateString();
   const todayCount = orders.filter((order) => order.createdAt && new Date(order.createdAt).toDateString() === todayKey).length;
-  const draftItemCount = draft?.cart.reduce((sum, line) => sum + line.quantity, 0) ?? 0;
+  const draftItemCount = countItems(draft?.cart ?? []);
+  const draftPendingMeters = draft?.cart.filter((line) => {
+    const state = meterLineState(line);
+    return state === 'pending' || state === 'unconfirmed';
+  }).length ?? 0;
   const draftUpdatedAt = draft ? new Date(draft.updatedAt) : null;
   const draftTime = draftUpdatedAt && !Number.isNaN(draftUpdatedAt.getTime())
     ? draftUpdatedAt.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false })
@@ -70,103 +87,119 @@ export function OrdersScreen({
     ? 'Sin conexión'
     : connectionState === 'server-unavailable'
       ? 'Servidor no disponible'
-      : connectionState === 'syncing' ? 'Sincronizando' : 'Sincronizado';
+      : connectionState === 'syncing' ? 'Actualizando…' : 'Actualizado';
+  const progress = commissionProgress?.porcentaje ?? null;
+  const searching = query.trim() !== '';
+
+  const toggleSearch = () => onView(searchOpen ? { ...view, searchOpen: false, query: '' } : { ...view, searchOpen: true });
 
   return (
     <main className="screen screen--with-action screen-enter">
       <AppHeader eyebrow={branchName} title="Pedidos" onProfile={onProfile} />
       <section className="screen-content orders-content">
-        <div className="day-summary">
-          <div>
-            <span>Hoy</span>
-            <strong>{todayCount} pedidos</strong>
+        <section className="day-summary" aria-label="Resumen del día">
+          <div className="day-summary__row">
+            <span><strong>{todayCount}</strong> {todayCount === 1 ? 'pedido hoy' : 'pedidos hoy'}</span>
+            <button className={`sync-state sync-state--${connectionState}`} onClick={onRetry} disabled={connectionState === 'syncing'} aria-label={`${connectionLabel}. Actualizar pedidos`}>
+              <i aria-hidden="true" />{connectionLabel}<RefreshCw size={14} className={connectionState === 'syncing' ? 'spin' : ''} aria-hidden="true" />
+            </button>
           </div>
-          <button className={`sync-state sync-state--${connectionState}`} onClick={onRetry} disabled={connectionState === 'syncing'} aria-label="Actualizar pedidos"><i /> {connectionLabel}</button>
-        </div>
-
-        <section className="commission-progress-card" aria-label="Mi avance de meta">
-          <div className="commission-progress-card__top">
-            <div><span>Mi meta del mes</span><strong>{commissionProgress?.mensaje ?? 'Tu meta aún no está disponible.'}</strong></div>
-            <b>{commissionProgress?.porcentaje == null ? '—' : `${commissionProgress.porcentaje.toFixed(2)}%`}</b>
+          <div className="day-summary__goal">
+            <span>Meta del mes</span>
+            <div className="day-summary__track" role="progressbar" aria-valuenow={progress ?? undefined} aria-valuemin={0} aria-valuemax={100} aria-label="Avance de la meta del mes">
+              <span style={{ width: `${Math.min(100, progress ?? 0)}%` }} />
+            </div>
+            <strong>{progress == null ? '—' : `${progress.toFixed(1)}%`}</strong>
           </div>
-          <div className="commission-progress-card__track"><span style={{ width: `${commissionProgress?.porcentaje ?? 0}%` }} /></div>
-          <small>Solo tú puedes ver este avance. No mostramos importes.</small>
+          {commissionProgress?.mensaje && <p>{commissionProgress.mensaje}</p>}
         </section>
 
         {draft && (
           <div className="draft-card">
             <button className="draft-card__main" onClick={onResumeDraft}>
-              <span className="draft-card__icon"><FilePenLine size={20} /></span>
+              <span className="draft-card__icon"><FilePenLine size={19} /></span>
               <span className="draft-card__body">
-                <strong>{draft.editingOrder ? `Cambios en ${draft.editingOrder.folio}` : 'Pedido sin terminar'}</strong>
-                <small>{draftItemCount} {draftItemCount === 1 ? 'artículo' : 'artículos'}{draftTime ? ` · Guardado ${draftTime}` : ''}</small>
+                <strong>{draft.editingOrder ? `Cambios sin guardar en ${draft.editingOrder.folio}` : 'Pedido sin terminar'}</strong>
+                <small>
+                  {draftItemCount} {draftItemCount === 1 ? 'artículo' : 'artículos'}
+                  {draftPendingMeters > 0 ? ` · ${draftPendingMeters} sin metros` : ''}
+                  {draftTime ? ` · ${draftTime}` : ''}
+                </small>
               </span>
-              <ChevronRight size={18} />
+              <ChevronRight size={18} aria-hidden="true" />
             </button>
-            <button className="draft-card__discard" onClick={() => setDiscardOpen(true)} aria-label="Descartar borrador"><Trash2 size={17} /></button>
+            <button className="draft-card__discard" onClick={() => setDiscardOpen(true)} aria-label="Descartar pedido sin terminar"><Trash2 size={17} /></button>
           </div>
         )}
 
-        {connectionState === 'offline' && <InlineNotice type="offline">Trabajas sin conexión. Tu borrador permanece guardado en este teléfono.</InlineNotice>}
+        {connectionState === 'offline' && <InlineNotice type="offline">Sin conexión. Lo que captures se guarda en este teléfono.</InlineNotice>}
 
         <div className="section-toolbar">
-          <div className="segmented-control" role="tablist" aria-label="Filtrar pedidos">
-            <button className={filter === 'pending' ? 'active' : ''} onClick={() => setFilter('pending')}>Pendientes</button>
-            <button className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>Todos</button>
+          <div className="segmented-control" role="group" aria-label="Filtrar pedidos">
+            <button className={filter === 'pending' ? 'active' : ''} aria-pressed={filter === 'pending'} onClick={() => onView({ ...view, filter: 'pending' })}>Pendientes</button>
+            <button className={filter === 'all' ? 'active' : ''} aria-pressed={filter === 'all'} onClick={() => onView({ ...view, filter: 'all' })}>Todos</button>
           </div>
-          <button className="icon-button icon-button--soft" onClick={() => setSearchOpen(!searchOpen)} aria-label="Buscar pedidos">
-            {searchOpen ? <SlidersHorizontal size={19} /> : <Search size={19} />}
+          <button className="icon-button icon-button--soft" onClick={toggleSearch} aria-label={searchOpen ? 'Cerrar búsqueda' : 'Buscar por folio o cliente'} aria-expanded={searchOpen}>
+            {searchOpen ? <X size={19} /> : <Search size={19} />}
           </button>
         </div>
 
         {searchOpen && (
-          <div className="collapsible-field"><SearchField value={query} onChange={setQuery} placeholder="Folio o cliente" autoFocus /></div>
+          <div className="collapsible-field"><SearchField value={query} onChange={(value) => onView({ ...view, query: value })} placeholder="Folio o cliente" autoFocus={!query} /></div>
         )}
 
-        {error && <InlineNotice type="warning">{error}</InlineNotice>}
-        {loading && <SkeletonList />}
-        {!loading && <div className="order-list">
-          {filtered.map((order) => (
-            <button className="order-row" key={order.id} disabled={openingOrderId !== null} onClick={() => onOpenOrder(order)}>
-              <div className={`order-row__marker order-row__marker--${order.status}`}>
-                <Clock3 size={19} />
-              </div>
-              <div className="order-row__body">
-                <div className="order-row__line">
-                  <strong>{order.folio}</strong>
-                  <strong>{money.format(order.total)}</strong>
+        {error && (
+          <div className="notice-with-action">
+            <InlineNotice type="warning">{error}</InlineNotice>
+            <Button variant="secondary" icon={<RefreshCw size={17} />} onClick={onRetry}>Reintentar</Button>
+          </div>
+        )}
+        {loading && orders.length === 0 && <SkeletonList />}
+        {!(loading && orders.length === 0) && filtered.length > 0 && (
+          <div className="order-list">
+            {filtered.map((order) => (
+              <button className="order-row" key={order.id} disabled={openingOrderId !== null} onClick={() => onOpenOrder(order)}>
+                <div className="order-row__body">
+                  <div className="order-row__line">
+                    <strong>{order.folio}</strong>
+                    <strong>{money.format(order.total)}</strong>
+                  </div>
+                  <div className="order-row__line order-row__line--meta">
+                    <span className="order-row__customer">{order.customer}</span>
+                    {filter === 'all' && <span className={`status-pill status-pill--${order.status}`}>{statusLabel[order.status]}</span>}
+                  </div>
+                  <div className="order-row__meta">{orderDate(order)} · {order.warehouse}</div>
                 </div>
-                <p>{order.customer}</p>
-                <div className="order-row__meta">
-                  <span>{order.itemCount} {order.itemCount === 1 ? 'artículo' : 'artículos'}</span>
-                  <i />
-                  <span>{orderDate(order)}</span>
-                  {order.status === 'paid' && <span className="status-text status-text--paid">Pagado</span>}
-                  {order.status === 'cancelled' && <span className="status-text status-text--cancelled">Cancelado</span>}
-                </div>
-              </div>
-              {openingOrderId === order.id ? <LoaderCircle size={18} className="ui-button__spinner" /> : <ChevronRight size={18} className="order-row__chevron" />}
-            </button>
-          ))}
-        </div>}
+                {openingOrderId === order.id
+                  ? <LoaderCircle size={18} className="spin" aria-label="Abriendo" />
+                  : <ChevronRight size={18} className="order-row__chevron" aria-hidden="true" />}
+              </button>
+            ))}
+          </div>
+        )}
 
-        {!loading && filtered.length === 0 && (
-          <EmptyState
-            title="No encontramos pedidos"
-            message="Prueba con otro folio o crea un pedido nuevo."
-            action={error ? <Button variant="secondary" icon={<RefreshCw size={18} />} onClick={onRetry}>Reintentar</Button> : undefined}
-          />
+        {!loading && !error && filtered.length === 0 && (
+          searching ? (
+            <EmptyState title="Sin resultados" message={`Ningún pedido coincide con «${query.trim()}». Revisa el folio o el nombre del cliente.`} />
+          ) : filter === 'pending' && orders.length > 0 ? (
+            <EmptyState
+              title="Sin pedidos pendientes"
+              message="Todos tus pedidos ya se cobraron o cancelaron."
+              action={<Button variant="secondary" onClick={() => onView({ ...view, filter: 'all' })}>Ver todos</Button>}
+            />
+          ) : (
+            <EmptyState title="Aún no hay pedidos" message="Los pedidos que generes aparecerán aquí." />
+          )
         )}
       </section>
       <div className="sticky-action">
         <Button full onClick={onNewOrder} icon={draft ? <FilePenLine size={20} /> : <CirclePlus size={21} />}>{draft ? 'Continuar pedido' : 'Nuevo pedido'}</Button>
       </div>
 
-
-      <BottomSheet open={discardOpen} onClose={() => setDiscardOpen(false)} title="¿Descartar este borrador?" description="Se eliminarán los productos, el cliente y las notas guardadas en este teléfono.">
+      <BottomSheet open={discardOpen} onClose={() => setDiscardOpen(false)} title="¿Descartar el pedido sin terminar?" description="Se borrarán los productos, el cliente y la nota guardados en este teléfono.">
         <div className="sheet-actions">
-          <Button full variant="danger" onClick={() => { setDiscardOpen(false); onDiscardDraft(); }}>Sí, descartar</Button>
-          <Button full variant="quiet" onClick={() => setDiscardOpen(false)}>Conservar borrador</Button>
+          <Button full variant="danger" onClick={() => { setDiscardOpen(false); onDiscardDraft(); }}>Descartar</Button>
+          <Button full variant="quiet" onClick={() => setDiscardOpen(false)}>Conservar</Button>
         </div>
       </BottomSheet>
     </main>

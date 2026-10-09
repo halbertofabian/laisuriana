@@ -25,6 +25,7 @@ class Almacen extends Model
         'alm_nombre',
         'alm_clave',
         'alm_estatus',
+        'alm_permite_facturar',
         'alm_created_by_usr_id',
         'alm_updated_by_usr_id',
     ];

@@ -33,10 +33,12 @@ class ComisionV2Test extends TestCase
             ->withSession(['sucursal_activa_id' => $sucursal->scl_id])
             ->get(route('desktop.operacion.gestion_configuraciones.comisiones.index'))
             ->assertOk()
-            ->assertSee('Configura un periodo sin complicaciones')
-            ->assertSee('¿Qué almacenes participan?')
+            ->assertSee('Mes que configuras')
+            ->assertSee('¿Qué ventas cuentan este mes?')
+            ->assertSee('Calcular con histórico')
+            ->assertSee('Definir meta manual')
             ->assertSee('Selecciona el equipo del mes')
-            ->assertSee('Revisa antes de publicar')
+            ->assertSee('Revisa antes de guardar y publicar')
             ->assertSee('data-step-panel="1"', false)
             ->assertSee('data-step-panel="4"', false);
     }

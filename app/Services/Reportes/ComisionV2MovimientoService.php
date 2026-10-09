@@ -11,8 +11,22 @@ class ComisionV2MovimientoService
 {
     public function obtener(ComisionV2Periodo $periodo, Carbon $desde, Carbon $hasta): Collection
     {
-        $almacenIds = $periodo->almacenes->pluck('alm_id');
-        if ($almacenIds->isEmpty()) {
+        $lineaGrupos = DB::table('tbl_comision_v2_periodo_lineas_cml')
+            ->where('cml_cmp_id', $periodo->cmp_id)
+            ->pluck('cml_cpd_id', 'cml_lna_id')->all();
+
+        return $this->obtenerPorLineas((int) $periodo->cmp_scl_id, $periodo->almacenes->pluck('alm_id')->all(), $lineaGrupos, $desde, $hasta);
+    }
+
+    /**
+     * Movimientos netos de las líneas indicadas sin requerir un periodo guardado.
+     * $lineaGrupos asocia cada línea con su grupo (departamento del periodo o del catálogo);
+     * el grupo se devuelve en `departamento_periodo_id`.
+     */
+    public function obtenerPorLineas(int $sucursalId, array $almacenIds, array $lineaGrupos, Carbon $desde, Carbon $hasta): Collection
+    {
+        $lineaIds = array_map('intval', array_keys($lineaGrupos));
+        if ($almacenIds === [] || $lineaIds === []) {
             return collect();
         }
 
@@ -26,13 +40,10 @@ class ComisionV2MovimientoService
             ->joinSub($totalesVenta, 'tot', 'tot.pvd_psv_id', '=', 'psv.psv_id')
             ->join('tbl_producto_skus_psk as psk', 'psk.psk_id', '=', 'pvd.pvd_psk_id')
             ->join('tbl_productos_prd as prd', 'prd.prd_id', '=', 'psk.psk_prd_id')
-            ->join('tbl_comision_v2_periodo_lineas_cml as cml', function ($join) use ($periodo) {
-                $join->on('cml.cml_lna_id', '=', 'prd.prd_lna_id')
-                    ->where('cml.cml_cmp_id', '=', $periodo->cmp_id);
-            })
+            ->whereIn('prd.prd_lna_id', $lineaIds)
             ->join('tbl_almacenes_alm as alm', 'alm.alm_id', '=', 'psv.psv_alm_id')
             ->join('tbl_lineas_lna as lna', 'lna.lna_id', '=', 'prd.prd_lna_id')
-            ->where('psv.psv_scl_id', $periodo->cmp_scl_id)
+            ->where('psv.psv_scl_id', $sucursalId)
             ->whereIn('psv.psv_alm_id', $almacenIds)
             ->where('psv.psv_tipo_operacion', 'venta')
             ->where('psv.psv_estatus', '!=', 'cancelada')
@@ -41,7 +52,6 @@ class ComisionV2MovimientoService
             ->whereBetween('psv.psv_fecha_cobro', [$desde->copy()->startOfDay(), $hasta->copy()->endOfDay()])
             ->get([
                 'pvd.pvd_usr_id as vendedor_id',
-                'cml.cml_cpd_id as departamento_periodo_id',
                 'psv.psv_alm_id as almacen_id',
                 'alm.alm_nombre as almacen_nombre',
                 'prd.prd_lna_id as linea_id',
@@ -64,13 +74,10 @@ class ComisionV2MovimientoService
             ->joinSub($totalesOrigen, 'tot_origen', 'tot_origen.pvd_psv_id', '=', 'origen.psv_id')
             ->join('tbl_producto_skus_psk as psk', 'psk.psk_id', '=', 'pcd.pcd_psk_id')
             ->join('tbl_productos_prd as prd', 'prd.prd_id', '=', 'psk.psk_prd_id')
-            ->join('tbl_comision_v2_periodo_lineas_cml as cml', function ($join) use ($periodo) {
-                $join->on('cml.cml_lna_id', '=', 'prd.prd_lna_id')
-                    ->where('cml.cml_cmp_id', '=', $periodo->cmp_id);
-            })
+            ->whereIn('prd.prd_lna_id', $lineaIds)
             ->join('tbl_almacenes_alm as alm', 'alm.alm_id', '=', 'origen.psv_alm_id')
             ->join('tbl_lineas_lna as lna', 'lna.lna_id', '=', 'prd.prd_lna_id')
-            ->where('cambio.psv_scl_id', $periodo->cmp_scl_id)
+            ->where('cambio.psv_scl_id', $sucursalId)
             ->whereIn('origen.psv_alm_id', $almacenIds)
             ->where('cambio.psv_estatus', '!=', 'cancelada')
             ->where('cambio.psv_deleted', false)
@@ -79,7 +86,6 @@ class ComisionV2MovimientoService
             ->whereBetween('cambio.psv_fecha_cobro', [$desde->copy()->startOfDay(), $hasta->copy()->endOfDay()])
             ->get([
                 'origen_det.pvd_usr_id as vendedor_id',
-                'cml.cml_cpd_id as departamento_periodo_id',
                 'origen.psv_alm_id as almacen_id',
                 'alm.alm_nombre as almacen_nombre',
                 'prd.prd_lna_id as linea_id',
@@ -97,13 +103,10 @@ class ComisionV2MovimientoService
             ->joinSub($totalesOrigen, 'tot_origen', 'tot_origen.pvd_psv_id', '=', 'origen.psv_id')
             ->join('tbl_producto_skus_psk as psk', 'psk.psk_id', '=', 'pcdv.pcdv_psk_id')
             ->join('tbl_productos_prd as prd', 'prd.prd_id', '=', 'psk.psk_prd_id')
-            ->join('tbl_comision_v2_periodo_lineas_cml as cml', function ($join) use ($periodo) {
-                $join->on('cml.cml_lna_id', '=', 'prd.prd_lna_id')
-                    ->where('cml.cml_cmp_id', '=', $periodo->cmp_id);
-            })
+            ->whereIn('prd.prd_lna_id', $lineaIds)
             ->join('tbl_almacenes_alm as alm', 'alm.alm_id', '=', 'origen.psv_alm_id')
             ->join('tbl_lineas_lna as lna', 'lna.lna_id', '=', 'prd.prd_lna_id')
-            ->where('pcc.pcc_scl_id', $periodo->cmp_scl_id)
+            ->where('pcc.pcc_scl_id', $sucursalId)
             ->whereIn('origen.psv_alm_id', $almacenIds)
             ->where('pcc.pcc_estatus', '!=', 'cancelado')
             ->where('pcc.pcc_deleted', false)
@@ -112,7 +115,6 @@ class ComisionV2MovimientoService
             ->whereBetween('pcc.pcc_fecha_generado', [$desde->copy()->startOfDay(), $hasta->copy()->endOfDay()])
             ->get([
                 'origen_det.pvd_usr_id as vendedor_id',
-                'cml.cml_cpd_id as departamento_periodo_id',
                 'origen.psv_alm_id as almacen_id',
                 'alm.alm_nombre as almacen_nombre',
                 'prd.prd_lna_id as linea_id',
@@ -125,7 +127,7 @@ class ComisionV2MovimientoService
 
         return $ventas->concat($devoluciones)->concat($vales)->map(fn ($fila) => (object) [
             'vendedor_id' => $fila->vendedor_id !== null ? (int) $fila->vendedor_id : null,
-            'departamento_periodo_id' => (int) $fila->departamento_periodo_id,
+            'departamento_periodo_id' => (int) $lineaGrupos[(int) $fila->linea_id],
             'almacen_id' => (int) $fila->almacen_id,
             'almacen_nombre' => (string) $fila->almacen_nombre,
             'linea_id' => (int) $fila->linea_id,

@@ -156,6 +156,14 @@
         .variant-modal--front {
             z-index: 1305;
         }
+        .datos-facturacion { max-width: 620px; max-height: calc(100dvh - 2rem); overflow-y: auto; }
+        .datos-facturacion__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; border: 0; padding: 0; margin: 0; min-width: 0; }
+        .datos-facturacion__wide { grid-column: 1 / -1; min-width: 0; }
+        .datos-facturacion__error { display: block; color: #b42318; font-size: .78rem; }
+        .datos-facturacion .select2-container--open { z-index: 1310; }
+        @media (max-width: 480px) {
+            .datos-facturacion__grid { grid-template-columns: minmax(0, 1fr); }
+        }
         /* ── MODAL DE MOVIMIENTOS DE CAJA (retiro / gasto) ─────────
            Cascarón con cabecera fija, cuerpo con scroll y barra de
            acciones fija. Comparte la hoja de conteo con el corte. ── */
@@ -2197,6 +2205,11 @@
         <button class="pos-tab" :class="{ active: tab === 'clientes' }" @click="tab = 'clientes'; abrirModalClientes()">
             <span class="kbd">F2</span> Clientes
         </button>
+        @if($puedeCrearCliente)
+            <button type="button" class="pos-tab" :class="{ active: mostrarDatosFacturacion }" @click="abrirDatosFacturacion()" x-ref="datosFacturacionBoton">
+                <i class="ti tabler-file-invoice"></i> Datos de facturación
+            </button>
+        @endif
         <button class="pos-tab" :class="{ active: tab === 'cotizacion' }" @click="tab = 'cotizacion'">
             <span class="kbd">F3</span> Cotización
         </button>
@@ -4134,6 +4147,7 @@
     <div x-cloak x-show="mostrarModalClientes" class="variant-modal">
         @include('operacion.clientes.partials.modal_cliente', ['embedded' => true])
     </div>
+    @include('operacion.punto_venta.partials.datos_facturacion')
 
     <div x-cloak x-show="mostrarModalAlmacenVenta" class="variant-modal">
         <div class="variant-modal__card" style="max-width:520px;">
@@ -4458,6 +4472,10 @@ function posApp() {
         mostrarModalAlmacenVenta: false,
         mostrarModalConfirmacionPedido: false,
         mostrarModalClientes: false,
+        mostrarDatosFacturacion: false,
+        guardandoDatosFacturacion: false,
+        erroresDatosFacturacion: {},
+        errorDatosFacturacion: '',
         mostrarModalPago: false,
         mostrarModalResumenCaja: false,
         mostrarModalValesCambio: false,
@@ -4918,6 +4936,14 @@ function posApp() {
 
         // ── Keyboard shortcuts ───────────────────────────────────
         handleKey(e) {
+            if (this.mostrarDatosFacturacion) {
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    if (!document.querySelector('.datos-facturacion .select2-container--open')) this.cerrarDatosFacturacion();
+                }
+                if (/^F\d+$/.test(e.key)) e.preventDefault();
+                return;
+            }
             if (this.mostrarModalPago) {
                 if (e.key === 'Escape') {
                     e.preventDefault();
@@ -4979,6 +5005,72 @@ function posApp() {
             this.timerBusquedaProducto = setTimeout(async () => {
                 await this.buscarSugerenciasProducto(q);
             }, 180);
+        },
+        abrirDatosFacturacion() {
+            if (!this.puedeCrearCliente) return;
+            this.mostrarDatosFacturacion = true;
+            this.$nextTick(() => {
+                const $select = window.jQuery(this.$refs.regimenFiscalSelect);
+                if (!$select.hasClass('select2-hidden-accessible')) {
+                    $select.select2({
+                        placeholder: 'Busca por clave o nombre del régimen',
+                        width: '100%',
+                        minimumResultsForSearch: 0,
+                        dropdownParent: window.jQuery(this.$refs.datosFacturacionModal),
+                        dropdownCssClass: 'pos-vendedor-select-dropdown',
+                        language: { noResults: () => 'No se encontraron regímenes' },
+                    }).on('select2:open', () => {
+                        this.$nextTick(() => this.$refs.datosFacturacionModal.querySelector('.select2-search__field')?.focus());
+                    });
+                }
+                this.$refs.datosFacturacionForm.elements.cli_razon_social.focus();
+            });
+        },
+        cerrarDatosFacturacion() {
+            if (this.guardandoDatosFacturacion) return;
+            const $select = window.jQuery(this.$refs.regimenFiscalSelect);
+            if ($select.hasClass('select2-hidden-accessible')) $select.select2('close');
+            this.mostrarDatosFacturacion = false;
+            this.$nextTick(() => this.$refs.datosFacturacionBoton?.focus());
+        },
+        async guardarDatosFacturacion() {
+            if (!this.puedeCrearCliente || this.guardandoDatosFacturacion) return;
+            const form = this.$refs.datosFacturacionForm;
+            const body = Object.fromEntries(new FormData(form));
+            this.erroresDatosFacturacion = {};
+            this.errorDatosFacturacion = '';
+            if (!body.cli_regimen_fiscal) {
+                this.erroresDatosFacturacion = { cli_regimen_fiscal: ['Selecciona un régimen de la lista.'] };
+                window.jQuery(this.$refs.regimenFiscalSelect).select2('open');
+                return;
+            }
+            this.guardandoDatosFacturacion = true;
+            try {
+                const res = await fetch('{{ route('pos.datos_facturacion.store') }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
+                    body: JSON.stringify(body),
+                });
+                const json = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    this.erroresDatosFacturacion = json.errors || {};
+                    this.errorDatosFacturacion = res.status === 422 ? 'Revisa los datos marcados.' : (json.message || 'No se pudieron guardar los datos. Intenta de nuevo.');
+                    return;
+                }
+                this.clienteSeleccionado = json.data;
+                this.queryCliente = json.data.nombre;
+                this.aplicarDescuentoCliente(json.data);
+                this.cerrarSugerenciasCliente();
+                form.reset();
+                window.jQuery(this.$refs.regimenFiscalSelect).val('').trigger('change');
+                this.mostrarDatosFacturacion = false;
+                this.tab = 'ventas';
+                this.$nextTick(() => this.$refs.productoInput?.focus());
+            } catch (error) {
+                this.errorDatosFacturacion = 'No se pudo conectar. Tus datos siguen aquí para volver a intentar.';
+            } finally {
+                this.guardandoDatosFacturacion = false;
+            }
         },
         abrirModalClientes() {
             const formCliente = document.getElementById('form-cliente');

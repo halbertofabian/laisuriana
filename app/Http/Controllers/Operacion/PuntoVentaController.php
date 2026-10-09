@@ -265,6 +265,7 @@ class PuntoVentaController extends Controller
             ->whereNull('cli_deleted_at')
             ->where(function ($sub) use ($q): void {
                 $sub->where('cli_nombre', 'like', "%{$q}%")
+                    ->orWhere('cli_razon_social', 'like', "%{$q}%")
                     ->orWhere('cli_apellido_paterno', 'like', "%{$q}%")
                     ->orWhere('cli_apellido_materno', 'like', "%{$q}%")
                     ->orWhere('cli_rfc', 'like', "%{$q}%")
@@ -280,7 +281,7 @@ class PuntoVentaController extends Controller
                 $nombre = trim(implode(' ', array_filter([$c->cli_nombre, $c->cli_apellido_paterno, $c->cli_apellido_materno])));
                 return [
                     'cli_id' => (int) $c->cli_id,
-                    'nombre' => $nombre,
+                    'nombre' => $c->cli_razon_social ?: $nombre,
                     'telefono' => (string) ($c->cli_telefono ?? ''),
                     'email' => (string) ($c->cli_email ?? ''),
                     'rfc' => (string) ($c->cli_rfc ?? ''),

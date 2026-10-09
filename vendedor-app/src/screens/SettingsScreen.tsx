@@ -1,7 +1,8 @@
-import { Bluetooth, Building2, CheckCircle2, ChevronRight, Cloud, LogOut, Printer, RefreshCw, TriangleAlert, UserRound } from 'lucide-react';
+import { Bluetooth, Building2, Check, CheckCircle2, ChevronRight, Cloud, LogOut, Printer, RefreshCw, TriangleAlert, UserRound } from 'lucide-react';
 import { AppHeader } from '../components/AppHeader';
 import { BottomSheet } from '../components/BottomSheet';
 import { Button } from '../components/Button';
+import { InlineNotice } from '../components/Feedback';
 import { systemApi } from '../services/api';
 import { printerProfileNames } from '../services/bluetoothPrinter';
 import type { AuthUser, PrinterConfig } from '../types';
@@ -14,6 +15,7 @@ export function SettingsScreen({
   activeBranchId,
   branchName,
   printerConfig,
+  hasDraft,
   onPrinter,
   onBranch,
   onBack,
@@ -23,6 +25,8 @@ export function SettingsScreen({
   activeBranchId: number;
   branchName: string;
   printerConfig: PrinterConfig | null;
+  /** Cambiar de sucursal descarta el pedido sin terminar; se avisa antes de elegir. */
+  hasDraft: boolean;
   onPrinter: () => void;
   onBranch: (branchId: number) => void;
   onBack: () => void;
@@ -56,26 +60,27 @@ export function SettingsScreen({
       <AppHeader title="Cuenta" onBack={onBack} />
       <section className="screen-content settings-content">
         <div className="profile-card">
-          <div className="profile-card__avatar"><UserRound size={28} /></div>
+          <div className="profile-card__avatar"><UserRound size={22} aria-hidden="true" /></div>
           <div><h2>{user.nombre}</h2><p>@{user.usuario} · Vendedor de piso</p></div>
         </div>
-        <p className="settings-label">JORNADA</p>
+        <p className="settings-label">Jornada</p>
         <div className="settings-group">
           <button onClick={() => setBranchSheet(true)} disabled={user.sucursales.length <= 1}><span className="settings-icon"><Building2 size={20} /></span><span><strong>Sucursal</strong><small>{branchName}</small></span>{user.sucursales.length > 1 && <ChevronRight size={18} />}</button>
           <button onClick={onPrinter}><span className="settings-icon"><Printer size={20} /></span><span><strong>Impresora</strong><small className={printerConfig ? 'connected' : ''}><Bluetooth size={13} /> {printerConfig ? `${printerConfig.name} · ${printerProfileNames[printerConfig.language]}` : 'Sin configurar'}</small></span><ChevronRight size={18} /></button>
-          <button onClick={() => void checkServer()} disabled={serverStatus === 'checking'}><span className="settings-icon"><Cloud size={20} /></span><span><strong>Servidor</strong><small className={serverStatus === 'online' ? 'connected' : serverStatus === 'offline' ? 'unavailable' : ''}>{serverStatus === 'online' ? <CheckCircle2 size={13} /> : serverStatus === 'offline' ? <TriangleAlert size={13} /> : <RefreshCw className="spin" size={13} />} {serverStatus === 'online' ? 'Conectado' : serverStatus === 'offline' ? 'No disponible · toca para reintentar' : 'Comprobando'}</small></span><RefreshCw className={serverStatus === 'checking' ? 'spin' : ''} size={18} /></button>
+          <button onClick={() => void checkServer()} disabled={serverStatus === 'checking'}><span className="settings-icon"><Cloud size={20} /></span><span><strong>Servidor</strong><small className={serverStatus === 'online' ? 'connected' : serverStatus === 'offline' ? 'unavailable' : ''}>{serverStatus === 'online' ? <CheckCircle2 size={13} /> : serverStatus === 'offline' ? <TriangleAlert size={13} /> : <RefreshCw className="spin" size={13} />} {serverStatus === 'online' ? 'Conectado' : serverStatus === 'offline' ? 'No disponible' : 'Comprobando…'}</small></span><span className="settings-row-action">{serverStatus === 'checking' ? '' : 'Probar'}</span></button>
         </div>
         <Button variant="danger" full icon={<LogOut size={19} />} onClick={logout} loading={loggingOut}>Cerrar sesión</Button>
-        <p className="app-version">Suriana Vendedor · 0.1.0{import.meta.env.VITE_BUILD_CHANNEL ? ` · ${import.meta.env.VITE_BUILD_CHANNEL}` : ''}</p>
+        <p className="app-version">Suriana Vendedor · 0.2.0{import.meta.env.VITE_BUILD_CHANNEL ? ` · ${import.meta.env.VITE_BUILD_CHANNEL}` : ''}</p>
       </section>
 
       <BottomSheet open={branchSheet} onClose={() => setBranchSheet(false)} title="Elegir sucursal" description="El catálogo y los pedidos se mostrarán para esta sucursal.">
+        {hasDraft && <InlineNotice type="warning">Tienes un pedido sin terminar. Si cambias de sucursal se descartará.</InlineNotice>}
         <div className="selection-list">
           {user.sucursales.map((branch) => (
-            <button key={branch.id} className={branch.id === activeBranchId ? 'selected' : ''} onClick={() => { onBranch(branch.id); setBranchSheet(false); }}>
+            <button key={branch.id} className={branch.id === activeBranchId ? 'selected' : ''} aria-pressed={branch.id === activeBranchId} onClick={() => { if (branch.id !== activeBranchId) onBranch(branch.id); setBranchSheet(false); }}>
               <span className="initials">{branch.clave.slice(0, 2).toUpperCase()}</span>
-              <span><strong>{branch.nombre}</strong><small>{branch.clave}</small></span>
-              <i />
+              <span><strong>{branch.nombre}</strong><small>{branch.id === activeBranchId ? 'Sucursal actual' : branch.clave}</small></span>
+              {branch.id === activeBranchId ? <Check size={18} aria-label="Seleccionada" /> : <span />}
             </button>
           ))}
         </div>

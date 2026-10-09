@@ -77,6 +77,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/desktop/permisos', [DashboardController::class, 'desktopPermisos'])->name('desktop.permisos');
     Route::get('/desktop/bitacora', [DashboardController::class, 'desktopBitacora'])->name('desktop.bitacora');
     Route::get('/desktop/ventas', [DashboardController::class, 'desktopVentas'])->name('desktop.ventas');
+    Route::prefix('desktop/facturacion')->name('desktop.facturacion.')->middleware('permiso:facturacion.ver')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Desktop\FacturacionController::class, 'index'])->name('index');
+        Route::get('/data', [\App\Http\Controllers\Desktop\FacturacionController::class, 'data'])->name('data');
+        Route::get('/{venta}', [\App\Http\Controllers\Desktop\FacturacionController::class, 'show'])->name('show');
+        Route::get('/{venta}/productos', [\App\Http\Controllers\Desktop\FacturacionController::class, 'productos'])->name('productos');
+        Route::get('/{venta}/pdf', [\App\Http\Controllers\Desktop\FacturacionController::class, 'pdf'])->name('pdf');
+        Route::put('/{venta}/ajuste', [\App\Http\Controllers\Desktop\FacturacionController::class, 'guardar'])->name('guardar')->middleware('permiso:facturacion.ajustar');
+        Route::post('/{venta}/emitir', [\App\Http\Controllers\Desktop\FacturacionController::class, 'emitir'])->name('emitir')->middleware('permiso:facturacion.emitir');
+    });
     Route::get('/desktop/ventas/data', [DashboardController::class, 'desktopVentasData'])->name('desktop.ventas.data');
     Route::get('/desktop/reportes', [ReporteController::class, 'index'])->name('desktop.reportes');
     Route::get('/desktop/reportes/{reporte}/data', [ReporteController::class, 'data'])->name('reportes.data');
@@ -323,6 +332,9 @@ Route::middleware('auth')->group(function () {
         Route::put('/comisiones', [ComisionV2Controller::class, 'guardar'])
             ->name('comisiones.update')
             ->middleware('permiso:comisiones.configurar');
+        Route::post('/comisiones/vista-previa', [ComisionV2Controller::class, 'vistaPrevia'])
+            ->name('comisiones.vista_previa')
+            ->middleware('permiso:comisiones.configurar');
         Route::get('/comisiones/historico-ventas', [ComisionHistoricoController::class, 'index'])
             ->name('comisiones.historico.index')
             ->middleware('permiso:comisiones.configurar');
@@ -341,6 +353,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/pos', [PuntoVentaController::class, 'index'])->name('pos.index');
     Route::get('/pos/caja/estado', [PuntoVentaController::class, 'estadoCaja'])->name('pos.caja.estado');
     Route::get('/pos/clientes/buscar', [PuntoVentaController::class, 'buscarClientes'])->name('pos.clientes.buscar');
+    Route::post('/pos/datos-facturacion', [\App\Http\Controllers\Operacion\DatosFacturacionController::class, 'store'])
+        ->name('pos.datos_facturacion.store')->middleware('permiso:cliente.crear');
     Route::get('/pos/productos/resolver-almacen', [PuntoVentaController::class, 'resolverProductoAlmacen'])->name('pos.productos.resolver_almacen');
     Route::get('/pos/productos/validar-almacen', [PuntoVentaController::class, 'validarProductoAlmacen'])->name('pos.productos.validar_almacen');
     Route::post('/pos/caja/abrir', [PuntoVentaController::class, 'abrirCaja'])->name('pos.caja.abrir');

@@ -32,6 +32,7 @@ class StoreAlmacenRequest extends FormRequest
                     ->where('tal_estatus', 'activo')),
             ],
             'alm_nombre' => ['required', 'string', 'max:120'],
+            'alm_permite_facturar' => ['sometimes', 'boolean'],
             'alm_estatus' => ['required', Rule::in(['activo', 'inactivo'])],
         ];
     }

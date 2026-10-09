@@ -359,6 +359,7 @@ class OperacionGestionConfiguracionesController extends Controller
                 'alm_nombre' => $almacen->alm_nombre,
                 'alm_clave' => $almacen->alm_clave,
                 'alm_estatus' => $almacen->alm_estatus,
+                'alm_permite_facturar' => (bool) $almacen->alm_permite_facturar,
                 'alm_scl_id' => $almacen->alm_scl_id,
                 'alm_tal_id' => $almacen->alm_tal_id,
                 'sucursal' => $almacen->sucursal?->scl_nombre,
@@ -381,6 +382,7 @@ class OperacionGestionConfiguracionesController extends Controller
                 'alm_nombre' => $registro->alm_nombre,
                 'alm_clave' => $registro->alm_clave,
                 'alm_estatus' => $registro->alm_estatus,
+                'alm_permite_facturar' => (bool) $registro->alm_permite_facturar,
             ],
         ]);
     }

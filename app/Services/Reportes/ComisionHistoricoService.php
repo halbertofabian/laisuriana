@@ -53,31 +53,81 @@ class ComisionHistoricoService
 
     public function resumirReferencia(ComisionV2Periodo $periodo, Collection $movimientos, Carbon $mes): Collection
     {
-        $capturas = DB::table('tbl_comision_historicos_chv as chv')
-            ->join('tbl_comision_v2_periodo_lineas_cml as cml', function ($join) use ($periodo) {
-                $join->on('cml.cml_lna_id', '=', 'chv.chv_lna_id')->where('cml.cml_cmp_id', $periodo->cmp_id);
-            })
-            ->where('chv.chv_scl_id', $periodo->cmp_scl_id)
-            ->whereDate('chv.chv_periodo', $mes->copy()->startOfMonth()->toDateString())
-            ->whereIn('chv.chv_alm_id', $periodo->almacenes->pluck('alm_id'))
-            ->get(['chv.*', 'cml.cml_cpd_id']);
-        $claves = $capturas->mapWithKeys(fn ($fila) => [$fila->chv_alm_id.'|'.$fila->chv_lna_id => true]);
+        $lineaGrupos = DB::table('tbl_comision_v2_periodo_lineas_cml')
+            ->where('cml_cmp_id', $periodo->cmp_id)
+            ->pluck('cml_cpd_id', 'cml_lna_id')->all();
 
-        // Cada captura representa el total mensual; sustituye solo esa combinación del POS.
-        $filas = $movimientos->reject(fn ($fila) => $claves->has(($fila->almacen_id ?? '').'|'.($fila->linea_id ?? '')))
-            ->map(fn ($fila) => [
-                'departamento_id' => $fila->departamento_periodo_id,
-                'ventas' => (float) $fila->importe,
-                'autoservicio' => $fila->vendedor_id === null ? (float) $fila->importe : 0,
-            ])->concat($capturas->map(fn ($fila) => [
-                'departamento_id' => $fila->cml_cpd_id,
-                'ventas' => (float) $fila->chv_ventas_netas,
-                'autoservicio' => (float) $fila->chv_autoservicio,
-            ]));
+        return $this->referencia((int) $periodo->cmp_scl_id, $mes, $periodo->almacenes->pluck('alm_id')->all(), $lineaGrupos, $movimientos);
+    }
 
-        return $filas->groupBy('departamento_id')->map(fn ($grupo) => [
-            'ventas' => round($grupo->sum('ventas'), 2),
-            'autoservicio' => round($grupo->sum('autoservicio'), 2),
-        ]);
+    /**
+     * Referencia histórica por grupo (departamento) y su cobertura por almacén y línea.
+     * Cada captura representa el total mensual y sustituye solo su combinación del POS.
+     */
+    public function referencia(int $sucursalId, Carbon $mes, array $almacenIds, array $lineaGrupos, Collection $movimientos): Collection
+    {
+        $almacenIds = array_values(array_unique(array_map('intval', $almacenIds)));
+        $capturas = $almacenIds === [] || $lineaGrupos === [] ? collect() : DB::table('tbl_comision_historicos_chv')
+            ->where('chv_scl_id', $sucursalId)
+            ->whereDate('chv_periodo', $mes->copy()->startOfMonth()->toDateString())
+            ->whereIn('chv_alm_id', $almacenIds)
+            ->whereIn('chv_lna_id', array_map('intval', array_keys($lineaGrupos)))
+            ->get(['chv_id', 'chv_alm_id', 'chv_lna_id', 'chv_ventas_netas', 'chv_autoservicio', 'chv_referencia'])
+            ->keyBy(fn ($fila) => $fila->chv_alm_id.'|'.$fila->chv_lna_id);
+        $claveMovimiento = fn ($fila) => ($fila->almacen_id ?? '').'|'.($fila->linea_id ?? '');
+        $pos = $movimientos->groupBy($claveMovimiento);
+        $almacenes = DB::table('tbl_almacenes_alm')->whereIn('alm_id', $almacenIds)->pluck('alm_nombre', 'alm_id');
+        $lineas = DB::table('tbl_lineas_lna')->whereIn('lna_id', array_keys($lineaGrupos))->pluck('lna_nombre', 'lna_id');
+
+        $resumen = collect();
+        foreach (array_unique(array_values($lineaGrupos)) as $grupo) {
+            $filas = $movimientos->where('departamento_periodo_id', $grupo)
+                ->reject(fn ($fila) => $capturas->has($claveMovimiento($fila)));
+            $capturasGrupo = $capturas->filter(fn ($fila) => ($lineaGrupos[$fila->chv_lna_id] ?? null) == $grupo);
+            $combinaciones = [];
+            foreach ($almacenIds as $almacenId) {
+                foreach (array_keys($lineaGrupos, $grupo) as $lineaId) {
+                    $clave = $almacenId.'|'.$lineaId;
+                    $captura = $capturas->get($clave);
+                    $sistema = $pos->get($clave, collect());
+                    $ventasSistema = round((float) $sistema->sum('importe'), 2);
+                    $autoSistema = round((float) $sistema->whereNull('vendedor_id')->sum('importe'), 2);
+                    $fuente = $captura ? 'manual' : ($sistema->isNotEmpty() ? 'sistema' : 'sin_datos');
+                    $ventas = $captura ? (float) $captura->chv_ventas_netas : $ventasSistema;
+                    $autoservicio = $captura ? (float) $captura->chv_autoservicio : $autoSistema;
+                    $combinaciones[] = [
+                        'almacen_id' => $almacenId,
+                        'almacen' => (string) ($almacenes[$almacenId] ?? ''),
+                        'linea_id' => (int) $lineaId,
+                        'linea' => (string) ($lineas[$lineaId] ?? ''),
+                        'fuente' => $fuente,
+                        'ventas' => $ventas,
+                        'autoservicio' => $autoservicio,
+                        'base' => round($ventas - $autoservicio, 2),
+                        'captura_id' => $captura ? (int) $captura->chv_id : null,
+                        'documento' => $captura?->chv_referencia,
+                        'sistema_sustituido' => $captura && $sistema->isNotEmpty() ? $ventasSistema : null,
+                    ];
+                }
+            }
+            $ventasSistema = round((float) $filas->sum('importe'), 2);
+            $ventasManual = round((float) $capturasGrupo->sum('chv_ventas_netas'), 2);
+            $ventas = round($ventasSistema + $ventasManual, 2);
+            $autoservicio = round((float) $filas->whereNull('vendedor_id')->sum('importe') + (float) $capturasGrupo->sum('chv_autoservicio'), 2);
+            $hayManual = $capturasGrupo->isNotEmpty();
+            $haySistema = $filas->isNotEmpty();
+            $resumen->put($grupo, [
+                'ventas' => $ventas,
+                'autoservicio' => $autoservicio,
+                'base' => round($ventas - $autoservicio, 2),
+                'ventas_sistema' => $ventasSistema,
+                'ventas_manual' => $ventasManual,
+                'origen' => $hayManual && $haySistema ? 'mixto' : ($hayManual ? 'manual' : ($haySistema ? 'sistema' : null)),
+                'combinaciones' => $combinaciones,
+                'faltantes' => collect($combinaciones)->where('fuente', 'sin_datos')->count(),
+            ]);
+        }
+
+        return $resumen;
     }
 }

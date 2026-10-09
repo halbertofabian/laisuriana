@@ -174,7 +174,7 @@ class ComisionesDemoSeederTest extends TestCase
                 'periodo' => substr($filtros['desde'], 0, 7),
             ]))
             ->assertOk()
-            ->assertSee('Configura un periodo sin complicaciones')
+            ->assertSee('Mes que configuras')
             ->assertDontSee('Casa Matriz')
             ->assertDontSee('Vista de consulta:');
 

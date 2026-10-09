@@ -59,6 +59,7 @@
                         <th>Sucursal</th>
                         <th>Clave</th>
                         <th>Tipo</th>
+                        <th>Facturación</th>
                         <th style="width:104px;">Estatus</th>
                         <th style="width:56px; text-align:right;">Acciones</th>
                     </tr>
@@ -109,6 +110,12 @@
                             <select name="alm_estatus" id="alm_estatus" required>
                                 <option value="activo">Activo</option>
                                 <option value="inactivo">Inactivo</option>
+                            </select>
+                        </div>
+                        <div class="desktop-field desktop-field--full">
+                            <label for="alm_permite_facturar">Habilitado para ajustar tickets de facturación</label>
+                            <select name="alm_permite_facturar" id="alm_permite_facturar">
+                                <option value="0">No</option><option value="1">Sí</option>
                             </select>
                         </div>
                         <div class="desktop-field desktop-field--full">
@@ -276,6 +283,7 @@
                 $form.get(0).reset();
                 $('#alm_id').val('');
                 $('#alm_estatus').val('activo');
+                $('#alm_permite_facturar').val('0');
                 $('#alm_clave_preview').val('Se generará automáticamente al guardar.');
                 $('#desktop-almacen-modal-title').text('Nuevo almacén');
                 $('#btn-guardar-almacen').text('Guardar almacén');
@@ -341,6 +349,7 @@
                                 return value ? escapeHtml(value) : '<span class="desktop-list__meta">Sin tipo</span>';
                             }
                         },
+                        { data: 'alm_permite_facturar', render: value => value ? 'Habilitada' : 'No habilitada' },
                         { data: 'alm_estatus', render: renderStatus },
                         { data: null, orderable: false, searchable: false, render: renderActions }
                     ],
@@ -366,6 +375,7 @@
                         $('#alm_tal_id').val(data.alm_tal_id || '');
                         $('#alm_nombre').val(data.alm_nombre || '');
                         $('#alm_estatus').val(data.alm_estatus || 'activo');
+                        $('#alm_permite_facturar').val(data.alm_permite_facturar ? '1' : '0');
                         $('#alm_clave_preview').val(data.alm_clave || 'Se generará automáticamente al guardar.');
                         openModal();
                     })

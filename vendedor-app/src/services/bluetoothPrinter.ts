@@ -5,6 +5,7 @@ import type {
   PrinterConfig,
   PrinterLanguage,
 } from '../types';
+import { formatMeters, isMeterProduct } from './quantity';
 
 interface PairedDevicesResult {
   supported: boolean;
@@ -60,7 +61,7 @@ function escposTest(config: PrinterConfig): string {
 function escposTicket(config: PrinterConfig, data: TicketPrintData): string {
   const width = config.paperWidth === '80' ? 48 : 32;
   const lines = data.order.lines.length > 0
-    ? data.order.lines.flatMap((item) => [fit(item.name, width), columns(`${item.quantity} x ${plainMoney(item.price)}`, plainMoney(item.total), width)])
+    ? data.order.lines.flatMap((item) => [fit(item.name, width), columns(`${isMeterProduct(item) ? `${formatMeters(item.quantity)} m` : item.quantity} x ${plainMoney(item.price)}`, plainMoney(item.total), width)])
     : [`${data.order.itemCount} articulos`];
 
   return [

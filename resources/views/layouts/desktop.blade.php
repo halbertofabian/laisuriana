@@ -364,6 +364,7 @@
         .desktop-btn svg { width: 15px; height: 15px; }
         .desktop-btn:hover { background: var(--surface-sunken); }
         .desktop-btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+        .desktop-btn:disabled { opacity: .45; cursor: not-allowed; pointer-events: none; }
 
         .desktop-btn--primary {
             background: var(--brand); color: var(--on-brand); border-color: var(--brand);
@@ -871,6 +872,12 @@
                     <span class="nav-item__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 3-3 3 3 5-6"/></svg></span>
                     <span class="nav-item__label">Ventas</span>
                 </a>
+                @if($desktopUser?->tienePermiso('facturacion.ver'))
+                    <a href="{{ route('desktop.facturacion.index') }}" class="nav-item {{ request()->routeIs('desktop.facturacion.*') ? 'is-active' : '' }}">
+                        <span class="nav-item__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg></span>
+                        <span class="nav-item__label">Facturación</span>
+                    </a>
+                @endif
                 <a href="{{ route('desktop.reportes') }}" class="nav-item {{ request()->routeIs('desktop.reportes', 'reportes.*') ? 'is-active' : '' }}">
                     <span class="nav-item__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg></span>
                     <span class="nav-item__label">Reportes</span>

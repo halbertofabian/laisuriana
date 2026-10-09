@@ -44,6 +44,7 @@ class GuardarConfiguracionComisionV2Request extends FormRequest
             'departamentos.*.linea_ids.*' => ['integer', 'distinct', 'exists:tbl_lineas_lna,lna_id'],
             'departamentos.*.incremento_meta' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'departamentos.*.meta_comun' => ['nullable', 'numeric', 'min:0', 'max:999999999'],
+            'departamentos.*.modo_meta' => ['nullable', 'in:historica,manual'],
             'vendedores' => ['nullable', 'array'],
             'vendedores.*.habilitado' => ['boolean'],
             'vendedores.*.numero' => ['nullable', 'string', 'max:40', 'distinct'],
@@ -94,14 +95,7 @@ class GuardarConfiguracionComisionV2Request extends FormRequest
                 if (! isset($habilitados[$departamentoId])) {
                     $validator->errors()->add("vendedores.$usuarioId.departamento_id", 'Selecciona un departamento activo.');
                 }
-                $tasa = (float) ($fila['tasa'] ?? 0.9);
-                $meta = $fila['meta'] ?? null;
-                $metaComun = $this->input("departamentos.$departamentoId.meta_comun");
-                $requiereMotivo = abs($tasa - 0.9) > 0.00001
-                    || ($meta !== null && $metaComun !== null && abs((float) $meta - (float) $metaComun) > 0.009);
-                if ($requiereMotivo && trim((string) ($fila['motivo'] ?? '')) === '') {
-                    $validator->errors()->add("vendedores.$usuarioId.motivo", 'Explica el ajuste individual de meta o tasa.');
-                }
+                // El motivo de ajustes se valida al guardar, cuando ya se conoce la meta común (manual o sugerida).
             }
         });
     }

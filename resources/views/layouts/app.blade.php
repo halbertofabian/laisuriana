@@ -918,6 +918,13 @@
                             <div>Descarga App (QR)</div>
                         </a>
                     </li>
+                    @if(auth()->user()?->tienePermiso('facturacion.ver'))
+                        <li class="menu-item">
+                            <a href="{{ route('desktop.facturacion.index') }}" class="menu-link">
+                                <i class="menu-icon ti tabler-file-invoice"></i><div>Facturación</div>
+                            </a>
+                        </li>
+                    @endif
                     <li class="menu-item {{ request()->routeIs('operacion.ventas.*') ? 'active' : '' }}">
                         <a href="{{ route('operacion.ventas.index') }}" class="menu-link">
                             <i class="menu-icon icon-base ti tabler-receipt-2"></i>
